@@ -8,14 +8,14 @@ using System.Text;
 
 namespace PeShop.Helpers
 {
-    public class JwtUtil : IJwt
+    public class JwtHelpers : IJwtHelpers
     {
         private readonly IConfiguration _configuration;
         private readonly string _secretKey;
         private readonly string _issuer;
         private readonly string _audience;
 
-        public JwtUtil(IConfiguration configuration)
+        public JwtHelpers(IConfiguration configuration)
         {
             _configuration = configuration;
             _secretKey = _configuration["Jwt:SecretKey"] ?? throw new ArgumentNullException("Jwt:SecretKey");

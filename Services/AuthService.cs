@@ -12,9 +12,9 @@ namespace PeShop.Services
     public class AuthService : IAuthService
     {
         private readonly IUserRepository _userRepository;
-        private readonly IJwt _jwtUtil;
+        private readonly IJwtHelpers _jwtUtil;
 
-        public AuthService(IUserRepository userRepository, IJwt jwtUtil)
+        public AuthService(IUserRepository userRepository, IJwtHelpers jwtUtil)
         {
             _userRepository = userRepository;
             _jwtUtil = jwtUtil;

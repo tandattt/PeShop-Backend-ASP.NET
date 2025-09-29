@@ -19,6 +19,7 @@ namespace PeShop.Dtos.Requests
         [MinLength(6, ErrorMessage = "Mật khẩu phải có ít nhất 6 ký tự")]
         public string Password { get; set; } = string.Empty;
 
+        
         public string? Name { get; set; }
 
         [Required(ErrorMessage = "Số điện thoại là bắt buộc")]

@@ -11,7 +11,7 @@ using Microsoft.Extensions.Configuration;
 using PeShop.Setting;
 using StackExchange.Redis;
 using PeShop.Services.Interfaces;
-
+using Scrutor;
 namespace PeShop.Configurations
 {
     public static class DependencyInjection
@@ -22,20 +22,33 @@ namespace PeShop.Configurations
             services.AddDbContext<PeShopDbContext>(options =>
                 options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString)));
 
-            // Đăng ký JWT Service
-            services.AddScoped<IJwt, JwtUtil>();
+            // Auto đăng ký Services
+            services.Scan(scan => scan
+                .FromAssembliesOf(typeof(IAuthService))
+                .AddClasses(c => c.Where(type => type.Name.EndsWith("Service")))
+                .AsImplementedInterfaces()
+                .WithScopedLifetime());
 
-            // Đăng ký Repositories
-            services.AddScoped<IUserRepository, UserRepository>();
+            // Auto đăng ký Repositories
+            services.Scan(scan => scan
+                .FromAssembliesOf(typeof(IUserRepository))
+                .AddClasses(c => c.Where(type => type.Name.EndsWith("Repository")))
+                .AsImplementedInterfaces()
+                .WithScopedLifetime());
 
-            // Đăng ký Services
-            services.AddScoped<IAuthService, AuthService>();
+            // Auto đăng ký Helpers
+            services.Scan(scan => scan
+                .FromAssembliesOf(typeof(IJwtHelpers))
+                .AddClasses(c => c.Where(type => type.Name.EndsWith("Helper")))
+                .AsImplementedInterfaces()
+                .WithScopedLifetime());
 
-            // Đăng ký Redis Service
-            services.AddScoped<IRedisUtil, RedisUtil>();
-            
-            // Đăng ký Mail Service
-            services.AddScoped<IMailService, MailService>();
+            // Auto đăng ký Utilities
+            services.Scan(scan => scan
+                .FromAssembliesOf(typeof(IRedisUtil))
+                .AddClasses(c => c.Where(type => type.Name.EndsWith("Util")))
+                .AsImplementedInterfaces()
+                .WithScopedLifetime());
 
             // Đăng ký SmtpSettings
             services.Configure<SmtpSettings>(configuration.GetSection("SmtpSettings"));
@@ -47,8 +60,6 @@ namespace PeShop.Configurations
             services.AddSingleton<AppSetting>(provider => 
                 configuration.GetSection("AppSetting").Get<AppSetting>() ?? new AppSetting());
 
-            // Đăng ký Email Service
-            services.AddScoped<IEmailUtil, EmailUtil>();
 
             // Đăng ký Redis
             services.AddSingleton<IConnectionMultiplexer>(provider =>
@@ -57,17 +68,6 @@ namespace PeShop.Configurations
                 return ConnectionMultiplexer.Connect(connectionString);
             });
 
-            // services.AddScoped<IDatabase>(provider =>
-            // {
-            //     var connectionMultiplexer = provider.GetRequiredService<IConnectionMultiplexer>();
-            //     return connectionMultiplexer.GetDatabase();
-            // });
-
-            // AutoMapper
-            // services.AddAutoMapper(typeof(Program));
-
-            // FluentValidation
-            // services.AddValidatorsFromAssemblyContaining<Program>();
 
             return services;
         }

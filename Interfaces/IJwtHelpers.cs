@@ -5,7 +5,7 @@ using System.Security.Claims;
 
 namespace PeShop.Interfaces.Jwt
 {
-    public interface IJwt
+    public interface IJwtHelpers
     {
         string GenerateToken(JwtPayloadDto payloadDto);
         ClaimsPrincipal? ValidateToken(string token);
