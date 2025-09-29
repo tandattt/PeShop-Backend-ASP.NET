@@ -1,7 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using PeShop.Interfaces.Jwt;
-using PeShop.Models.Enums;
+using PeShop.Interfaces;
 using PeShop.Constants;
 namespace PeShop.Controllers
 {
@@ -9,9 +8,9 @@ namespace PeShop.Controllers
     [Route("api/[controller]")]
     public class TestController : ControllerBase
     {
-        private readonly IJwt _jwtUtil;
+        private readonly IJwtHelper _jwtUtil;
 
-        public TestController(IJwt jwtUtil)
+        public TestController(IJwtHelper jwtUtil)
         {
             _jwtUtil = jwtUtil;
         }

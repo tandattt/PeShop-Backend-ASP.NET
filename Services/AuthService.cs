@@ -2,7 +2,7 @@ using PeShop.Data.Repositories;
 using PeShop.Dtos.Common;
 using PeShop.Dtos.Requests;
 using PeShop.Dtos.Responses;
-using PeShop.Interfaces.Jwt;
+using PeShop.Interfaces;
 using PeShop.Models.Entities;
 using PeShop.Models.Enums;
 using PeShop.Exceptions;
@@ -12,12 +12,12 @@ namespace PeShop.Services
     public class AuthService : IAuthService
     {
         private readonly IUserRepository _userRepository;
-        private readonly IJwtHelpers _jwtUtil;
+        private readonly IJwtHelper _jwtHelper;
 
-        public AuthService(IUserRepository userRepository, IJwtHelpers jwtUtil)
+        public AuthService(IUserRepository userRepository, IJwtHelper jwtHelper)
         {
             _userRepository = userRepository;
-            _jwtUtil = jwtUtil;
+            _jwtHelper = jwtHelper;
         }
 
         public async Task<LoginResponse?> LoginAsync(LoginRequest request)
@@ -52,8 +52,8 @@ namespace PeShop.Services
                 TimeLive = 48
             };
 
-            var accessToken = _jwtUtil.GenerateToken(accessPayload);
-            var refreshToken = _jwtUtil.GenerateToken(refreshPayload);
+            var accessToken = _jwtHelper.GenerateToken(accessPayload);
+            var refreshToken = _jwtHelper.GenerateToken(refreshPayload);
             Console.WriteLine(accessToken);
             Console.WriteLine(refreshToken);
             return new LoginResponse

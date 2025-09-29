@@ -1,17 +1,10 @@
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.EntityFrameworkCore;
 using PeShop.Data.Contexts;
 using PeShop.Data.Repositories;
-using PeShop.Interfaces.Jwt;
-using PeShop.Services;
-using PeShop.Utilities;
-using PeShop.Helpers;
 using PeShop.Interfaces;
-using Microsoft.Extensions.Configuration;
+using PeShop.Services;
 using PeShop.Setting;
 using StackExchange.Redis;
-using PeShop.Services.Interfaces;
-using Scrutor;
 namespace PeShop.Configurations
 {
     public static class DependencyInjection
@@ -38,7 +31,7 @@ namespace PeShop.Configurations
 
             // Auto đăng ký Helpers
             services.Scan(scan => scan
-                .FromAssembliesOf(typeof(IJwtHelpers))
+                .FromAssembliesOf(typeof(IJwtHelper))
                 .AddClasses(c => c.Where(type => type.Name.EndsWith("Helper")))
                 .AsImplementedInterfaces()
                 .WithScopedLifetime());

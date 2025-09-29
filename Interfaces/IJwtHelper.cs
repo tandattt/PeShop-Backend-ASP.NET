@@ -3,9 +3,9 @@
 using PeShop.Dtos.Common;
 using System.Security.Claims;
 
-namespace PeShop.Interfaces.Jwt
+namespace PeShop.Interfaces
 {
-    public interface IJwtHelpers
+    public interface IJwtHelper
     {
         string GenerateToken(JwtPayloadDto payloadDto);
         ClaimsPrincipal? ValidateToken(string token);
