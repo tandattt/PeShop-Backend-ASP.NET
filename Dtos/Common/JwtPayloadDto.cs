@@ -1,0 +1,10 @@
+﻿namespace PeShop.Dtos.Common
+{
+    public class JwtPayloadDto
+    {
+        public string Sub { get; set; }
+        public List<string> Authorities { get; set; }
+        public string TokenType { get; set; }
+        public int TimeLive { get; set; }
+    }
+}

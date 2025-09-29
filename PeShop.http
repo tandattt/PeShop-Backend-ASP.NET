@@ -1,0 +1,6 @@
+@PeShop_HostAddress = http://localhost:5160
+
+GET {{PeShop_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
