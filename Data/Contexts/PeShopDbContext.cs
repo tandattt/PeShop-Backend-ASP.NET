@@ -891,8 +891,6 @@ public partial class PeShopDbContext : DbContext
 
             entity.ToTable("user");
 
-            entity.HasIndex(e => e.StatusUser, "FKff0frmlgipqk5ja97y5njs9nh");
-
             entity.HasIndex(e => e.GenderId, "FKs5t8r24daykacxlyua99egfr5");
 
             entity.Property(e => e.Id)
@@ -920,9 +918,6 @@ public partial class PeShopDbContext : DbContext
             entity.Property(e => e.Phone)
                 .HasMaxLength(20)
                 .HasColumnName("phone");
-            entity.Property(e => e.StatusUser)
-                .HasMaxLength(36)
-                .HasColumnName("status_user");
             entity.Property(e => e.Username)
                 .HasMaxLength(50)
                 .HasColumnName("username");
@@ -941,10 +936,6 @@ public partial class PeShopDbContext : DbContext
             entity.HasOne(d => d.Gender).WithMany(p => p.UserGenders)
                 .HasForeignKey(d => d.GenderId)
                 .HasConstraintName("FKs5t8r24daykacxlyua99egfr5");
-
-            entity.HasOne(d => d.StatusUserNavigation).WithMany(p => p.UserStatusUserNavigations)
-                .HasForeignKey(d => d.StatusUser)
-                .HasConstraintName("FKff0frmlgipqk5ja97y5njs9nh");
 
             entity.HasMany(d => d.Roles).WithMany(p => p.Users)
                 .UsingEntity<Dictionary<string, object>>(

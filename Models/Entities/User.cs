@@ -28,7 +28,6 @@ public partial class User
 
     public string? GenderId { get; set; }
 
-    public string? StatusUser { get; set; }
     public HasShop? HasShop { get; set; }
     public UserStatus? Status { get; set; }
 
@@ -39,8 +38,6 @@ public partial class User
     public virtual ICollection<Order> Orders { get; set; } = new List<Order>();
 
     public virtual ICollection<Shop> Shops { get; set; } = new List<Shop>();
-
-    public virtual CoreEnum? StatusUserNavigation { get; set; }
 
     public virtual ICollection<UserAddress> UserAddresses { get; set; } = new List<UserAddress>();
 

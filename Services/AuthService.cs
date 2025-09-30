@@ -6,6 +6,8 @@ using PeShop.Interfaces;
 using PeShop.Models.Entities;
 using PeShop.Models.Enums;
 using PeShop.Exceptions;
+using PeShop.Data.Repositories.Interfaces;
+using PeShop.Constants;
 
 namespace PeShop.Services
 {
@@ -13,17 +15,20 @@ namespace PeShop.Services
     {
         private readonly IUserRepository _userRepository;
         private readonly IJwtHelper _jwtHelper;
-
-        public AuthService(IUserRepository userRepository, IJwtHelper jwtHelper)
+        private readonly IRedisUtil _redisUtil;
+        private readonly IRoleRepository _roleRepository;
+        public AuthService(IUserRepository userRepository, IJwtHelper jwtHelper, IRedisUtil redisUtil, IRoleRepository roleRepository)
         {
             _userRepository = userRepository;
             _jwtHelper = jwtHelper;
+            _redisUtil = redisUtil;
+            _roleRepository = roleRepository;
         }
 
         public async Task<LoginResponse?> LoginAsync(LoginRequest request)
         {
 
-            var user = await _userRepository.GetByEmailOrUsernameAsync(request.EmailOrUsername);
+            var user = await _userRepository.GetByEmailAsync(request.Email);
 
             if (user == null || user.Password != request.Password)
             {
@@ -35,7 +40,6 @@ namespace PeShop.Services
             }
 
             var userRoles = await _userRepository.GetUserRolesAsync(user.Id);
-            var shopId = await _userRepository.GetUserShopIdAsync(user.Id);
 
             var accessPayload = new JwtPayloadDto
             {
@@ -76,8 +80,24 @@ namespace PeShop.Services
             {
                 throw new BadRequestException("Username đã được sử dụng");
             }
+
+            var otp = await _redisUtil.GetAsync($"Email:{request.Email}")
+            ?? throw new BadRequestException("OTP đã hết hạn hoặc chưa được gữi");
+
+            if (otp != request.Otp)
+            {
+                throw new BadRequestException("OTP không đúng");
+            }
+
+            await _redisUtil.DeleteAsync($"Email:{request.Email}");
+
             try
             {
+                var Role = await _roleRepository.GetByNameAsync(RoleConstants.User);
+                if (Role == null)
+                {
+                    throw new BadRequestException("Role not found");
+                }
                 var newUser = new User
                 {
                     Id = Guid.NewGuid().ToString(),
@@ -85,20 +105,24 @@ namespace PeShop.Services
                     Username = request.Username,
                     Name = request.Name,
                     Password = request.Password,
+                    Status = UserStatus.Active,
+                    HasShop = HasShop.No,
                     Phone = request.Phone,
+                    Roles = new List<Role> { Role },
                     CreatedAt = DateTime.UtcNow
                 };
+                
 
-                var createdUser = await _userRepository.CreateAsync(newUser);
-
-
+                await _userRepository.CreateAsync(newUser);
 
                 return "tạo tài khoản thành công";
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                Console.WriteLine(ex.Message);
                 throw new Exception("Lỗi server ");
             }
+
         }
 
 

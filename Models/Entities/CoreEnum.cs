@@ -23,5 +23,4 @@ public partial class CoreEnum
 
     public virtual ICollection<User> UserGenders { get; set; } = new List<User>();
 
-    public virtual ICollection<User> UserStatusUserNavigations { get; set; } = new List<User>();
 }

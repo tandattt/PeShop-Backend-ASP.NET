@@ -26,14 +26,18 @@ namespace PeShop.Controllers
         {
             var response = await _authService.LoginAsync(request);
 
-            Response.Cookies.Append("refreshToken", response.RefreshToken, new CookieOptions
+            if (response != null)
             {
-                HttpOnly = true,         // Không cho JS đọc
-                Secure = true,           // Chỉ truyền qua HTTPS
-                SameSite = SameSiteMode.Strict, // Hạn chế CSRF
-                Expires = DateTimeOffset.UtcNow.AddHours(48) // hạn token = 48h
-            });
-            return Ok(response.AccessToken);
+                Response.Cookies.Append("refreshToken", response.RefreshToken, new CookieOptions
+                {
+                    HttpOnly = true,         // Không cho JS đọc
+                    Secure = true,           // Chỉ truyền qua HTTPS
+                    SameSite = SameSiteMode.Strict, // Hạn chế CSRF
+                    Expires = DateTimeOffset.UtcNow.AddHours(48) // hạn token = 48h
+                });
+                return Ok(response.AccessToken);
+            }
+            return BadRequest("Login failed");
 
         }
 

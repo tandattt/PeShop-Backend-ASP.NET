@@ -11,7 +11,7 @@ namespace PeShop.Dtos.Requests
         /// Email hoặc username
         /// </summary>
         [Required(ErrorMessage = "Email/Username là bắt buộc")]
-        public string EmailOrUsername { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
 
         /// <summary>
         /// Mật khẩu

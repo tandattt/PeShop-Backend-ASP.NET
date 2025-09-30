@@ -19,7 +19,9 @@ namespace PeShop.Dtos.Requests
         [MinLength(6, ErrorMessage = "Mật khẩu phải có ít nhất 6 ký tự")]
         public string Password { get; set; } = string.Empty;
 
-        
+        [Required(ErrorMessage = "OTP là bắt buộc")]
+        [MinLength(6, ErrorMessage = "OTP phải có ít nhất 6 ký tự")]
+        public string Otp { get; set; } = string.Empty;
         public string? Name { get; set; }
 
         [Required(ErrorMessage = "Số điện thoại là bắt buộc")]
