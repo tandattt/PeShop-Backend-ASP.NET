@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using Models.Enums;
 
 namespace PeShop.Models.Entities;
 
@@ -47,7 +48,7 @@ public partial class Product
 
     public string? ShopId { get; set; }
 
-    public string? StatusProduct { get; set; }
+    public ProductStatus? Status { get; set; }
 
     public virtual ICollection<Cart> Carts { get; set; } = new List<Cart>();
 
@@ -60,8 +61,6 @@ public partial class Product
     public virtual ICollection<ProductInfomation> ProductInfomations { get; set; } = new List<ProductInfomation>();
 
     public virtual Shop? Shop { get; set; }
-
-    public virtual CoreEnum? StatusProductNavigation { get; set; }
 
     public virtual ICollection<Variant> Variants { get; set; } = new List<Variant>();
 }

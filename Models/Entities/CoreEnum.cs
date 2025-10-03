@@ -19,8 +19,4 @@ public partial class CoreEnum
 
     public string? Type { get; set; }
 
-    public virtual ICollection<Product> Products { get; set; } = new List<Product>();
-
-    public virtual ICollection<User> UserGenders { get; set; } = new List<User>();
-
 }

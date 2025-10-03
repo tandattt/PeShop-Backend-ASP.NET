@@ -39,7 +39,7 @@ namespace PeShop.Data.Repositories
             return await _context.Users
                 .Include(u => u.Roles)
                 .FirstOrDefaultAsync(u => u.Email == emailOrUsername || 
-                                         u.Username == emailOrUsername);
+                                        u.Username == emailOrUsername);
         }
 
         public async Task<User> CreateAsync(User user)

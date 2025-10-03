@@ -543,7 +543,6 @@ public partial class PeShopDbContext : DbContext
 
             entity.HasIndex(e => e.CategoryChildId, "FKj80e6pnpa9do0rkadbntug0hl");
 
-            entity.HasIndex(e => e.StatusProduct, "FKpclo3o8m8otiiwrpysij12cgo");
 
             entity.Property(e => e.Id)
                 .HasMaxLength(36)
@@ -582,9 +581,8 @@ public partial class PeShopDbContext : DbContext
             entity.Property(e => e.Slug)
                 .HasMaxLength(255)
                 .HasColumnName("slug");
-            entity.Property(e => e.StatusProduct)
-                .HasMaxLength(36)
-                .HasColumnName("status_product");
+            entity.Property(e => e.Status)
+                .HasColumnName("status");
             entity.Property(e => e.UpdatedAt)
                 .HasMaxLength(6)
                 .HasColumnName("updated_at");
@@ -604,9 +602,6 @@ public partial class PeShopDbContext : DbContext
                 .HasForeignKey(d => d.ShopId)
                 .HasConstraintName("FK94hgg8hlqfqfnt3dag950vm7n");
 
-            entity.HasOne(d => d.StatusProductNavigation).WithMany(p => p.Products)
-                .HasForeignKey(d => d.StatusProduct)
-                .HasConstraintName("FKpclo3o8m8otiiwrpysij12cgo");
         });
 
         modelBuilder.Entity<ProductInfomation>(entity =>
@@ -891,7 +886,6 @@ public partial class PeShopDbContext : DbContext
 
             entity.ToTable("user");
 
-            entity.HasIndex(e => e.GenderId, "FKs5t8r24daykacxlyua99egfr5");
 
             entity.Property(e => e.Id)
                 .HasMaxLength(36)
@@ -906,9 +900,8 @@ public partial class PeShopDbContext : DbContext
             entity.Property(e => e.Email)
                 .HasMaxLength(60)
                 .HasColumnName("email");
-            entity.Property(e => e.GenderId)
-                .HasMaxLength(36)
-                .HasColumnName("gender_id");
+            entity.Property(e => e.Gender)
+                .HasColumnName("gender");
             entity.Property(e => e.Name)
                 .HasMaxLength(60)
                 .HasColumnName("name");
@@ -933,9 +926,6 @@ public partial class PeShopDbContext : DbContext
                 .IsFixedLength()
                 .HasColumnName("updated_by");
 
-            entity.HasOne(d => d.Gender).WithMany(p => p.UserGenders)
-                .HasForeignKey(d => d.GenderId)
-                .HasConstraintName("FKs5t8r24daykacxlyua99egfr5");
 
             entity.HasMany(d => d.Roles).WithMany(p => p.Users)
                 .UsingEntity<Dictionary<string, object>>(
@@ -1317,6 +1307,10 @@ public partial class PeShopDbContext : DbContext
         modelBuilder.Entity<User>()
             .Property(e => e.Status)
             .HasConversion<int>();
+        
+        modelBuilder.Entity<User>()
+            .Property(e => e.Gender)
+            .HasConversion<int>();
 
         // Shop enum mappings
         modelBuilder.Entity<Shop>()
@@ -1352,6 +1346,11 @@ public partial class PeShopDbContext : DbContext
 
         modelBuilder.Entity<VoucherSystem>()
             .Property(e => e.Type)
+            .HasConversion<int>();
+
+        // Product enum mapping
+        modelBuilder.Entity<Product>()
+            .Property(e => e.Status)
             .HasConversion<int>();
     }
 

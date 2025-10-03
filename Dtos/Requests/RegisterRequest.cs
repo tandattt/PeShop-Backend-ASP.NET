@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using Models.Enums;
 
 namespace PeShop.Dtos.Requests
 {
@@ -22,6 +23,8 @@ namespace PeShop.Dtos.Requests
         [Required(ErrorMessage = "OTP là bắt buộc")]
         [MinLength(6, ErrorMessage = "OTP phải có ít nhất 6 ký tự")]
         public string Otp { get; set; } = string.Empty;
+        
+        public GenderUser Gender { get; set; } 
         public string? Name { get; set; }
 
         [Required(ErrorMessage = "Số điện thoại là bắt buộc")]

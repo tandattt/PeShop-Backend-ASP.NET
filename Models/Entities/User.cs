@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using Models.Enums;
 using PeShop.Models.Enums;
 
 
@@ -26,14 +27,12 @@ public partial class User
 
     public string? Phone { get; set; }
 
-    public string? GenderId { get; set; }
+    public GenderUser? Gender { get; set; }
 
     public HasShop? HasShop { get; set; }
     public UserStatus? Status { get; set; }
 
     public virtual ICollection<Cart> Carts { get; set; } = new List<Cart>();
-
-    public virtual CoreEnum? Gender { get; set; }
 
     public virtual ICollection<Order> Orders { get; set; } = new List<Order>();
 
