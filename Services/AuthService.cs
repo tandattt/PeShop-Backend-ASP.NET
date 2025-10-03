@@ -115,8 +115,11 @@ namespace PeShop.Services
                 };
                 
 
-                await _userRepository.CreateAsync(newUser);
-
+            var user = await _userRepository.CreateAsync(newUser);
+            if (user == null)
+            {
+                throw new BadRequestException("tạo user thất bại");
+            }
                 return "tạo tài khoản thành công";
             }
             catch (Exception ex)

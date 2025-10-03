@@ -5,6 +5,7 @@ using PeShop.Interfaces;
 using PeShop.Services;
 using PeShop.Setting;
 using StackExchange.Redis;
+using AutoMapper;
 namespace PeShop.Configurations
 {
     public static class DependencyInjection
@@ -42,6 +43,9 @@ namespace PeShop.Configurations
                 .AddClasses(c => c.Where(type => type.Name.EndsWith("Util")))
                 .AsImplementedInterfaces()
                 .WithScopedLifetime());
+
+            // Đăng ký AutoMapper
+            services.AddAutoMapper(typeof(Program));
 
             // Đăng ký SmtpSettings
             services.Configure<SmtpSettings>(configuration.GetSection("SmtpSettings"));

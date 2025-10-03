@@ -21,14 +21,14 @@ namespace PeShop.Controllers
             _mailService = mailService;
         }
 
-        [HttpPost("Verify")]
+        [HttpPost("verify")]
         public async Task<IActionResult> VerifyMail([FromBody] MailRequest request)
         {
             var result = await _mailService.Verify(request);
             return Ok(new { Message = "Email verified successfully!", Otp = result });
         }
 
-        [HttpPost("Send")]
+        [HttpPost("send")]
         public async Task<IActionResult> SendMail([FromBody] MailServiceRequest request)
         {
             if (!Request.Headers.TryGetValue("Authorization", out var authHeader))

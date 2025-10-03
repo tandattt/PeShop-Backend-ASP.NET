@@ -18,20 +18,23 @@ public partial class UserAddress
     public string? FullNewAddress { get; set; }
 
     public string? FullOldAddress { get; set; }
+    public string? Phone { get; set; }
 
-    public uint? NewProviceId { get; set; }
+    public string? NewProviceId { get; set; }
 
-    public uint? NewWardId { get; set; }
+    public string? NewWardId { get; set; }
 
-    public uint? OldDistrictId { get; set; }
+    public string? OldDistrictId { get; set; }
 
-    public uint? OldProviceId { get; set; }
+    public string? OldProviceId { get; set; }
 
-    public uint? OldWardId { get; set; }
+    public string? OldWardId { get; set; }
 
     public string? StreetLine { get; set; }
 
     public string? UserId { get; set; }
+
+    public bool IsDefault { get; set; } = false;
 
     public virtual User? User { get; set; }
 }

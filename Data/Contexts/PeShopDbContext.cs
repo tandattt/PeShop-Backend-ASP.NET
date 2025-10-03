@@ -1030,14 +1030,27 @@ public partial class PeShopDbContext : DbContext
             entity.Property(e => e.FullOldAddress)
                 .HasMaxLength(255)
                 .HasColumnName("full_old_address");
-            entity.Property(e => e.NewProviceId).HasColumnName("new_provice_id");
-            entity.Property(e => e.NewWardId).HasColumnName("new_ward_id");
-            entity.Property(e => e.OldDistrictId).HasColumnName("old_district_id");
-            entity.Property(e => e.OldProviceId).HasColumnName("old_provice_id");
-            entity.Property(e => e.OldWardId).HasColumnName("old_ward_id");
+            entity.Property(e => e.NewProviceId)
+                .HasMaxLength(15)
+                .HasColumnName("new_provice_id");
+            entity.Property(e => e.NewWardId)
+                .HasMaxLength(15)
+                .HasColumnName("new_ward_id");
+            entity.Property(e => e.OldDistrictId)
+                .HasMaxLength(15)
+                .HasColumnName("old_district_id");
+            entity.Property(e => e.OldProviceId)
+                .HasMaxLength(15)
+                .HasColumnName("old_provice_id");
+            entity.Property(e => e.OldWardId)
+                .HasMaxLength(15)
+                .HasColumnName("old_ward_id");
             entity.Property(e => e.StreetLine)
                 .HasMaxLength(255)
                 .HasColumnName("street_line");
+            entity.Property(e => e.Phone)
+                .HasMaxLength(20)
+                .HasColumnName("phone");
             entity.Property(e => e.UpdatedAt)
                 .HasMaxLength(6)
                 .HasColumnName("updated_at");
@@ -1048,6 +1061,8 @@ public partial class PeShopDbContext : DbContext
             entity.Property(e => e.UserId)
                 .HasMaxLength(36)
                 .HasColumnName("user_id");
+            entity.Property(e => e.IsDefault)
+                .HasColumnName("is_default");
 
             entity.HasOne(d => d.User).WithMany(p => p.UserAddresses)
                 .HasForeignKey(d => d.UserId)
