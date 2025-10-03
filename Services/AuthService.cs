@@ -8,6 +8,7 @@ using PeShop.Models.Enums;
 using PeShop.Exceptions;
 using PeShop.Data.Repositories.Interfaces;
 using PeShop.Constants;
+using Models.Enums;
 
 namespace PeShop.Services
 {
@@ -108,6 +109,7 @@ namespace PeShop.Services
                     Status = UserStatus.Active,
                     HasShop = HasShop.No,
                     Phone = request.Phone,
+                    Gender = GenderUser.Male,
                     Roles = new List<Role> { Role },
                     CreatedAt = DateTime.UtcNow
                 };
