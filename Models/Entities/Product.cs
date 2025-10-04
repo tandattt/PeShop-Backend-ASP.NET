@@ -10,11 +10,11 @@ public partial class Product
 
     public DateTime? CreatedAt { get; set; }
 
-    public byte[]? CreatedBy { get; set; }
+    public string? CreatedBy { get; set; }
 
     public DateTime? UpdatedAt { get; set; }
 
-    public byte[]? UpdatedBy { get; set; }
+    public string? UpdatedBy { get; set; }
 
     public uint? BoughtCount { get; set; }
 
