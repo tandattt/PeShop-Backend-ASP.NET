@@ -44,9 +44,9 @@ namespace PeShop.Services
             return cartResponses;
         }
         
-        private List<VariantValueForCart> GetVariantValues(Variant? variant)
+        private List<VariantValueForCartDto> GetVariantValues(Variant? variant)
         {
-            var variantValues = new List<VariantValueForCart>();
+            var variantValues = new List<VariantValueForCartDto>();
             
             if (variant?.VariantValues == null || !variant.VariantValues.Any())
                 return variantValues;
@@ -55,15 +55,15 @@ namespace PeShop.Services
             {
                 if (variantValue?.PropertyValue == null) continue;
                 
-                var variantValueForCart = new VariantValueForCart
+                var variantValueForCart = new VariantValueForCartDto
                 {
-                    PropertyValue = new PropertyValueForCart
+                    PropertyValue = new PropertyValueForCartDto
                     {
                         Value = variantValue.PropertyValue.Value ?? string.Empty,
                         ImgUrl = variantValue.PropertyValue.ImgUrl ?? string.Empty,
                         Level = variantValue.PropertyValue.Level
                     },
-                    Property = new PropertyForCart
+                    Property = new PropertyForCartDto
                     {
                         Name = variantValue.PropertyValue.PropertyProduct?.Name ?? string.Empty
                     }

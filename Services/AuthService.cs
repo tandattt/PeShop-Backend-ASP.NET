@@ -9,6 +9,7 @@ using PeShop.Exceptions;
 using PeShop.Data.Repositories.Interfaces;
 using PeShop.Constants;
 using Models.Enums;
+using Hangfire;
 
 namespace PeShop.Services
 {
@@ -18,12 +19,14 @@ namespace PeShop.Services
         private readonly IJwtHelper _jwtHelper;
         private readonly IRedisUtil _redisUtil;
         private readonly IRoleRepository _roleRepository;
-        public AuthService(IUserRepository userRepository, IJwtHelper jwtHelper, IRedisUtil redisUtil, IRoleRepository roleRepository)
+        private readonly IEmailUtil _emailUtil;
+        public AuthService(IUserRepository userRepository, IJwtHelper jwtHelper, IRedisUtil redisUtil, IRoleRepository roleRepository, IEmailUtil emailUtil)
         {
             _userRepository = userRepository;
             _jwtHelper = jwtHelper;
             _redisUtil = redisUtil;
             _roleRepository = roleRepository;
+            _emailUtil = emailUtil;
         }
 
         public async Task<LoginResponse?> LoginAsync(LoginRequest request)
@@ -59,8 +62,9 @@ namespace PeShop.Services
 
             var accessToken = _jwtHelper.GenerateToken(accessPayload);
             var refreshToken = _jwtHelper.GenerateToken(refreshPayload);
-            Console.WriteLine(accessToken);
-            Console.WriteLine(refreshToken);
+            // Console.WriteLine(accessToken);
+            // Console.WriteLine(refreshToken);
+            // BackgroundJob.Enqueue<IEmailUtil>(service => service.SendEmailAsync(user.Email, "Login Success", "Login Success", false));
             return new LoginResponse
             {
                 AccessToken = accessToken,

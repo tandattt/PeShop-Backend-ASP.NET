@@ -6,5 +6,7 @@ namespace PeShop.Dtos.Shared
         public string Name { get; set; } = string.Empty;
         public string Image { get; set; } = string.Empty;
         public decimal Price { get; set; }
+        public uint BoughtCount { get; set; }
+        public string AddressShop { get; set; } = string.Empty;
     }
 }

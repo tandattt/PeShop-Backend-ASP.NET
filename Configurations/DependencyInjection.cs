@@ -6,11 +6,20 @@ using PeShop.Services;
 using PeShop.Setting;
 using StackExchange.Redis;
 using AutoMapper;
+using Microsoft.AspNetCore.Hosting;
+using PeShop.Extensions;
+using PeShop.Configurations;
+using PeShop.Helpers;
+
 namespace PeShop.Configurations
 {
     public static class DependencyInjection
     {
-        public static IServiceCollection AddApplicationServices(this IServiceCollection services, string connectionString, IConfiguration configuration)
+        public static IServiceCollection AddApplicationServices(this IServiceCollection services,
+        string connectionString,
+        IConfiguration configuration,
+        IWebHostEnvironment environment
+        )
         {
             // Đăng ký DbContext
             services.AddDbContext<PeShopDbContext>(options =>
@@ -49,22 +58,41 @@ namespace PeShop.Configurations
 
             // Đăng ký SmtpSettings
             services.Configure<SmtpSettings>(configuration.GetSection("SmtpSettings"));
-            services.AddSingleton<SmtpSettings>(provider => 
+            services.AddSingleton<SmtpSettings>(provider =>
                 configuration.GetSection("SmtpSettings").Get<SmtpSettings>() ?? new SmtpSettings());
 
             // Đăng ký AppSetting
             services.Configure<AppSetting>(configuration.GetSection("AppSetting"));
-            services.AddSingleton<AppSetting>(provider => 
+            services.AddSingleton<AppSetting>(provider =>
                 configuration.GetSection("AppSetting").Get<AppSetting>() ?? new AppSetting());
 
 
             // Đăng ký Redis
-            services.AddSingleton<IConnectionMultiplexer>(provider =>
+            if (environment.IsProduction())
             {
-                var connectionString = configuration.GetConnectionString("Redis");
-                return ConnectionMultiplexer.Connect(connectionString);
-            });
+                services.AddSingleton<IConnectionMultiplexer>(provider =>
+                {
+                    var connectionString = configuration.GetConnectionString("RedisProduct");
+                    return ConnectionMultiplexer.Connect(connectionString);
+                });
+            }
+            else
+            {
+                services.AddSingleton<IConnectionMultiplexer>(provider =>
+                {
+                    var connectionString = configuration.GetConnectionString("Redis");
+                    return ConnectionMultiplexer.Connect(connectionString);
+                });
+            }
 
+            // Đăng ký Hangfire
+            services.AddHangfireWithMySql(configuration.GetConnectionString("HangfireConnection"));
+
+            // Đăng ký HttpClient
+            services.AddHttpClient();
+            
+            // Đăng ký ApiHelper
+            services.AddScoped<IApiHelper, ApiHelper>();
 
             return services;
         }

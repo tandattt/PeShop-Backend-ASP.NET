@@ -13,5 +13,5 @@ public class CartResponse
     public string ProductName { get; set; } = string.Empty;
     public string ProductImage { get; set; } = string.Empty;
     public string VariantId { get; set; } = string.Empty;
-    public List<VariantValueForCart> VariantValues { get; set; } = new List<VariantValueForCart>();
+    public List<VariantValueForCartDto> VariantValues { get; set; } = new List<VariantValueForCartDto>();
 }

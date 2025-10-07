@@ -36,7 +36,7 @@ namespace PeShop.Configurations
     });
     if (environment.IsProduction())
     {
-        c.AddServer(new OpenApiServer { Url = "/cimov2" });
+        c.AddServer(new OpenApiServer { Url = "/dotnet-peshop" });
     }
 
 });

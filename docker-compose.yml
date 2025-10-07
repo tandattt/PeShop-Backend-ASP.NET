@@ -1,0 +1,13 @@
+services:
+  dotnet:
+    container_name: dotnet-peshop
+    build: .
+    ports:
+      - "5000:5000"
+    restart: unless-stopped
+    networks:
+      - shared_network
+
+networks:
+  shared_network:
+    external: true
