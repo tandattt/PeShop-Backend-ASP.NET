@@ -1,4 +1,5 @@
 using PeShop.Models.Entities;
+using PeShop.Models.Enums;
 
 namespace PeShop.Data.Repositories
 {
@@ -15,5 +16,6 @@ namespace PeShop.Data.Repositories
         Task<bool> ExistsByUsernameAsync(string username);
         Task<List<string>> GetUserRolesAsync(string userId);
         Task<string?> GetUserShopIdAsync(string userId);
+        Task<bool> UpdateUserInfoAsync(string userId, string? name, string? phone, GenderUser? gender, string? avatar);
     }
 }

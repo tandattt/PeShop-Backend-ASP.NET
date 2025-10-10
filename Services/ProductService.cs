@@ -25,7 +25,8 @@ public class ProductService : IProductService
             Image = p.ImgMain ?? string.Empty,
             Price = p.Price ?? 0,
             BoughtCount = p.BoughtCount ?? 0,
-            AddressShop = p.Shop?.NewProviceId ?? string.Empty
+            AddressShop = p.Shop?.NewProviceId ?? string.Empty,
+            Slug = p.Slug ?? string.Empty
         }).ToList();
         var gotListProductId = productDtos.Select(p => p.Id).ToList();
         await _redisUtil.SetAsync("gotListProductId:" + userId, JsonSerializer.Serialize(gotListProductId), TimeSpan.FromMinutes(15));
@@ -54,7 +55,8 @@ public class ProductService : IProductService
             Image = p.ImgMain ?? string.Empty,
             Price = p.Price ?? 0,
             BoughtCount = p.BoughtCount ?? 0,
-            AddressShop = p.Shop?.NewProviceId ?? string.Empty
+            AddressShop = p.Shop?.NewProviceId ?? string.Empty,
+            Slug = p.Slug ?? string.Empty
         }).ToList();
         gotListProductId = gotListProductId.Concat(productDtos.Select(p => p.Id)).Distinct().ToList();
         await _redisUtil.SetAsync("gotListProductId:" + userId, JsonSerializer.Serialize(gotListProductId), TimeSpan.FromMinutes(15));

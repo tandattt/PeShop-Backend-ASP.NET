@@ -86,14 +86,29 @@ namespace PeShop.Configurations
             }
 
             // Đăng ký Hangfire
-            services.AddHangfireWithMySql(configuration.GetConnectionString("HangfireConnection"));
-
+            if (environment.IsProduction())
+            {
+                services.AddHangfireWithMySql(configuration.GetConnectionString("HangfireConnectionProduction"));
+            }
+            else
+            {
+                services.AddHangfireWithMySql(configuration.GetConnectionString("HangfireConnectionLocal"));
+            }
             // Đăng ký HttpClient
             services.AddHttpClient();
-            
+
             // Đăng ký ApiHelper
             services.AddScoped<IApiHelper, ApiHelper>();
 
+            //Cors
+            services.AddCors(options =>
+            {
+                options.AddPolicy("AllowAll",
+                    policy => policy
+                        .AllowAnyOrigin()
+                        .AllowAnyMethod()
+                        .AllowAnyHeader());
+            });
             return services;
         }
     }

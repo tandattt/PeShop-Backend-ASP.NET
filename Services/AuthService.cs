@@ -8,7 +8,6 @@ using PeShop.Models.Enums;
 using PeShop.Exceptions;
 using PeShop.Data.Repositories.Interfaces;
 using PeShop.Constants;
-using Models.Enums;
 using Hangfire;
 
 namespace PeShop.Services
@@ -108,22 +107,23 @@ namespace PeShop.Services
                     Id = Guid.NewGuid().ToString(),
                     Email = request.Email,
                     Username = request.Username,
-                    Name = request.Name,
+                    Name = request.Name ?? null,
                     Password = request.Password,
                     Status = UserStatus.Active,
                     HasShop = HasShop.No,
-                    Phone = request.Phone,
-                    Gender = GenderUser.Male,
+                    Phone = request.Phone ?? null,
+                    Gender = request.Gender ?? null,
                     Roles = new List<Role> { Role },
                     CreatedAt = DateTime.UtcNow
                 };
-                
 
-            var user = await _userRepository.CreateAsync(newUser);
-            if (user == null)
-            {
-                throw new BadRequestException("tạo user thất bại");
-            }
+
+                var user = await _userRepository.CreateAsync(newUser);
+                if (user == null)
+                {
+                    throw new BadRequestException("tạo user thất bại");
+                }
+                
                 return "tạo tài khoản thành công";
             }
             catch (Exception ex)

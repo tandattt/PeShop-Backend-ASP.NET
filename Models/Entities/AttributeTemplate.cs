@@ -17,11 +17,11 @@ public partial class AttributeTemplate
 
     public string? Name { get; set; }
 
-    public int? TemplateRegisterCategoryId { get; set; }
+    public int? TemplateCategoryId { get; set; }
 
-    public int? TemplateRegisterCategoryChildId { get; set; }
+    public int? TemplateCategoryChildId { get; set; }
 
-    public virtual TemplateRegisterCategory? TemplateRegisterCategory { get; set; }
+    public virtual TemplateCategory? TemplateCategory { get; set; }
 
-    public virtual TemplateRegisterCategoryChild? TemplateRegisterCategoryChild { get; set; }
+    public virtual TemplateCategoryChild? TemplateCategoryChild { get; set; }
 }

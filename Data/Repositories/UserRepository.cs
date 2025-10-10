@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using PeShop.Data.Contexts;
 using PeShop.Models.Entities;
+using PeShop.Models.Enums;
 
 namespace PeShop.Data.Repositories
 {
@@ -93,6 +94,32 @@ namespace PeShop.Data.Repositories
                 .FirstOrDefaultAsync(s => s.UserId == userId);
             
             return shop?.Id;
+        }
+
+        public async Task<bool> UpdateUserInfoAsync(string userId, string? name, string? phone, GenderUser? gender, string? avatar)
+        {
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == userId);
+            if (user == null)
+            {
+                return false;
+            }
+
+            if (!string.IsNullOrEmpty(name))
+                user.Name = name;
+            
+            if (!string.IsNullOrEmpty(phone))
+                user.Phone = phone;
+            
+            if (gender.HasValue)
+                user.Gender = gender.Value;
+
+            if (!string.IsNullOrEmpty(avatar))
+                user.Avatar = avatar;
+
+            user.UpdatedAt = DateTime.UtcNow;
+            
+            await _context.SaveChangesAsync();
+            return true;
         }
         
     }

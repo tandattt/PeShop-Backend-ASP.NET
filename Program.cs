@@ -38,11 +38,14 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     });
 
 builder.Services.AddApplicationServices(builder.Configuration.GetConnectionString("DefaultConnection"), builder.Configuration, builder.Environment);
-    
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
-app.UseHangfireDashboard("/hangfire");
+if (app.Environment.IsDevelopment())
+{
+    app.UseHangfireDashboard("/hangfire");
+}
 // 🔹 Đăng ký job định kỳ
 using (var scope = app.Services.CreateScope())
 {
@@ -59,6 +62,7 @@ app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
 
+app.UseCors("AllowAll");
 app.MapControllers();
 
 app.Run();

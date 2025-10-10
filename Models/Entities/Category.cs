@@ -21,5 +21,7 @@ public partial class Category
 
     public virtual ICollection<CategoryChild> CategoryChildren { get; set; } = new List<CategoryChild>();
 
-    public virtual ICollection<TemplateRegisterCategory> TemplateRegisterCategories { get; set; } = new List<TemplateRegisterCategory>();
+    public virtual ICollection<Product> Products { get; set; } = new List<Product>();
+
+    public virtual ICollection<TemplateCategory> TemplateCategories { get; set; } = new List<TemplateCategory>();
 }

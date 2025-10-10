@@ -8,5 +8,6 @@ namespace PeShop.Dtos.Shared
         public decimal Price { get; set; }
         public uint BoughtCount { get; set; }
         public string AddressShop { get; set; } = string.Empty;
+        public string Slug { get; set; } = string.Empty;
     }
 }

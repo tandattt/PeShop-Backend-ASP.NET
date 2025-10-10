@@ -32,6 +32,8 @@ public partial class VoucherShop
 
     public uint? Quantity { get; set; }
 
+    public uint? LimitForUser { get; set; }
+
     public DateTime? StartTime { get; set; }
 
     public VoucherType? Type { get; set; }

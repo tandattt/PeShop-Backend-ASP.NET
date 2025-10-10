@@ -144,6 +144,7 @@ namespace PeShop.Services
             {
                 ShopId = updatedCart.Product?.ShopId ?? string.Empty,
                 ShopName = updatedCart.Product?.Shop?.Name ?? string.Empty,
+                Slug = updatedCart.Product?.Slug ?? string.Empty,
                 Price = updatedCart.Price ?? 0,
                 Quantity = updatedCart.Quantity ?? 0,
                 ProductId = updatedCart.ProductId ?? string.Empty,

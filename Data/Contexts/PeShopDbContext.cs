@@ -1114,6 +1114,9 @@ public partial class PeShopDbContext : DbContext
                 .HasColumnName("has_shop");
             entity.Property(e => e.Status)
                 .HasColumnName("status");
+            entity.Property(e => e.Avatar)
+                .HasMaxLength(255)
+                .HasColumnName("avatar");
             entity.Property(e => e.UpdatedAt)
                 .HasMaxLength(6)
                 .HasColumnName("updated_at");

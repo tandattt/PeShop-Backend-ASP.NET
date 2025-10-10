@@ -31,6 +31,7 @@ public partial class User
 
     public HasShop? HasShop { get; set; }
     public UserStatus? Status { get; set; }
+    public string? Avatar { get; set; }
 
     public virtual ICollection<Cart> Carts { get; set; } = new List<Cart>();
 
