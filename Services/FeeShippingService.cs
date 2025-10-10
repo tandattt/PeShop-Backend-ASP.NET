@@ -42,7 +42,6 @@ public class FeeShippingService : IFeeShippingService
                     var variantResult = await _variantRepository.GetVariantForShippingByIdAsync(int.Parse(product.VariantId));
                     var quantity = product.Quantity;
                     
-                    // Cộng dồn thay vì ghi đè
                     parcelDto.cod += (variantResult.Price ?? 0) * quantity;
                     parcelDto.amount += (variantResult.Price ?? 0) * quantity;
                     parcelDto.width += (uint)((variantResult.Product.Width ?? 0) * quantity);
@@ -55,7 +54,6 @@ public class FeeShippingService : IFeeShippingService
                     var productResult = await _productRepository.GetProductForShippingByIdAsync(product.ProductId);
                     var quantity = product.Quantity;
                     
-                    // Cộng dồn cho sản phẩm không có variant
                     parcelDto.cod += (productResult.Price ?? 0) * quantity;
                     parcelDto.amount += (productResult.Price ?? 0) * quantity;
                     parcelDto.width += (uint)((productResult.Width ?? 0) * quantity);

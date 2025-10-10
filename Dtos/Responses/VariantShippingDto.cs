@@ -9,6 +9,7 @@ namespace PeShop.Dtos.Responses
 
     public class ProductShippingDto
     {
+        public decimal? Price { get; set; }
         public uint? Height { get; set; }
         public uint? Length { get; set; }
         public uint? Width { get; set; }
