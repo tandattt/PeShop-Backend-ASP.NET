@@ -46,6 +46,8 @@ public partial class Product
 
     public string? CategoryChildId { get; set; }
 
+    public string? CategoryId { get; set; }
+
     public string? ShopId { get; set; }
 
     public ProductStatus? Status { get; set; }
@@ -53,6 +55,8 @@ public partial class Product
     public virtual ICollection<Cart> Carts { get; set; } = new List<Cart>();
 
     public virtual CategoryChild? CategoryChild { get; set; }
+
+    public virtual Category? Category { get; set; }
 
     public virtual ICollection<ImageProduct> ImageProducts { get; set; } = new List<ImageProduct>();
 
