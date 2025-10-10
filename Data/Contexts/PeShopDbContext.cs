@@ -39,6 +39,14 @@ public partial class PeShopDbContext : DbContext
 
     public virtual DbSet<Product> Products { get; set; }
 
+    public virtual DbSet<Promotion> Promotions { get; set; }
+
+    public virtual DbSet<PromotionGift> PromotionGifts { get; set; }
+
+    public virtual DbSet<PromotionRule> PromotionRules { get; set; }
+
+    public virtual DbSet<PromotionUsage> PromotionUsages { get; set; }
+
     public virtual DbSet<ProductInfomation> ProductInfomations { get; set; }
 
     public virtual DbSet<PropertyProduct> PropertyProducts { get; set; }
@@ -49,9 +57,9 @@ public partial class PeShopDbContext : DbContext
 
     public virtual DbSet<Shop> Shops { get; set; }
 
-    public virtual DbSet<TemplateRegisterCategory> TemplateRegisterCategories { get; set; }
+    public virtual DbSet<TemplateCategory> TemplateCategories { get; set; }
 
-    public virtual DbSet<TemplateRegisterCategoryChild> TemplateRegisterCategoryChildren { get; set; }
+    public virtual DbSet<TemplateCategoryChild> TemplateCategoryChildren { get; set; }
 
     public virtual DbSet<User> Users { get; set; }
 
@@ -79,9 +87,9 @@ public partial class PeShopDbContext : DbContext
 
             entity.ToTable("attribute_template");
 
-            entity.HasIndex(e => e.TemplateRegisterCategoryChildId, "FK1yyblerqp9v0jr44kcn2oix1s");
+            entity.HasIndex(e => e.TemplateCategoryChildId, "FK1yyblerqp9v0jr44kcn2oix1s");
 
-            entity.HasIndex(e => e.TemplateRegisterCategoryId, "FKeopegh7t3sx4p8pveldrlr6pm");
+            entity.HasIndex(e => e.TemplateCategoryId, "FKeopegh7t3sx4p8pveldrlr6pm");
 
             entity.Property(e => e.Id)
                 .ValueGeneratedNever()
@@ -96,8 +104,8 @@ public partial class PeShopDbContext : DbContext
             entity.Property(e => e.Name)
                 .HasMaxLength(45)
                 .HasColumnName("name");
-            entity.Property(e => e.TemplateRegisterCategoryChildId).HasColumnName("template_register_category_child_id");
-            entity.Property(e => e.TemplateRegisterCategoryId).HasColumnName("template_register_category_id");
+            entity.Property(e => e.TemplateCategoryChildId).HasColumnName("template_category_child_id");
+            entity.Property(e => e.TemplateCategoryId).HasColumnName("template_category_id");
             entity.Property(e => e.UpdatedAt)
                 .HasMaxLength(6)
                 .HasColumnName("updated_at");
@@ -106,12 +114,12 @@ public partial class PeShopDbContext : DbContext
                 .IsFixedLength()
                 .HasColumnName("updated_by");
 
-            entity.HasOne(d => d.TemplateRegisterCategoryChild).WithMany(p => p.AttributeTemplates)
-                .HasForeignKey(d => d.TemplateRegisterCategoryChildId)
+            entity.HasOne(d => d.TemplateCategoryChild).WithMany(p => p.AttributeTemplates)
+                .HasForeignKey(d => d.TemplateCategoryChildId)
                 .HasConstraintName("FK1yyblerqp9v0jr44kcn2oix1s");
 
-            entity.HasOne(d => d.TemplateRegisterCategory).WithMany(p => p.AttributeTemplates)
-                .HasForeignKey(d => d.TemplateRegisterCategoryId)
+            entity.HasOne(d => d.TemplateCategory).WithMany(p => p.TemplateAttributeTemplates)
+                .HasForeignKey(d => d.TemplateCategoryId)
                 .HasConstraintName("FKeopegh7t3sx4p8pveldrlr6pm");
         });
 
@@ -551,6 +559,9 @@ public partial class PeShopDbContext : DbContext
             entity.Property(e => e.CategoryChildId)
                 .HasMaxLength(36)
                 .HasColumnName("category_child_id");
+            entity.Property(e => e.CategoryId)
+                .HasMaxLength(36)
+                .HasColumnName("category_id");
             entity.Property(e => e.CreatedAt)
                 .HasMaxLength(6)
                 .HasColumnName("created_at");
@@ -598,6 +609,10 @@ public partial class PeShopDbContext : DbContext
                 .HasForeignKey(d => d.CategoryChildId)
                 .HasConstraintName("FKj80e6pnpa9do0rkadbntug0hl");
 
+            entity.HasOne(d => d.Category).WithMany(p => p.Products)
+                .HasForeignKey(d => d.CategoryId)
+                .HasConstraintName("FK_product_category");
+
             entity.HasOne(d => d.Shop).WithMany(p => p.Products)
                 .HasForeignKey(d => d.ShopId)
                 .HasConstraintName("FK94hgg8hlqfqfnt3dag950vm7n");
@@ -642,6 +657,187 @@ public partial class PeShopDbContext : DbContext
             entity.HasOne(d => d.Product).WithMany(p => p.ProductInfomations)
                 .HasForeignKey(d => d.ProductId)
                 .HasConstraintName("FK4sb3w74gm2nqxtoni3ti4yg86");
+        });
+
+        modelBuilder.Entity<Promotion>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+
+            entity.ToTable("promotion");
+
+            entity.Property(e => e.Id)
+                .HasMaxLength(36)
+                .HasColumnName("id");
+            entity.Property(e => e.CreatedAt)
+                .HasMaxLength(6)
+                .HasColumnName("created_at");
+            entity.Property(e => e.CreatedBy)
+                .HasMaxLength(16)
+                .IsFixedLength()
+                .HasColumnName("created_by");
+            entity.Property(e => e.EndTime)
+                .HasMaxLength(6)
+                .HasColumnName("end_time");
+            entity.Property(e => e.Name)
+                .HasMaxLength(255)
+                .HasColumnName("name");
+            entity.Property(e => e.StartTime)
+                .HasMaxLength(6)
+                .HasColumnName("start_time");
+            entity.Property(e => e.Status)
+                .HasColumnName("status");
+            entity.Property(e => e.TotalUsageLimit)
+                .HasColumnName("total_usage_limit");
+            entity.Property(e => e.UpdatedAt)
+                .HasMaxLength(6)
+                .HasColumnName("updated_at");
+            entity.Property(e => e.UpdatedBy)
+                .HasMaxLength(16)
+                .IsFixedLength()
+                .HasColumnName("updated_by");
+        });
+
+        modelBuilder.Entity<PromotionGift>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+
+            entity.ToTable("promotion_gift");
+
+            entity.HasIndex(e => e.PromotionId, "FK_promotion_gift_promotion");
+
+            entity.Property(e => e.Id)
+                .HasMaxLength(36)
+                .HasColumnName("id");
+            entity.Property(e => e.CreatedAt)
+                .HasMaxLength(6)
+                .HasColumnName("created_at");
+            entity.Property(e => e.CreatedBy)
+                .HasMaxLength(16)
+                .IsFixedLength()
+                .HasColumnName("created_by");
+            entity.Property(e => e.GiftQuantity)
+                .HasColumnName("gift_quantity");
+            entity.Property(e => e.MaxGiftPerOrder)
+                .HasColumnName("max_gift_per_order");
+            entity.Property(e => e.PromotionId)
+                .HasMaxLength(36)
+                .HasColumnName("promotion_id");
+            entity.Property(e => e.UpdatedAt)
+                .HasMaxLength(6)
+                .HasColumnName("updated_at");
+            entity.Property(e => e.UpdatedBy)
+                .HasMaxLength(16)
+                .IsFixedLength()
+                .HasColumnName("updated_by");
+            entity.Property(e => e.VariantId)
+                .HasColumnName("variant_id");
+
+            entity.HasOne(d => d.Promotion).WithMany(p => p.PromotionGifts)
+                .HasForeignKey(d => d.PromotionId)
+                .HasConstraintName("FK_promotion_gift_promotion");
+
+            entity.HasOne(d => d.Variant).WithMany()
+                .HasForeignKey(d => d.VariantId)
+                .HasConstraintName("FK_promotion_gift_variant");
+        });
+
+        modelBuilder.Entity<PromotionRule>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+
+            entity.ToTable("promotion_rule");
+
+            entity.HasIndex(e => e.PromotionId, "FK_promotion_rule_promotion");
+
+            entity.Property(e => e.Id)
+                .HasMaxLength(36)
+                .HasColumnName("id");
+            entity.Property(e => e.CreatedAt)
+                .HasMaxLength(6)
+                .HasColumnName("created_at");
+            entity.Property(e => e.CreatedBy)
+                .HasMaxLength(16)
+                .IsFixedLength()
+                .HasColumnName("created_by");
+            entity.Property(e => e.PromotionId)
+                .HasMaxLength(36)
+                .HasColumnName("promotion_id");
+            entity.Property(e => e.Quantity)
+                .HasColumnName("quantity");
+            entity.Property(e => e.UpdatedAt)
+                .HasMaxLength(6)
+                .HasColumnName("updated_at");
+            entity.Property(e => e.UpdatedBy)
+                .HasMaxLength(16)
+                .IsFixedLength()
+                .HasColumnName("updated_by");
+            entity.Property(e => e.VariantId)
+                .HasColumnName("variant_id");
+
+            entity.HasOne(d => d.Promotion).WithMany(p => p.PromotionRules)
+                .HasForeignKey(d => d.PromotionId)
+                .HasConstraintName("FK_promotion_rule_promotion");
+
+            entity.HasOne(d => d.Variant).WithMany()
+                .HasForeignKey(d => d.VariantId)
+                .HasConstraintName("FK_promotion_rule_variant");
+        });
+
+        modelBuilder.Entity<PromotionUsage>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+
+            entity.ToTable("promotion_usage");
+
+            entity.HasIndex(e => e.OrderDetailId, "FK_promotion_usage_order_detail");
+            entity.HasIndex(e => e.PromotionId, "FK_promotion_usage_promotion");
+            entity.HasIndex(e => e.PromotionRuleId, "FK_promotion_usage_promotion_rule");
+
+            entity.Property(e => e.CreatedAt)
+                .HasMaxLength(6)
+                .HasColumnName("created_at");
+            entity.Property(e => e.CreatedBy)
+                .HasMaxLength(16)
+                .IsFixedLength()
+                .HasColumnName("created_by");
+            entity.Property(e => e.GiftUsedQuantity)
+                .HasColumnName("gift_used_quantity");
+            entity.Property(e => e.Id)
+                .HasMaxLength(36)
+                .HasColumnName("id");
+            entity.Property(e => e.OrderDetailId)
+                .HasMaxLength(36)
+                .HasColumnName("order_detail_id");
+            entity.Property(e => e.PromotionId)
+                .HasMaxLength(36)
+                .HasColumnName("promotion_id");
+            entity.Property(e => e.PromotionRuleId)
+                .HasMaxLength(36)
+                .HasColumnName("promotion_rule_id");
+            entity.Property(e => e.UpdatedAt)
+                .HasMaxLength(6)
+                .HasColumnName("updated_at");
+            entity.Property(e => e.UpdatedBy)
+                .HasMaxLength(16)
+                .IsFixedLength()
+                .HasColumnName("updated_by");
+            entity.Property(e => e.UsedAt)
+                .HasMaxLength(6)
+                .HasColumnName("used_at");
+            entity.Property(e => e.UsedQuantity)
+                .HasColumnName("used_quantity");
+
+            entity.HasOne(d => d.OrderDetail).WithMany(p => p.PromotionUsages)
+                .HasForeignKey(d => d.OrderDetailId)
+                .HasConstraintName("FK_promotion_usage_order_detail");
+
+            entity.HasOne(d => d.Promotion).WithMany(p => p.PromotionUsages)
+                .HasForeignKey(d => d.PromotionId)
+                .HasConstraintName("FK_promotion_usage_promotion");
+
+            entity.HasOne(d => d.PromotionRule).WithMany(p => p.PromotionUsages)
+                .HasForeignKey(d => d.PromotionRuleId)
+                .HasConstraintName("FK_promotion_usage_promotion_rule");
         });
 
         modelBuilder.Entity<PropertyProduct>(entity =>
@@ -806,11 +1002,11 @@ public partial class PeShopDbContext : DbContext
                 .HasConstraintName("FKj97brjwss3mlgdt7t213tkchl");
         });
 
-        modelBuilder.Entity<TemplateRegisterCategory>(entity =>
+        modelBuilder.Entity<TemplateCategory>(entity =>
         {
             entity.HasKey(e => e.Id).HasName("PRIMARY");
 
-            entity.ToTable("template_register_category");
+            entity.ToTable("template_category");
 
             entity.HasIndex(e => e.CategoryId, "FKnmndc7f5i6kvin6y9gwmg5io6");
 
@@ -838,16 +1034,16 @@ public partial class PeShopDbContext : DbContext
                 .IsFixedLength()
                 .HasColumnName("updated_by");
 
-            entity.HasOne(d => d.Category).WithMany(p => p.TemplateRegisterCategories)
+            entity.HasOne(d => d.Category).WithMany(p => p.TemplateCategories)
                 .HasForeignKey(d => d.CategoryId)
                 .HasConstraintName("FKnmndc7f5i6kvin6y9gwmg5io6");
         });
 
-        modelBuilder.Entity<TemplateRegisterCategoryChild>(entity =>
+        modelBuilder.Entity<TemplateCategoryChild>(entity =>
         {
             entity.HasKey(e => e.Id).HasName("PRIMARY");
 
-            entity.ToTable("template_register_category_child");
+            entity.ToTable("template_category_child");
 
             entity.HasIndex(e => e.CategoryChildId, "FK9s20wftp8cbkcprr6yqr8aw76");
 
@@ -875,7 +1071,7 @@ public partial class PeShopDbContext : DbContext
                 .IsFixedLength()
                 .HasColumnName("updated_by");
 
-            entity.HasOne(d => d.CategoryChild).WithMany(p => p.TemplateRegisterCategoryChildren)
+            entity.HasOne(d => d.CategoryChild).WithMany(p => p.TemplateCategoryChildren)
                 .HasForeignKey(d => d.CategoryChildId)
                 .HasConstraintName("FK9s20wftp8cbkcprr6yqr8aw76");
         });
@@ -977,6 +1173,8 @@ public partial class PeShopDbContext : DbContext
                         j.IndexerProperty<string>("VoucherShopId")
                             .HasMaxLength(36)
                             .HasColumnName("voucher_shop_id");
+                        j.IndexerProperty<int>("Quantity")
+                            .HasColumnName("quantity");
                     });
 
             entity.HasMany(d => d.VoucherSystems).WithMany(p => p.Users)
@@ -1003,6 +1201,8 @@ public partial class PeShopDbContext : DbContext
                         j.IndexerProperty<string>("VoucherSystemId")
                             .HasMaxLength(36)
                             .HasColumnName("voucher_system_id");
+                        j.IndexerProperty<int>("Quantity")
+                            .HasColumnName("quantity");
                     });
         });
 
@@ -1195,6 +1395,7 @@ public partial class PeShopDbContext : DbContext
                 .HasMaxLength(255)
                 .HasColumnName("name");
             entity.Property(e => e.Quantity).HasColumnName("quantity");
+            entity.Property(e => e.LimitForUser).HasColumnName("limit_for_user");
             entity.Property(e => e.ShopId)
                 .HasMaxLength(36)
                 .HasColumnName("shop_id");
@@ -1253,6 +1454,7 @@ public partial class PeShopDbContext : DbContext
                 .HasMaxLength(255)
                 .HasColumnName("name");
             entity.Property(e => e.Quantity).HasColumnName("quantity");
+            entity.Property(e => e.LimitForUser).HasColumnName("limit_for_user");
             entity.Property(e => e.StartTime)
                 .HasMaxLength(6)
                 .HasColumnName("start_time");
@@ -1365,6 +1567,10 @@ public partial class PeShopDbContext : DbContext
 
         // Product enum mapping
         modelBuilder.Entity<Product>()
+            .Property(e => e.Status)
+            .HasConversion<int>();
+
+        modelBuilder.Entity<Promotion>()
             .Property(e => e.Status)
             .HasConversion<int>();
     }
