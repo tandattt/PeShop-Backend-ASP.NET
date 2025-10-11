@@ -7,30 +7,30 @@ using System.Text.Json;
 using System.Web;
 using PeShop.Dtos.Shared;
 using PeShop.Data.Repositories.Interfaces;
-public class SeachService : ISeachService
+public class SearchService : ISearchService
 {
     private readonly IApiHelper _apiHelper;
     private readonly AppSetting _appSetting;
     private readonly IProductRepository _productRepository;
-    public SeachService(IApiHelper apiHelper, AppSetting appSetting, IProductRepository productRepository)
+    public SearchService(IApiHelper apiHelper, AppSetting appSetting, IProductRepository productRepository)
     {
         _apiHelper = apiHelper;
         _appSetting = appSetting;
         _productRepository = productRepository;
     }
-    public async Task<List<SeachSuggestResponse>> GetSeachSuggestAsync(string keyword)
+    public async Task<List<SearchSuggestResponse>> GetSearchSuggestAsync(string keyword)
     {
         var trackity_id = new Guid(Guid.NewGuid().ToString());
         var url = $"{_appSetting.BaseApiSeachTiki}/suggestion?trackity_id={trackity_id}&q={keyword}";
         // Console.WriteLine(url);
         var result = await _apiHelper.GetAsync<JsonElement>(url);
         // Console.WriteLine(result.GetProperty("data"));
-        var listSeachSuggestResponse = new List<SeachSuggestResponse>();
+        var listSearchSuggestResponse = new List<SearchSuggestResponse>();
         foreach (var item in result.GetProperty("data").EnumerateArray())
         {
             if (item.GetProperty("type").GetString() == "keyword")
             {
-                listSeachSuggestResponse.Add(new SeachSuggestResponse
+                listSearchSuggestResponse.Add(new SearchSuggestResponse
                 {
                     keyword = item.GetProperty("keyword").GetString() ?? string.Empty,
                     type = item.GetProperty("type").GetString() ?? string.Empty,
@@ -38,10 +38,10 @@ public class SeachService : ISeachService
                 });
             }
         }
-        return listSeachSuggestResponse;
+        return listSearchSuggestResponse;
     }
 
-    public async Task<SearchResponse> GetSeachAsync(string keyword, int page = 1, int pageSize = 20)
+    public async Task<SearchResponse> GetSearchAsync(string keyword, int page = 1, int pageSize = 20)
     {
         if (string.IsNullOrWhiteSpace(keyword))
         {
