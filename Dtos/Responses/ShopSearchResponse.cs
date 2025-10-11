@@ -2,11 +2,9 @@ using PeShop.Dtos.Shared;
 
 namespace PeShop.Dtos.Responses
 {
-    public class SearchResponse
+    public class ShopSearchResponse
     {
-        public List<ProductDto> Products { get; set; } = new List<ProductDto>();
         public List<ShopDto> Shops { get; set; } = new List<ShopDto>();
-        public string SearchType { get; set; } = string.Empty; // "product" or "shop"
         public int TotalCount { get; set; }
         public int Page { get; set; }
         public int PageSize { get; set; }

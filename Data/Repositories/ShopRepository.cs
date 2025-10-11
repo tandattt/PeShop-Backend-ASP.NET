@@ -23,4 +23,35 @@ public class ShopRepository : IShopRepository
             NewWardId = x.NewWardId,
         }).FirstOrDefaultAsync(x => x.Id == id) ?? new Shop();
     }
+
+    public async Task<List<Shop>> SearchShopsAsync(string keyword, int skip = 0, int take = 20)
+    {
+        if (string.IsNullOrWhiteSpace(keyword))
+        {
+            return new List<Shop>();
+        }
+
+        var searchTerm = keyword.ToLower().Trim();
+        
+        return await _context.Shops
+            .Where(s => s.Name != null && s.Name.ToLower().Contains(searchTerm))
+            .OrderByDescending(s => s.FollowersCount)
+            .Skip(skip)
+            .Take(take)
+            .ToListAsync();
+    }
+
+    public async Task<int> GetSearchShopsCountAsync(string keyword)
+    {
+        if (string.IsNullOrWhiteSpace(keyword))
+        {
+            return 0;
+        }
+
+        var searchTerm = keyword.ToLower().Trim();
+        
+        return await _context.Shops
+            .Where(s => s.Name != null && s.Name.ToLower().Contains(searchTerm))
+            .CountAsync();
+    }
 }
