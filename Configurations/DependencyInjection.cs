@@ -61,39 +61,45 @@ namespace PeShop.Configurations
             services.AddSingleton<SmtpSettings>(provider =>
                 configuration.GetSection("SmtpSettings").Get<SmtpSettings>() ?? new SmtpSettings());
 
-            // Đăng ký AppSetting
-            services.Configure<AppSetting>(configuration.GetSection("AppSetting"));
-            services.AddSingleton<AppSetting>(provider =>
-                configuration.GetSection("AppSetting").Get<AppSetting>() ?? new AppSetting());
 
 
-            // Đăng ký Redis
+
+
             if (environment.IsProduction())
             {
+
+                // Đăng ký Hangfire
+                services.AddHangfireWithMySql(configuration.GetConnectionString("HangfireConnectionProduction"));
+
+                // Đăng ký Redis
                 services.AddSingleton<IConnectionMultiplexer>(provider =>
                 {
                     var connectionString = configuration.GetConnectionString("RedisProduct");
                     return ConnectionMultiplexer.Connect(connectionString);
                 });
+                // Đăng ký AppSetting
+                services.Configure<AppSetting>(configuration.GetSection("AppSettingProduction"));
+                services.AddSingleton<AppSetting>(provider =>
+                    configuration.GetSection("AppSettingProduction").Get<AppSetting>() ?? new AppSetting());
             }
             else
             {
+                // Đăng ký Hangfire
+                services.AddHangfireWithMySql(configuration.GetConnectionString("HangfireConnectionLocal"));
+
+                // Đăng ký Redis
                 services.AddSingleton<IConnectionMultiplexer>(provider =>
                 {
                     var connectionString = configuration.GetConnectionString("Redis");
                     return ConnectionMultiplexer.Connect(connectionString);
                 });
+                // Đăng ký AppSetting
+                services.Configure<AppSetting>(configuration.GetSection("AppSetting"));
+                services.AddSingleton<AppSetting>(provider =>
+                    configuration.GetSection("AppSetting").Get<AppSetting>() ?? new AppSetting());
             }
 
-            // Đăng ký Hangfire
-            if (environment.IsProduction())
-            {
-                services.AddHangfireWithMySql(configuration.GetConnectionString("HangfireConnectionProduction"));
-            }
-            else
-            {
-                services.AddHangfireWithMySql(configuration.GetConnectionString("HangfireConnectionLocal"));
-            }
+
             // Đăng ký HttpClient
             services.AddHttpClient();
 

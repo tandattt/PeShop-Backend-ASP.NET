@@ -78,4 +78,36 @@ public class ProductRepository : IProductRepository
             throw;
         }
     }
+
+    public async Task<List<Product>> SearchProductsAsync(string keyword, int skip = 0, int take = 20)
+    {
+        if (string.IsNullOrWhiteSpace(keyword))
+        {
+            return new List<Product>();
+        }
+
+        var searchTerm = keyword.ToLower().Trim();
+        
+        return await _context.Products
+            .Include(p => p.Shop)
+            .Where(p => p.Name != null && p.Name.ToLower().Contains(searchTerm))
+            .OrderByDescending(p => p.BoughtCount)
+            .Skip(skip)
+            .Take(take)
+            .ToListAsync();
+    }
+
+    public async Task<int> GetSearchProductsCountAsync(string keyword)
+    {
+        if (string.IsNullOrWhiteSpace(keyword))
+        {
+            return 0;
+        }
+
+        var searchTerm = keyword.ToLower().Trim();
+        
+        return await _context.Products
+            .Where(p => p.Name != null && p.Name.ToLower().Contains(searchTerm))
+            .CountAsync();
+    }
 }
