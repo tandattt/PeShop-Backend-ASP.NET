@@ -27,7 +27,6 @@ public class SearchService : ISearchService
         var url = $"{_appSetting.BaseApiSearchTiki}/suggestion?trackity_id={trackity_id}&q={keyword}";
         // Console.WriteLine(url);
         var result = await _apiHelper.GetAsync<JsonElement>(url);
-        // Console.WriteLine(result.GetProperty("data"));
         var listSearchSuggestResponse = new List<SearchSuggestResponse>();
         foreach (var item in result.GetProperty("data").EnumerateArray())
         {
