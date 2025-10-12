@@ -79,22 +79,15 @@ public class FeeShippingService : IFeeShippingService
             {
                 var apiResponse = await _apiHelper.PostAsync<ApiResponse>(url, shipmentRequest, headers);
                 
-                Console.WriteLine($"API Response Code: {apiResponse?.code}");
-                Console.WriteLine($"API Response Status: {apiResponse?.status}");
-                Console.WriteLine($"Data Count: {apiResponse?.data?.Count ?? 0}");
-                
                 if (apiResponse?.data != null)
                 {
-                    // foreach (var itemm in apiResponse.data)
-                    // {
-                    //     Console.WriteLine($"Carrier: {itemm.carrier_name}, Service: {itemm.service}, Total Fee: {itemm.total_fee}");
-                    // }
+                    apiResponse.data.ForEach(x => x.total_fee = x.total_fee / 10);
+                    apiResponse.data.ForEach(x => x.total_amount = (int)(parcelDto.amount + x.total_fee));
                     listFeeShippingResponse.ListFeeShipping.AddRange(apiResponse.data);
                 }
             }
             catch (Exception ex)
             {
-                // Log request data để debug
                 var requestJson = System.Text.Json.JsonSerializer.Serialize(shipmentRequest, new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
                 throw new Exception($"Lỗi gọi API shipping. URL: {url}\nRequest: {requestJson}\nError: {ex.Message}", ex);
             }
