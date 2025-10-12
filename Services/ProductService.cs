@@ -10,10 +10,12 @@ public class ProductService : IProductService
 {
     private readonly IRedisUtil _redisUtil;
     private readonly IProductRepository _productRepository;
-    public ProductService(IProductRepository productRepository, IRedisUtil redisUtil)
+    private readonly IImageProductRepository _imageProductRepository;
+    public ProductService(IProductRepository productRepository, IRedisUtil redisUtil, IImageProductRepository imageProductRepository)
     {
         _productRepository = productRepository;
         _redisUtil = redisUtil;
+        _imageProductRepository = imageProductRepository;
     }
     public async Task<List<ProductDto>> GetFirstListProductAsync(string userId)
     {
@@ -65,11 +67,13 @@ public class ProductService : IProductService
     public async Task<ProductDetailResponse> GetProductDetailAsync(string productId)
     {
         var product = await _productRepository.GetProductByIdAsync(productId);
+        var imageProducts = await _imageProductRepository.GetListImageProductByProductIdAsync(productId);
         return new ProductDetailResponse
         {
             BoughtCount = product.BoughtCount ?? 0,
             Description = product.Description ?? string.Empty,
             ImgMain = product.ImgMain ?? string.Empty,
+            ImgList = imageProducts.Select(x => x.Url ?? string.Empty).ToList(),
             LikeCount = product.LikeCount ?? 0,
             ReviewCount = product.ReviewCount ?? 0,
             ReviewPoint = product.ReviewPoint ?? 0,

@@ -5,6 +5,7 @@ public class ProductDetailResponse
     public uint BoughtCount { get; set; }
     public string Description { get; set; } = string.Empty;
     public string ImgMain { get; set; } = string.Empty;
+    public List<string> ImgList { get; set; } = new List<string>();
     public uint LikeCount { get; set; }
     public uint ReviewCount { get; set; }
     public float ReviewPoint { get; set; }
