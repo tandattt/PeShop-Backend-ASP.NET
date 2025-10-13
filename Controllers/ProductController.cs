@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using PeShop.Constants;
 using PeShop.Services.Interfaces;
 using System.Security.Claims;
+using PeShop.Dtos.Requests;
 namespace PeShop.Controllers;
 
 [ApiController]
@@ -14,29 +15,20 @@ public class ProductController : ControllerBase
     {
         _productService = productService;
     }
-    [HttpGet("get-first-list-product")]
-    [Authorize(Roles = RoleConstants.User)]
-    public async Task<IActionResult> GetFirstListProduct()
-    {
-        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "";
-        var result = await _productService.GetFirstListProductAsync(userId);
-        return Ok(result);
-    }
-
-    [HttpGet("get-next-list-product")]
-    [Authorize(Roles = RoleConstants.User)]
-    public async Task<IActionResult> GetNextListProduct()
-    {
-        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "";
-        var result = await _productService.GetNextListProductAsync(userId);
-        return Ok(result);
-    }
 
     [HttpGet("get-product-detail")]
     [Authorize(Roles = RoleConstants.User)]
     public async Task<IActionResult> GetProductDetail(string? productId, string? slug)
     {
         var result = await _productService.GetProductDetailAsync(productId, slug);
+        return Ok(result);
+    }
+
+    [HttpGet("get-products")]
+    [Authorize(Roles = RoleConstants.User)]
+    public async Task<IActionResult> GetProducts([FromQuery] PaginationRequest request)
+    {
+        var result = await _productService.GetProductsWithPaginationAsync(request);
         return Ok(result);
     }
 }

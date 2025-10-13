@@ -1,68 +1,18 @@
 using PeShop.Services.Interfaces;
 using PeShop.Dtos.Shared;
 using PeShop.Data.Repositories.Interfaces;
-using PeShop.Interfaces;
-using System.Text.Json;
 using PeShop.Dtos.Responses;
+using PeShop.Dtos.Requests;
 namespace PeShop.Services;
 using PeShop.Models.Entities;
 public class ProductService : IProductService
 {
-    private readonly IRedisUtil _redisUtil;
     private readonly IProductRepository _productRepository;
     private readonly IImageProductRepository _imageProductRepository;
-    public ProductService(IProductRepository productRepository, IRedisUtil redisUtil, IImageProductRepository imageProductRepository)
+    public ProductService(IProductRepository productRepository, IImageProductRepository imageProductRepository)
     {
         _productRepository = productRepository;
-        _redisUtil = redisUtil;
         _imageProductRepository = imageProductRepository;
-    }
-    public async Task<List<ProductDto>> GetFirstListProductAsync(string userId)
-    {
-        var products = await GetListProductAsync();
-        var productDtos = products.Select(p => new ProductDto
-        {
-            Id = p.Id,
-            Name = p.Name ?? string.Empty,
-            Image = p.ImgMain ?? string.Empty,
-            Price = p.Price ?? 0,
-            BoughtCount = p.BoughtCount ?? 0,
-            AddressShop = p.Shop?.NewProviceId ?? string.Empty,
-            Slug = p.Slug ?? string.Empty
-        }).ToList();
-        var gotListProductId = productDtos.Select(p => p.Id).ToList();
-        await _redisUtil.SetAsync("gotListProductId:" + userId, JsonSerializer.Serialize(gotListProductId), TimeSpan.FromMinutes(15));
-        return productDtos;
-    }
-    private async Task<List<Product>> GetListProductAsync()
-    {
-        var count = await _productRepository.GetCountProductAsync();
-        count = count < 15 ? count : count - 15;
-        var random = new Random();
-        var skip = random.Next(0, count);
-        var take = 15;
-        var ListProducts = await _productRepository.GetListProductAsync(skip, take);
-        return ListProducts;
-    }
-    public async Task<List<ProductDto>> GetNextListProductAsync(string userId)
-    {
-        var gotListProductId = await _redisUtil.GetAsync<List<string>>("gotListProductId:" + userId);
-        Console.WriteLine("gotListProductId: " + JsonSerializer.Serialize(gotListProductId));
-        var ListProducts = await GetListProductAsync();
-        var products = ListProducts.Where(p => !gotListProductId.Contains(p.Id)).ToList();
-        var productDtos = products.Select(p => new ProductDto
-        {
-            Id = p.Id,
-            Name = p.Name ?? string.Empty,
-            Image = p.ImgMain ?? string.Empty,
-            Price = p.Price ?? 0,
-            BoughtCount = p.BoughtCount ?? 0,
-            AddressShop = p.Shop?.NewProviceId ?? string.Empty,
-            Slug = p.Slug ?? string.Empty
-        }).ToList();
-        gotListProductId = gotListProductId.Concat(productDtos.Select(p => p.Id)).Distinct().ToList();
-        await _redisUtil.SetAsync("gotListProductId:" + userId, JsonSerializer.Serialize(gotListProductId), TimeSpan.FromMinutes(15));
-        return productDtos;
     }
     public async Task<ProductDetailResponse> GetProductDetailAsync(string? productId, string? slug)
     {
@@ -120,5 +70,57 @@ public class ProductService : IProductService
                 }).ToList()
             }).ToList()
         };
+    }
+
+    public async Task<PaginationResponse<ProductDto>> GetProductsWithPaginationAsync(PaginationRequest request)
+    {
+        // Validate pagination parameters
+        if (request.Page < 1) request.Page = 1;
+        if (request.PageSize < 1) request.PageSize = 20;
+        if (request.PageSize > 100) request.PageSize = 100; // Limit max page size
+
+        // Get random products using existing logic
+        var products = await GetRandomProductsAsync(request.PageSize);
+        var totalCount = await _productRepository.GetCountProductAsync();
+
+        // Convert to DTOs
+        var productDtos = products.Select(p => new ProductDto
+        {
+            Id = p.Id,
+            Name = p.Name ?? string.Empty,
+            Image = p.ImgMain ?? string.Empty,
+            Price = p.Price ?? 0,
+            BoughtCount = p.BoughtCount ?? 0,
+            AddressShop = p.Shop?.NewProviceId ?? string.Empty,
+            Slug = p.Slug ?? string.Empty
+        }).ToList();
+
+        // Calculate pagination info
+        var totalPages = (int)Math.Ceiling((double)totalCount / request.PageSize);
+        var hasNextPage = request.Page < totalPages;
+        var hasPreviousPage = request.Page > 1;
+
+        return new PaginationResponse<ProductDto>
+        {
+            Data = productDtos,
+            CurrentPage = request.Page,
+            PageSize = request.PageSize,
+            TotalCount = totalCount,
+            TotalPages = totalPages,
+            HasNextPage = hasNextPage,
+            HasPreviousPage = hasPreviousPage,
+            NextPage = hasNextPage ? request.Page + 1 : request.Page,
+            PreviousPage = hasPreviousPage ? request.Page - 1 : request.Page
+        };
+    }
+
+    private async Task<List<Product>> GetRandomProductsAsync(int take)
+    {
+        var count = await _productRepository.GetCountProductAsync();
+        count = count < take ? count : count - take;
+        var random = new Random();
+        var skip = random.Next(0, count);
+        var ListProducts = await _productRepository.GetListProductAsync(skip, take);
+        return ListProducts;
     }
 }
