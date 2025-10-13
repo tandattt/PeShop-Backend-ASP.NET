@@ -34,9 +34,9 @@ public class ProductController : ControllerBase
 
     [HttpGet("get-product-detail")]
     [Authorize(Roles = RoleConstants.User)]
-    public async Task<IActionResult> GetProductDetail(string productId)
+    public async Task<IActionResult> GetProductDetail(string? productId, string? slug)
     {
-        var result = await _productService.GetProductDetailAsync(productId);
+        var result = await _productService.GetProductDetailAsync(productId, slug);
         return Ok(result);
     }
 }

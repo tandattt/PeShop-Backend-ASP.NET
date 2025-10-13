@@ -35,6 +35,17 @@ public class ProductRepository : IProductRepository
             .FirstOrDefaultAsync(p => p.Id == productId);
     }
 
+    public async Task<Product> GetProductBySlugAsync(string slug)
+    {
+        return await _context.Products
+            .Include(p => p.Shop)
+            .Include(p => p.Variants)
+            .ThenInclude(v => v.VariantValues)
+                    .ThenInclude(vv => vv.PropertyValue)
+                        .ThenInclude(pv => pv.PropertyProduct)
+            .FirstOrDefaultAsync(p => p.Slug == slug);
+    }
+
     public async Task<ProductShippingDto?> GetProductForShippingByIdAsync(string productId)
     {
         try

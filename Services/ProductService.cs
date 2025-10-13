@@ -64,10 +64,19 @@ public class ProductService : IProductService
         await _redisUtil.SetAsync("gotListProductId:" + userId, JsonSerializer.Serialize(gotListProductId), TimeSpan.FromMinutes(15));
         return productDtos;
     }
-    public async Task<ProductDetailResponse> GetProductDetailAsync(string productId)
+    public async Task<ProductDetailResponse> GetProductDetailAsync(string? productId, string? slug)
     {
-        var product = await _productRepository.GetProductByIdAsync(productId);
-        var imageProducts = await _imageProductRepository.GetListImageProductByProductIdAsync(productId);
+        Product? product = null;
+        if(productId != null){
+            product = await _productRepository.GetProductByIdAsync(productId);
+        }
+        else if(slug != null){
+            product = await _productRepository.GetProductBySlugAsync(slug);
+        }
+        else{
+            throw new Exception("Product not found");
+        }
+        var imageProducts = await _imageProductRepository.GetListImageProductByProductIdAsync(product.Id);
         return new ProductDetailResponse
         {
             BoughtCount = product.BoughtCount ?? 0,

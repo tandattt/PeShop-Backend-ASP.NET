@@ -7,6 +7,7 @@ public interface IProductRepository
     Task<int> GetCountProductAsync();
     Task<List<Product>> GetListProductAsync(int skip, int take);
     Task<Product> GetProductByIdAsync(string productId);
+    Task<Product> GetProductBySlugAsync(string slug);
     Task<ProductShippingDto?> GetProductForShippingByIdAsync(string productId);
     Task<List<Product>> SearchProductsAsync(string keyword, int skip = 0, int take = 20);
     Task<int> GetSearchProductsCountAsync(string keyword);
