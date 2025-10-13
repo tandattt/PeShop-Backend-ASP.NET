@@ -116,6 +116,8 @@ namespace PeShop.Configurations
                         .AllowAnyHeader()
                         .AllowCredentials()); // Cho phép cookie/token
             });
+
+            
             return services;
         }
     }

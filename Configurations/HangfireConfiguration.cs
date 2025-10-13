@@ -2,9 +2,9 @@ using Hangfire;
 using Hangfire.MySql;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace PeShop.Extensions
+namespace PeShop.Configurations
 {
-    public static class HangfireExtension
+    public static class HangfireConfiguration
     {
         public static IServiceCollection AddHangfireWithMySql(this IServiceCollection services, string connectionString)
         {

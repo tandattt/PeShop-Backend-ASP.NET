@@ -8,6 +8,8 @@ using PeShop.Models.Enums;
 using PeShop.Exceptions;
 using PeShop.Data.Repositories.Interfaces;
 using PeShop.Constants;
+using PeShop.Extensions;
+using PeShop.Utilities;
 
 namespace PeShop.Services
 {
@@ -27,8 +29,8 @@ namespace PeShop.Services
 
         public async Task<LoginResponse?> LoginAsync(LoginRequest request)
         {
-
-            var user = await _userRepository.GetByEmailAsync(request.Email);
+            var email = EmailUtil.CleanEmailAddress(request.Email);
+            var user = await _userRepository.GetByEmailAsync(email);
 
             if (user == null || user.Password != request.Password)
             {
