@@ -5,7 +5,7 @@ namespace PeShop.Services
     public interface IAuthService
     {
         Task<LoginResponse?> LoginAsync(LoginRequest request);
-        Task<string?> RegisterAsync(RegisterRequest request);
+        Task<StatusResponse> RegisterAsync(RegisterRequest request);
         // Task<string?> GetUserIdFromTokenAsync(string token);
         // Task<List<string>> GetRolesFromTokenAsync(string token);
         // Task<string?> GetShopIdFromTokenAsync(string token);

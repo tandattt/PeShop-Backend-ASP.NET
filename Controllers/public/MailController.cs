@@ -21,14 +21,19 @@ namespace PeShop.Controllers
             _mailService = mailService;
         }
 
-        [HttpPost("verify")]
-        public async Task<IActionResult> VerifyMail([FromBody] MailRequest request)
+        [HttpPost("verify-otp")]
+        public async Task<IActionResult> VerifyOtp([FromBody] VerifyOtpRequest request)
         {
-            var result = await _mailService.Verify(request);
-            return Ok(new { Message = "Email verified successfully!", Otp = result });
+            var result = await _mailService.VerifyOtp(request);
+            return Ok(result);
         }
-
-        [HttpPost("send")]
+        [HttpPost("send-otp")]
+        public async Task<IActionResult> SendOtp([FromBody] MailRequest request)
+        {
+            var result = await _mailService.SendOtp(request, false);
+            return Ok(result);
+        }
+        [HttpPost("send-mail")]
         public async Task<IActionResult> SendMail([FromBody] MailServiceRequest request)
         {
             if (!Request.Headers.TryGetValue("Authorization", out var authHeader))
@@ -44,6 +49,12 @@ namespace PeShop.Controllers
             }
             await _emailService.SendEmailAsync(request.To, request.Subject, request.Body);
             return Ok(new { Message = "Email sent successfully!" });
+        }
+        [HttpPost("resend-otp")]
+        public async Task<IActionResult> ResendOtp([FromBody] MailRequest request)
+        {
+            var result = await _mailService.SendOtp(request, true);
+            return Ok(result);
         }
     }
 }

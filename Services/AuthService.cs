@@ -8,7 +8,6 @@ using PeShop.Models.Enums;
 using PeShop.Exceptions;
 using PeShop.Data.Repositories.Interfaces;
 using PeShop.Constants;
-using Hangfire;
 
 namespace PeShop.Services
 {
@@ -16,16 +15,14 @@ namespace PeShop.Services
     {
         private readonly IUserRepository _userRepository;
         private readonly IJwtHelper _jwtHelper;
-        private readonly IRedisUtil _redisUtil;
         private readonly IRoleRepository _roleRepository;
-        private readonly IEmailUtil _emailUtil;
-        public AuthService(IUserRepository userRepository, IJwtHelper jwtHelper, IRedisUtil redisUtil, IRoleRepository roleRepository, IEmailUtil emailUtil)
+        private readonly IRedisUtil _redisUtil;
+        public AuthService(IUserRepository userRepository, IJwtHelper jwtHelper, IRoleRepository roleRepository, IRedisUtil redisUtil)
         {
             _userRepository = userRepository;
             _jwtHelper = jwtHelper;
-            _redisUtil = redisUtil;
             _roleRepository = roleRepository;
-            _emailUtil = emailUtil;
+            _redisUtil = redisUtil;
         }
 
         public async Task<LoginResponse?> LoginAsync(LoginRequest request)
@@ -72,29 +69,20 @@ namespace PeShop.Services
 
         }
 
-        public async Task<string?> RegisterAsync(RegisterRequest request)
+        public async Task<StatusResponse> RegisterAsync(RegisterRequest request)
         {
-
-            if (await _userRepository.ExistsByEmailAsync(request.Email))
+            var email = await _redisUtil.GetAsync($"Email_Verified:{request.Key}");
+            if (email == null)
             {
-                throw new BadRequestException("Email đã được sử dụng");
+                throw new BadRequestException("Key không đúng");
             }
+            await _redisUtil.DeleteAsync($"Email_Verified:{request.Key}");
+            
 
             if (await _userRepository.ExistsByUsernameAsync(request.Username))
             {
                 throw new BadRequestException("Username đã được sử dụng");
             }
-
-            var otp = await _redisUtil.GetAsync($"Email:{request.Email}")
-            ?? throw new BadRequestException("OTP đã hết hạn hoặc chưa được gữi");
-
-            if (otp != request.Otp)
-            {
-                throw new BadRequestException("OTP không đúng");
-            }
-
-            await _redisUtil.DeleteAsync($"Email:{request.Email}");
-
             try
             {
                 var Role = await _roleRepository.GetByNameAsync(RoleConstants.User);
@@ -105,7 +93,7 @@ namespace PeShop.Services
                 var newUser = new User
                 {
                     Id = Guid.NewGuid().ToString(),
-                    Email = request.Email,
+                    Email = email,
                     Username = request.Username,
                     Name = request.Name ?? null,
                     Password = request.Password,
@@ -124,7 +112,7 @@ namespace PeShop.Services
                     throw new BadRequestException("tạo user thất bại");
                 }
                 
-                return "tạo tài khoản thành công";
+                return new StatusResponse { Status = true };
             }
             catch (Exception ex)
             {

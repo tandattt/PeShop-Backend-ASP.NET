@@ -45,5 +45,9 @@ namespace PeShop.Utilities
         {
             return await _db.KeyDeleteAsync(_appSetting.NameProjectRedis + ":" + key);
         }
+        public async Task<bool> ExistsAsync(string key)
+        {
+            return await _db.KeyExistsAsync(_appSetting.NameProjectRedis + ":" + key);
+        }
     }
 }

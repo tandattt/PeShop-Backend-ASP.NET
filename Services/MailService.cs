@@ -2,37 +2,69 @@ using PeShop.Dtos.Requests;
 using PeShop.Services.Interfaces;
 using PeShop.Interfaces;
 using PeShop.Utilities;
-
+using PeShop.Dtos.Responses;
+using PeShop.Exceptions;
+using PeShop.Extensions;
+using PeShop.Data.Repositories;
 namespace PeShop.Services
 {
     public class MailService : IMailService
     {
         private readonly IRedisUtil _redisUtil;
         private readonly IEmailUtil _emailUtil;
-        public MailService(IRedisUtil redisUtil, IEmailUtil emailUtil)
+        private readonly IUserRepository _userRepository;
+        public MailService(IRedisUtil redisUtil, IEmailUtil emailUtil, IUserRepository userRepository)
         {
             _redisUtil = redisUtil;
             _emailUtil = emailUtil;
+            _userRepository = userRepository;
         }
-        public async Task<string> Verify(MailRequest request)
+        public async Task<StatusResponse> SendOtp(MailRequest request, bool isResend = false)
         {
+            if (await _userRepository.ExistsByEmailAsync(EmailUtil.CleanEmailAddress(request.Email)))
+            {
+                throw new BadRequestException("Email đã được sử dụng");
+            }
+            if (await _redisUtil.ExistsAsync($"Email:{EmailUtil.CleanEmailAddress(request.Email)}") && !isResend)
+            {
+                throw new BadRequestException("Otp đã được gửi vui lòng thử lại sau 1 phút");
+            }
             var random = new Random();
-            var cleanEmail = EmailUtil.CleanEmailAddress(request.Gmail);
+            var cleanEmail = EmailUtil.CleanEmailAddress(request.Email);
             string Otp = random.Next(0, 999999).ToString();
             try
             {
-                var resultRedis = await _redisUtil.SetAsync($"Email:{cleanEmail}", Otp, TimeSpan.FromMinutes(5));
+                var resultRedis = await _redisUtil.SetAsync($"Email:{cleanEmail}", Otp, TimeSpan.FromMinutes(1));
                 if (!resultRedis)
                 {
-                    throw new Exception("Lỗi khi lưu OTP vào Redis");
+                    throw new BadRequestException("Lỗi khi lưu OTP vào Redis");
                 }
-                await _emailUtil.SendEmailAsync(cleanEmail, "Xác thực email", $"Mã OTP của bạn là: {Otp}");
+                await _emailUtil.SendEmailAsync(cleanEmail, "Your OTP", $"Mã OTP của bạn là: {Otp}");
             }
             catch (Exception ex)
             {
-                throw new Exception(ex.Message);
+                throw new BadRequestException(ex.Message);
             }
-            return Otp;
+            return new StatusResponse { Status = true };
         }
+        public async Task<VerifyOtpResponse> VerifyOtp(VerifyOtpRequest request)
+        {
+            
+            var cleanEmail = EmailUtil.CleanEmailAddress(request.Email);
+            var Otp = await _redisUtil.GetAsync($"Email:{cleanEmail}");
+            if (Otp == null)
+            {
+                throw new BadRequestException("OTP đã hết hạn hoặc chưa được gữi");
+            }
+            if (Otp != request.Otp)
+            {
+                throw new BadRequestException("OTP không đúng");
+            }
+            await _redisUtil.DeleteAsync($"Email:{cleanEmail}");
+            var key = GenerateRandomKeyExtension.GenerateRandomKey();
+            await _redisUtil.SetAsync($"Email_Verified:{key}", cleanEmail, TimeSpan.FromMinutes(1));
+            return new VerifyOtpResponse { Status = true, Key = key };
+        }
+
     }
 }

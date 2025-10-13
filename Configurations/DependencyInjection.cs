@@ -111,9 +111,10 @@ namespace PeShop.Configurations
             {
                 options.AddPolicy("AllowAll",
                     policy => policy
-                        .AllowAnyOrigin()
+                        .WithOrigins("http://localhost:3000") // domain FE của bạn
                         .AllowAnyMethod()
-                        .AllowAnyHeader());
+                        .AllowAnyHeader()
+                        .AllowCredentials()); // Cho phép cookie/token
             });
             return services;
         }
