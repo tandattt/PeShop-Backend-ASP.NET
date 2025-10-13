@@ -31,6 +31,7 @@ namespace PeShop.Services
                     ShopName = cart.Product?.Shop?.Name ?? string.Empty,
                     Price = cart.Price ?? 0,
                     Quantity = cart.Quantity ?? 0,
+                    Slug = cart.Product?.Slug ?? string.Empty,
                     ProductId = cart.ProductId ?? string.Empty,
                     ProductName = cart.Product?.Name ?? string.Empty,
                     ProductImage = cart.Product?.ImgMain ?? string.Empty,
