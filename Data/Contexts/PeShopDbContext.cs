@@ -65,6 +65,10 @@ public partial class PeShopDbContext : DbContext
 
     public virtual DbSet<UserAddress> UserAddresses { get; set; }
 
+    public virtual DbSet<UserVoucherShop> UserVoucherShops { get; set; }
+
+    public virtual DbSet<UserVoucherSystem> UserVoucherSystems { get; set; }
+
     public virtual DbSet<Variant> Variants { get; set; }
 
     public virtual DbSet<VariantValue> VariantValues { get; set; }
@@ -1270,6 +1274,96 @@ public partial class PeShopDbContext : DbContext
             entity.HasOne(d => d.User).WithMany(p => p.UserAddresses)
                 .HasForeignKey(d => d.UserId)
                 .HasConstraintName("FKk2ox3w9jm7yd6v1m5f68xibry");
+        });
+
+        modelBuilder.Entity<UserVoucherShop>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+
+            entity.ToTable("user_voucher_shop");
+
+            entity.HasIndex(e => e.UserId, "FK46t2uhh2ohfykbvwnxv9200ji");
+
+            entity.HasIndex(e => e.VoucherShopId, "FKk79iiyydhlw73h5kyveyqly1b");
+
+            entity.Property(e => e.Id)
+                .HasMaxLength(36)
+                .HasColumnName("id");
+            entity.Property(e => e.CreatedAt)
+                .HasMaxLength(6)
+                .HasColumnName("created_at");
+            entity.Property(e => e.CreatedBy)
+                .HasMaxLength(255)
+                .HasColumnName("created_by");
+            entity.Property(e => e.UpdatedAt)
+                .HasMaxLength(6)
+                .HasColumnName("updated_at");
+            entity.Property(e => e.UpdatedBy)
+                .HasMaxLength(255)
+                .HasColumnName("updated_by");
+            entity.Property(e => e.UserId)
+                .HasMaxLength(36)
+                .HasColumnName("user_id");
+            entity.Property(e => e.VoucherShopId)
+                .HasMaxLength(36)
+                .HasColumnName("voucher_shop_id");
+            entity.Property(e => e.ClaimedCount)
+                .HasColumnName("claimed_count");
+            entity.Property(e => e.UsedCount)
+                .HasColumnName("used_count");
+
+            entity.HasOne(d => d.User).WithMany()
+                .HasForeignKey(d => d.UserId)
+                .HasConstraintName("FK46t2uhh2ohfykbvwnxv9200ji");
+
+            entity.HasOne(d => d.VoucherShop).WithMany()
+                .HasForeignKey(d => d.VoucherShopId)
+                .HasConstraintName("FKk79iiyydhlw73h5kyveyqly1b");
+        });
+
+        modelBuilder.Entity<UserVoucherSystem>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+
+            entity.ToTable("user_voucher_system");
+
+            entity.HasIndex(e => e.UserId, "FKba40vpdxp40bla690bwpp7rmc");
+
+            entity.HasIndex(e => e.VoucherSystemId, "FKl23vdenx1uyhh7yhht4vkio70");
+
+            entity.Property(e => e.Id)
+                .HasMaxLength(36)
+                .HasColumnName("id");
+            entity.Property(e => e.CreatedAt)
+                .HasMaxLength(6)
+                .HasColumnName("created_at");
+            entity.Property(e => e.CreatedBy)
+                .HasMaxLength(255)
+                .HasColumnName("created_by");
+            entity.Property(e => e.UpdatedAt)
+                .HasMaxLength(6)
+                .HasColumnName("updated_at");
+            entity.Property(e => e.UpdatedBy)
+                .HasMaxLength(255)
+                .HasColumnName("updated_by");
+            entity.Property(e => e.UserId)
+                .HasMaxLength(36)
+                .HasColumnName("user_id");
+            entity.Property(e => e.VoucherSystemId)
+                .HasMaxLength(36)
+                .HasColumnName("voucher_system_id");
+            entity.Property(e => e.ClaimedCount)
+                .HasColumnName("claimed_count");
+            entity.Property(e => e.UsedCount)
+                .HasColumnName("used_count");
+
+            entity.HasOne(d => d.User).WithMany()
+                .HasForeignKey(d => d.UserId)
+                .HasConstraintName("FKba40vpdxp40bla690bwpp7rmc");
+
+            entity.HasOne(d => d.VoucherSystem).WithMany()
+                .HasForeignKey(d => d.VoucherSystemId)
+                .HasConstraintName("FKl23vdenx1uyhh7yhht4vkio70");
         });
 
         modelBuilder.Entity<Variant>(entity =>
