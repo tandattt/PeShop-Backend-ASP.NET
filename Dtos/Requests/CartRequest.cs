@@ -6,6 +6,6 @@ namespace PeShop.Dtos.Requests
         public int Quantity { get; set; }
         public string ProductId { get; set; } = string.Empty;
 
-        public int VariantId { get; set; }
+        public int? VariantId { get; set; } = null;
     }
 }

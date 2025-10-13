@@ -77,9 +77,20 @@ namespace PeShop.Services
         public async Task<Dictionary<string, int>> AddCartAsync(CartRequest request, string userId)
         {
             var existingCarts = await _cartRepository.GetCartAsync(userId) ?? new List<Cart>();
-            
-            var existingCart = existingCarts.FirstOrDefault(c => 
+            Cart? existingCart=null;
+            if(request.VariantId != null){  
+                 // thêm vào giỏ hàng có variant
+                Console.WriteLine("thêm vào giỏ hàng có variant");
+                existingCart = existingCarts.FirstOrDefault(c => 
                 c.ProductId == request.ProductId && c.VariantId == request.VariantId);
+                
+            }
+            else{
+               // thêm vào giỏ hàng mà không có variant
+                Console.WriteLine("thêm vào giỏ hàng mà không có variant");
+                existingCart = existingCarts.FirstOrDefault(c => 
+                c.ProductId == request.ProductId);
+            }
             
             if (existingCart != null)
             {
@@ -94,7 +105,7 @@ namespace PeShop.Services
                 {
                     Id = Guid.NewGuid().ToString(),
                     ProductId = request.ProductId,
-                    VariantId = request.VariantId,
+                    VariantId = request.VariantId ?? null,
                     Quantity = request.Quantity,
                     Price = request.Price,
                     UserId = userId,
@@ -103,8 +114,7 @@ namespace PeShop.Services
                 };
                 
                 await _cartRepository.AddCartAsync(newCart, userId);
-            }
-            
+            }            
             var allUserCarts = await _cartRepository.GetCartAsync(userId) ?? new List<Cart>();
             var totalQuantity = allUserCarts.Sum(c => c.Quantity ?? 0);
             
