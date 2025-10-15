@@ -10,11 +10,11 @@ public partial class VoucherSystem
 
     public DateTime? CreatedAt { get; set; }
 
-    public byte[]? CreatedBy { get; set; }
+    public string? CreatedBy { get; set; }
 
     public DateTime? UpdatedAt { get; set; }
 
-    public byte[]? UpdatedBy { get; set; }
+    public string? UpdatedBy { get; set; }
 
     public string? Code { get; set; }
 
@@ -37,6 +37,4 @@ public partial class VoucherSystem
     public DateTime? StartTime { get; set; }
 
     public VoucherType? Type { get; set; }
-
-    public virtual ICollection<User> Users { get; set; } = new List<User>();
 }

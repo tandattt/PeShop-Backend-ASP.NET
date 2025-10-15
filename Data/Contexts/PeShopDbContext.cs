@@ -1156,61 +1156,7 @@ public partial class PeShopDbContext : DbContext
                             .HasColumnName("role_id");
                     });
 
-            entity.HasMany(d => d.VoucherShops).WithMany(p => p.Users)
-                .UsingEntity<Dictionary<string, object>>(
-                    "UserVoucherShop",
-                    r => r.HasOne<VoucherShop>().WithMany()
-                        .HasForeignKey("VoucherShopId")
-                        .OnDelete(DeleteBehavior.ClientSetNull)
-                        .HasConstraintName("FKk79iiyydhlw73h5kyveyqly1b"),
-                    l => l.HasOne<User>().WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.ClientSetNull)
-                        .HasConstraintName("FK46t2uhh2ohfykbvwnxv9200ji"),
-                    j =>
-                    {
-                        j.HasKey("UserId", "VoucherShopId")
-                            .HasName("PRIMARY")
-                            .HasAnnotation("MySql:IndexPrefixLength", new[] { 0, 0 });
-                        j.ToTable("user_voucher_shop");
-                        j.HasIndex(new[] { "VoucherShopId" }, "FKk79iiyydhlw73h5kyveyqly1b");
-                        j.IndexerProperty<string>("UserId")
-                            .HasMaxLength(36)
-                            .HasColumnName("user_id");
-                        j.IndexerProperty<string>("VoucherShopId")
-                            .HasMaxLength(36)
-                            .HasColumnName("voucher_shop_id");
-                        j.IndexerProperty<int>("Quantity")
-                            .HasColumnName("quantity");
-                    });
 
-            entity.HasMany(d => d.VoucherSystems).WithMany(p => p.Users)
-                .UsingEntity<Dictionary<string, object>>(
-                    "UserVoucherSystem",
-                    r => r.HasOne<VoucherSystem>().WithMany()
-                        .HasForeignKey("VoucherSystemId")
-                        .OnDelete(DeleteBehavior.ClientSetNull)
-                        .HasConstraintName("FKl23vdenx1uyhh7yhht4vkio70"),
-                    l => l.HasOne<User>().WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.ClientSetNull)
-                        .HasConstraintName("FKba40vpdxp40bla690bwpp7rmc"),
-                    j =>
-                    {
-                        j.HasKey("UserId", "VoucherSystemId")
-                            .HasName("PRIMARY")
-                            .HasAnnotation("MySql:IndexPrefixLength", new[] { 0, 0 });
-                        j.ToTable("user_voucher_system");
-                        j.HasIndex(new[] { "VoucherSystemId" }, "FKl23vdenx1uyhh7yhht4vkio70");
-                        j.IndexerProperty<string>("UserId")
-                            .HasMaxLength(36)
-                            .HasColumnName("user_id");
-                        j.IndexerProperty<string>("VoucherSystemId")
-                            .HasMaxLength(36)
-                            .HasColumnName("voucher_system_id");
-                        j.IndexerProperty<int>("Quantity")
-                            .HasColumnName("quantity");
-                    });
         });
 
         modelBuilder.Entity<UserAddress>(entity =>
@@ -1471,7 +1417,6 @@ public partial class PeShopDbContext : DbContext
                 .HasColumnName("created_at");
             entity.Property(e => e.CreatedBy)
                 .HasMaxLength(16)
-                .IsFixedLength()
                 .HasColumnName("created_by");
             entity.Property(e => e.DiscountValue)
                 .HasPrecision(18, 3)
@@ -1505,7 +1450,6 @@ public partial class PeShopDbContext : DbContext
                 .HasColumnName("updated_at");
             entity.Property(e => e.UpdatedBy)
                 .HasMaxLength(16)
-                .IsFixedLength()
                 .HasColumnName("updated_by");
 
             entity.HasOne(d => d.Shop).WithMany(p => p.VoucherShops)
@@ -1530,7 +1474,6 @@ public partial class PeShopDbContext : DbContext
                 .HasColumnName("created_at");
             entity.Property(e => e.CreatedBy)
                 .HasMaxLength(16)
-                .IsFixedLength()
                 .HasColumnName("created_by");
             entity.Property(e => e.DiscountValue)
                 .HasPrecision(18, 3)
@@ -1561,7 +1504,6 @@ public partial class PeShopDbContext : DbContext
                 .HasColumnName("updated_at");
             entity.Property(e => e.UpdatedBy)
                 .HasMaxLength(16)
-                .IsFixedLength()
                 .HasColumnName("updated_by");
         });
 

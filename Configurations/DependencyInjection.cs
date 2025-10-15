@@ -23,7 +23,18 @@ namespace PeShop.Configurations
         {
             // Đăng ký DbContext
             services.AddDbContext<PeShopDbContext>(options =>
-                options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString)));
+            {
+                options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString), mySqlOptions =>
+                {
+                    mySqlOptions.EnableRetryOnFailure(
+                        maxRetryCount: 3,
+                        maxRetryDelay: TimeSpan.FromSeconds(30),
+                        errorNumbersToAdd: null);
+                    mySqlOptions.CommandTimeout(60);
+                });
+                options.EnableSensitiveDataLogging(environment.IsDevelopment());
+                options.EnableDetailedErrors(environment.IsDevelopment());
+            });
 
             // Auto đăng ký Services
             services.Scan(scan => scan

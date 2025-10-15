@@ -42,8 +42,4 @@ public partial class User
     public virtual ICollection<UserAddress> UserAddresses { get; set; } = new List<UserAddress>();
 
     public virtual ICollection<Role> Roles { get; set; } = new List<Role>();
-
-    public virtual ICollection<VoucherShop> VoucherShops { get; set; } = new List<VoucherShop>();
-
-    public virtual ICollection<VoucherSystem> VoucherSystems { get; set; } = new List<VoucherSystem>();
 }
