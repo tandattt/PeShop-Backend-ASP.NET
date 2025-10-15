@@ -14,7 +14,7 @@ public class JobHelper : IJobHelper
         _voucherService = voucherService;
     }
 
-    public void SetExpireVoucherSystem(string voucherSystemId, DateTime startTime, DateTime endTime)
+    public async Task SetExpireVoucherSystem(string voucherSystemId, DateTime startTime, DateTime endTime)
     {
         var now = DateTime.Now;
         var startDelay = startTime - now;
@@ -30,7 +30,8 @@ public class JobHelper : IJobHelper
         }
         else
         {
-            _voucherService.UpdateStatusVoucherSystemAsync(voucherSystemId, VoucherStatus.Active);
+            Console.WriteLine("startDelay: " + startDelay);
+            await _voucherService.UpdateStatusVoucherSystemAsync(voucherSystemId, VoucherStatus.Active);
         }
 
         // --- Hết hạn ---
@@ -43,12 +44,12 @@ public class JobHelper : IJobHelper
         }
     }
 
-    public void SetExpireVoucherShop(string voucherShopId, DateTime startTime, DateTime endTime)
+    public async Task SetExpireVoucherShop(string voucherShopId, DateTime startTime, DateTime endTime)
     {
         var now = DateTime.Now;
         var startDelay = startTime - now;
         var endDelay = endTime - now;
-
+        Console.WriteLine("now: " + now);
         // --- Kích hoạt ---
         if (startDelay > TimeSpan.Zero)
         {
@@ -59,7 +60,8 @@ public class JobHelper : IJobHelper
         }
         else
         {
-            _voucherService.UpdateStatusVoucherShopAsync(voucherShopId, VoucherStatus.Active);
+            Console.WriteLine("startDelay: " + startDelay);
+            await _voucherService.UpdateStatusVoucherShopAsync(voucherShopId, VoucherStatus.Active);
         }
 
         // --- Hết hạn ---

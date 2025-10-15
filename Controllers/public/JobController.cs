@@ -19,7 +19,7 @@ namespace PeShop.Controllers
         }
 
         [HttpPost("set-expire-voucher")]
-        public IActionResult SetExpireVoucherSystem([FromBody] VoucherJobDto dto)
+        public async Task<IActionResult> SetExpireVoucherSystem([FromBody] VoucherJobDto dto)
         {
             
             if (!Request.Headers.TryGetValue("Authorization", out var authHeader))
@@ -35,12 +35,12 @@ namespace PeShop.Controllers
             }
             if (dto.VoucherSystemId != null)
             {
-                _jobHelper.SetExpireVoucherSystem(dto.VoucherSystemId, dto.StartTime, dto.EndTime);
+                await _jobHelper.SetExpireVoucherSystem(dto.VoucherSystemId, dto.StartTime, dto.EndTime);
                 return Ok(new { message = "Voucher expired successfully" });
             }
             else if (dto.VoucherShopId != null)
             {
-                _jobHelper.SetExpireVoucherShop(dto.VoucherShopId, dto.StartTime, dto.EndTime);
+                await _jobHelper.SetExpireVoucherShop(dto.VoucherShopId, dto.StartTime, dto.EndTime);
                 return Ok(new { message = "Voucher shop expired successfully" });
             }
             return BadRequest("VoucherSystemId or VoucherShopId is required");
