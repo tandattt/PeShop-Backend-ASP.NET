@@ -1479,9 +1479,9 @@ public partial class PeShopDbContext : DbContext
             entity.Property(e => e.EndTime)
                 .HasMaxLength(6)
                 .HasColumnName("end_time");
-            entity.Property(e => e.IsActive)
-                .HasColumnType("bit(1)")
-                .HasColumnName("is_active");
+            entity.Property(e => e.Status)
+                .HasConversion<int>()
+                .HasColumnName("status");
             entity.Property(e => e.MaxdiscountAmount)
                 .HasPrecision(18, 3)
                 .HasColumnName("maxdiscount_amount");
@@ -1538,9 +1538,9 @@ public partial class PeShopDbContext : DbContext
             entity.Property(e => e.EndTime)
                 .HasMaxLength(6)
                 .HasColumnName("end_time");
-            entity.Property(e => e.IsActive)
-                .HasColumnType("bit(1)")
-                .HasColumnName("is_active");
+            entity.Property(e => e.Status)
+                .HasConversion<int>()
+                .HasColumnName("status");
             entity.Property(e => e.MaxdiscountAmount)
                 .HasPrecision(18, 3)
                 .HasColumnName("maxdiscount_amount");
@@ -1658,8 +1658,16 @@ public partial class PeShopDbContext : DbContext
             .Property(e => e.Type)
             .HasConversion<int>();
 
+        modelBuilder.Entity<VoucherShop>()
+            .Property(e => e.Status)
+            .HasConversion<int>();
+
         modelBuilder.Entity<VoucherSystem>()
             .Property(e => e.Type)
+            .HasConversion<int>();
+
+        modelBuilder.Entity<VoucherSystem>()
+            .Property(e => e.Status)
             .HasConversion<int>();
 
         // Product enum mapping

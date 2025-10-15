@@ -22,7 +22,7 @@ public partial class VoucherSystem
 
     public DateTime? EndTime { get; set; }
 
-    public ulong? IsActive { get; set; }
+    public VoucherStatus? Status { get; set; }
 
     public decimal? MaxdiscountAmount { get; set; }
 
