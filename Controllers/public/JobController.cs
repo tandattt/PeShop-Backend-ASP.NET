@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
 using PeShop.Interfaces;
 using PeShop.Dtos.Job;
+using PeShop.Setting;
+
 namespace PeShop.Controllers
 {
 
@@ -9,15 +11,28 @@ namespace PeShop.Controllers
     public class JobController : ControllerBase
     {
         private readonly IJobHelper _jobHelper;
-
-        public JobController(IJobHelper jobHelper)
+        private readonly AppSetting _appSetting;
+        public JobController(IJobHelper jobHelper, AppSetting appSetting)
         {
             _jobHelper = jobHelper;
+            _appSetting = appSetting;
         }
 
         [HttpPost("set-expire-voucher")]
         public IActionResult SetExpireVoucherSystem([FromBody] VoucherJobDto dto)
         {
+            
+            if (!Request.Headers.TryGetValue("Authorization", out var authHeader))
+            {
+
+                return Unauthorized("Missing Authorization header");
+            }
+
+            var token = authHeader.ToString().Replace("Bearer ", "");
+            if (token != _appSetting.ApiKeySystem)
+            {
+                return Forbid("Invalid API key");
+            }
             if (dto.VoucherSystemId != null)
             {
                 _jobHelper.SetExpireVoucherSystem(dto.VoucherSystemId, dto.StartTime, dto.EndTime);
