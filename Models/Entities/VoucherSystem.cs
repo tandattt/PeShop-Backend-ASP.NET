@@ -36,5 +36,5 @@ public partial class VoucherSystem
 
     public DateTime? StartTime { get; set; }
 
-    public VoucherType? Type { get; set; }
+    public VoucherValueType? Type { get; set; }
 }
