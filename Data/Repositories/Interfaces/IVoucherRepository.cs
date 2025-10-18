@@ -8,4 +8,6 @@ public interface IVoucherRepository
     Task<bool> UpdateVoucherShopAsync(VoucherShop voucherShop);
     Task<List<VoucherSystem>> GetVoucherSystemsByUserIdAsync( string userId);
     Task<List<VoucherShop>> GetUserVoucherShopsAsync( string userId);
+    Task<Variant?> GetVariantByIdAsync(string variantId);
+    Task<Product?> GetProductByIdAsync(string productId);
 }

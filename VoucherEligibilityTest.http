@@ -1,0 +1,111 @@
+### Test Voucher Eligibility API
+
+# 1. Get all vouchers for user
+GET https://localhost:7000/Voucher/get-vouchers
+Authorization: Bearer YOUR_JWT_TOKEN_HERE
+
+###
+
+# 2. Check voucher eligibility for an order (POST with items)
+POST https://localhost:7000/Voucher/check-eligibility
+Authorization: Bearer YOUR_JWT_TOKEN_HERE
+Content-Type: application/json
+
+{
+  "items": [
+    {
+      "productId": "product-1",
+      "variantId": "variant-1",
+      "quantity": 2
+    },
+    {
+      "productId": "product-2",
+      "variantId": null,
+      "quantity": 1
+    }
+  ]
+}
+
+# Expected Response Structure:
+# {
+#   "voucherTypes": [
+#     {
+#       "voucherType": "System",
+#       "vouchers": [
+#         {
+#           "isAllowed": true,
+#           "reason": "",
+#           "voucher": {
+#             "id": "voucher-1",
+#             "name": "Giảm 10%",
+#             "code": "SAVE10",
+#             "discountValue": 10,
+#             "maxdiscountAmount": 100000,
+#             "miniumOrderValue": 100000,
+#             "startTime": "2024-01-01T00:00:00",
+#             "endTime": "2024-12-31T23:59:59",
+#             "valueType": 0,
+#             "valueTypeName": "Phần trăm"
+#           }
+#         }
+#       ],
+#       "bestVoucherId": "voucher-1"
+#     },
+#     {
+#       "voucherType": "Shop",
+#       "vouchers": [
+#         {
+#           "isAllowed": false,
+#           "reason": "Đơn hàng phải có giá trị tối thiểu 1,000,000 VND",
+#           "voucher": {
+#             "id": "voucher-2",
+#             "name": "Giảm 20%",
+#             "code": "SAVE20",
+#             "discountValue": 20,
+#             "maxdiscountAmount": 200000,
+#             "miniumOrderValue": 1000000,
+#             "startTime": "2024-01-01T00:00:00",
+#             "endTime": "2024-12-31T23:59:59",
+#             "valueType": 0,
+#             "valueTypeName": "Phần trăm"
+#           }
+#         }
+#       ],
+#       "bestVoucherId": null
+#     }
+#   ]
+# }
+
+###
+
+# 3. Test with high value items
+POST https://localhost:7000/Voucher/check-eligibility
+Authorization: Bearer YOUR_JWT_TOKEN_HERE
+Content-Type: application/json
+
+{
+  "items": [
+    {
+      "productId": "expensive-product",
+      "variantId": null,
+      "quantity": 1
+    }
+  ]
+}
+
+###
+
+# 4. Test with low value items (should show ineligible vouchers)
+POST https://localhost:7000/Voucher/check-eligibility
+Authorization: Bearer YOUR_JWT_TOKEN_HERE
+Content-Type: application/json
+
+{
+  "items": [
+    {
+      "productId": "cheap-product",
+      "variantId": null,
+      "quantity": 1
+    }
+  ]
+}

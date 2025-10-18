@@ -45,4 +45,18 @@ public class VoucherRepository : IVoucherRepository
         .Where(v => v.Status == VoucherStatus.Active && v.UserVoucherShops.Any(uv => uv.UserId == userId && uv.UsedCount < v.LimitForUser))
         .ToListAsync();
     }
+
+    public async Task<Variant?> GetVariantByIdAsync(string variantId)
+    {
+        if (int.TryParse(variantId, out int id))
+        {
+            return await _context.Variants.FirstOrDefaultAsync(v => v.Id == id);
+        }
+        return null;
+    }
+
+    public async Task<Product?> GetProductByIdAsync(string productId)
+    {
+        return await _context.Products.FirstOrDefaultAsync(p => p.Id == productId);
+    }
 }
