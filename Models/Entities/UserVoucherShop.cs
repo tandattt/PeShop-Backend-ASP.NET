@@ -19,9 +19,9 @@ public partial class UserVoucherShop
 
     public string? VoucherShopId { get; set; }
 
-    public int? ClaimedCount { get; set; }
+    public uint? ClaimedCount { get; set; }
 
-    public int? UsedCount { get; set; }
+    public uint? UsedCount { get; set; }
 
     public virtual User? User { get; set; }
 

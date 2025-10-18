@@ -6,4 +6,6 @@ public interface IVoucherRepository
     Task<VoucherShop?> GetVoucherShopByIdAsync(string voucherShopId);
     Task<bool> UpdateVoucherSystemAsync(VoucherSystem voucherSystem);
     Task<bool> UpdateVoucherShopAsync(VoucherShop voucherShop);
+    Task<List<VoucherSystem>> GetVoucherSystemsByUserIdAsync( string userId);
+    Task<List<VoucherShop>> GetUserVoucherShopsAsync( string userId);
 }

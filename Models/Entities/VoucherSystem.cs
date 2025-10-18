@@ -37,4 +37,5 @@ public partial class VoucherSystem
     public DateTime? StartTime { get; set; }
 
     public VoucherValueType? Type { get; set; }
+    public virtual ICollection<UserVoucherSystem> UserVoucherSystems { get; set; } = new List<UserVoucherSystem>();
 }

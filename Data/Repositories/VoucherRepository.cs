@@ -33,4 +33,16 @@ public class VoucherRepository : IVoucherRepository
         if (await _context.SaveChangesAsync() > 0) return true;
         else return false;
     }
+    public async Task<List<VoucherSystem>> GetVoucherSystemsByUserIdAsync(string userId)
+    {
+        return await _context.VoucherSystems.Include(v => v.UserVoucherSystems)
+        .Where(v => v.Status == VoucherStatus.Active || (v.Status == VoucherStatus.Active && v.UserVoucherSystems.Any(uv => uv.UserId == userId && uv.UsedCount < v.LimitForUser))).ToListAsync();
+    }
+    public async Task<List<VoucherShop>> GetUserVoucherShopsAsync(string userId)
+    {
+        return await _context.VoucherShops
+        .Include(v => v.UserVoucherShops)
+        .Where(v => v.Status == VoucherStatus.Active && v.UserVoucherShops.Any(uv => uv.UserId == userId && uv.UsedCount < v.LimitForUser))
+        .ToListAsync();
+    }
 }

@@ -1262,7 +1262,7 @@ public partial class PeShopDbContext : DbContext
                 .HasForeignKey(d => d.UserId)
                 .HasConstraintName("FK46t2uhh2ohfykbvwnxv9200ji");
 
-            entity.HasOne(d => d.VoucherShop).WithMany()
+            entity.HasOne(d => d.VoucherShop).WithMany(p => p.UserVoucherShops)
                 .HasForeignKey(d => d.VoucherShopId)
                 .HasConstraintName("FKk79iiyydhlw73h5kyveyqly1b");
         });
@@ -1307,7 +1307,7 @@ public partial class PeShopDbContext : DbContext
                 .HasForeignKey(d => d.UserId)
                 .HasConstraintName("FKba40vpdxp40bla690bwpp7rmc");
 
-            entity.HasOne(d => d.VoucherSystem).WithMany()
+            entity.HasOne(d => d.VoucherSystem).WithMany(p => p.UserVoucherSystems)
                 .HasForeignKey(d => d.VoucherSystemId)
                 .HasConstraintName("FKl23vdenx1uyhh7yhht4vkio70");
         });

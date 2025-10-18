@@ -89,14 +89,15 @@ namespace PeShop.Extensions
         /// <summary>
         /// Chuyển đổi VoucherType sang text tiếng Việt
         /// </summary>
-        public static string ToVietnameseString(this VoucherType type)
+        public static string ToVietnameseString(this VoucherValueType? type)
         {
+            
             return type switch
             {
-                VoucherType.Percentage => "Giảm phần trăm",
-                VoucherType.FixedAmount => "Giảm tiền",
-                VoucherType.FreeShipping => "Miễn phí vận chuyển",
-                _ => type.ToString()
+                VoucherValueType.Percentage => "Giảm phần trăm",
+                VoucherValueType.FixedAmount => "Giảm tiền",
+                VoucherValueType.FreeShipping => "Miễn phí vận chuyển",
+                _ => null
             };
         }
 

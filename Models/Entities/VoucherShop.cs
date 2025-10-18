@@ -41,4 +41,5 @@ public partial class VoucherShop
     public string? ShopId { get; set; }
 
     public virtual Shop? Shop { get; set; }
+    public virtual ICollection<UserVoucherShop> UserVoucherShops { get; set; } = new List<UserVoucherShop>();
 }
