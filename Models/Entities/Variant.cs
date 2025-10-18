@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-
+using PeShop.Models.Enums;
 namespace PeShop.Models.Entities;
 
 public partial class Variant
@@ -19,6 +19,7 @@ public partial class Variant
 
     public uint? Quantity { get; set; }
 
+    public VariantStatus? Status { get; set; }
     public string? ProductId { get; set; }
 
     public virtual ICollection<Cart> Carts { get; set; } = new List<Cart>();

@@ -1,5 +1,5 @@
 using PeShop.Dtos.Shared;
-
+using PeShop.Models.Enums;
 namespace PeShop.Dtos.Responses;
 
 public class CartResponse
@@ -13,6 +13,7 @@ public class CartResponse
     public string ProductId { get; set; } = string.Empty;
     public string ProductName { get; set; } = string.Empty;
     public string ProductImage { get; set; } = string.Empty;
-    public string VariantId { get; set; } = string.Empty;
+    public string? VariantId { get; set; } = null;
+    public VariantStatus? VariantStatus { get; set; } = null;
     public List<VariantValueForCartDto> VariantValues { get; set; } = new List<VariantValueForCartDto>();
 }

@@ -48,6 +48,7 @@ public class ProductService : IProductService
                 VariantId = v.Id.ToString(),
                 Price = v.Price ?? 0,
                 Quantity = (int)(v.Quantity ?? 0),
+                Status = v.Status,
                 VariantValues = v.VariantValues.Select(vv => new VariantValueForProductDto
                 {
                     // Id = vv.Id.ToString(),
@@ -83,7 +84,6 @@ public class ProductService : IProductService
         var products = await GetRandomProductsAsync(request.PageSize);
         var totalCount = await _productRepository.GetCountProductAsync();
 
-        // Convert to DTOs
         var productDtos = products.Select(p => new ProductDto
         {
             Id = p.Id,

@@ -1337,6 +1337,9 @@ public partial class PeShopDbContext : DbContext
                 .HasMaxLength(36)
                 .HasColumnName("product_id");
             entity.Property(e => e.Quantity).HasColumnName("quantity");
+            entity.Property(e => e.Status)
+                .HasConversion<int>()
+                .HasColumnName("status");
             entity.Property(e => e.UpdatedAt)
                 .HasMaxLength(6)
                 .HasColumnName("updated_at");
@@ -1618,6 +1621,11 @@ public partial class PeShopDbContext : DbContext
             .HasConversion<int>();
 
         modelBuilder.Entity<Promotion>()
+            .Property(e => e.Status)
+            .HasConversion<int>();
+
+        // Variant enum mapping
+        modelBuilder.Entity<Variant>()
             .Property(e => e.Status)
             .HasConversion<int>();
     }

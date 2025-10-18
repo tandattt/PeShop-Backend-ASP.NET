@@ -3,6 +3,7 @@ using PeShop.Models.Entities;
 using Microsoft.EntityFrameworkCore;
 using PeShop.Data.Contexts;
 using PeShop.Dtos.Responses;
+using PeShop.Models.Enums;
 
 namespace PeShop.Data.Repositories;
 
@@ -21,12 +22,13 @@ public class VariantRepository : IVariantRepository
             {
                 Id = v.Id,
                 Price = v.Price,
+                Status = v.Status ?? VariantStatus.Show, // Mặc định là Show nếu null
                 Product = new ProductShippingDto
                 {
-                    Height = v.Product.Height,
-                    Length = v.Product.Length,
-                    Width = v.Product.Width,
-                    Weight = v.Product.Weight
+                    Height = v.Product!.Height,
+                    Length = v.Product!.Length,
+                    Width = v.Product!.Width,
+                    Weight = v.Product!.Weight
                 }
             })
             .FirstOrDefaultAsync();

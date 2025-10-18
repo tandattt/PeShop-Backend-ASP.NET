@@ -5,6 +5,7 @@ using PeShop.Data.Repositories.Interfaces;
 using PeShop.Models.Entities;
 using PeShop.Exceptions;
 using PeShop.Dtos.Shared;
+using PeShop.Models.Enums;
 namespace PeShop.Services
 {
     public class CartService : ICartService
@@ -35,7 +36,8 @@ namespace PeShop.Services
                     ProductId = cart.ProductId ?? string.Empty,
                     ProductName = cart.Product?.Name ?? string.Empty,
                     ProductImage = cart.Product?.ImgMain ?? string.Empty,
-                    VariantId = cart.VariantId?.ToString() ?? string.Empty,
+                    VariantId = cart.VariantId?.ToString() ?? null,
+                    VariantStatus = cart.Variant?.Status ?? null,
                     VariantValues = GetVariantValues(cart.Variant)
                 };
                 
@@ -161,7 +163,8 @@ namespace PeShop.Services
                 ProductId = updatedCart.ProductId ?? string.Empty,
                 ProductName = updatedCart.Product?.Name ?? string.Empty,
                 ProductImage = updatedCart.Product?.ImgMain ?? string.Empty,
-                VariantId = updatedCart.VariantId?.ToString() ?? string.Empty,
+                VariantId = updatedCart.VariantId?.ToString() ?? null,
+                VariantStatus = updatedCart.Variant?.Status ?? null,
                 VariantValues = GetVariantValues(updatedCart.Variant)
             };
         }
