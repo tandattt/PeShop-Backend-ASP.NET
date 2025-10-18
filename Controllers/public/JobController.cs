@@ -2,6 +2,8 @@ using Microsoft.AspNetCore.Mvc;
 using PeShop.Interfaces;
 using PeShop.Dtos.Job;
 using PeShop.Setting;
+using PeShop.Constants;
+using PeShop.Services.Interfaces;
 
 namespace PeShop.Controllers
 {
@@ -10,12 +12,12 @@ namespace PeShop.Controllers
     [Route("[controller]")]
     public class JobController : ControllerBase
     {
-        private readonly IJobHelper _jobHelper;
         private readonly AppSetting _appSetting;
-        public JobController(IJobHelper jobHelper, AppSetting appSetting)
+        private readonly IJobService _jobService;
+        public JobController(AppSetting appSetting, IJobService jobService)
         {
-            _jobHelper = jobHelper;
             _appSetting = appSetting;
+            _jobService = jobService;
         }
 
         [HttpPost("set-expire-voucher")]
@@ -35,12 +37,12 @@ namespace PeShop.Controllers
             }
             if (dto.VoucherSystemId != null)
             {
-                await _jobHelper.SetExpireVoucherSystem(dto.VoucherSystemId, dto.StartTime, dto.EndTime);
-                return Ok(new { message = "Voucher expired successfully" });
+                await _jobService.SetExpireVoucherAsync(dto.VoucherSystemId, dto.StartTime, dto.EndTime, VoucherTypeConstant.System);
+                return Ok(new { message = "Voucher system expired successfully" });
             }
             else if (dto.VoucherShopId != null)
             {
-                await _jobHelper.SetExpireVoucherShop(dto.VoucherShopId, dto.StartTime, dto.EndTime);
+                await _jobService.SetExpireVoucherAsync(dto.VoucherShopId, dto.StartTime, dto.EndTime, VoucherTypeConstant.Shop);
                 return Ok(new { message = "Voucher shop expired successfully" });
             }
             return BadRequest("VoucherSystemId or VoucherShopId is required");
