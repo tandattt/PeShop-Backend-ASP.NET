@@ -17,7 +17,7 @@ public partial class VariantValue
 
     public string? PropertyProductId { get; set; }
 
-    public int? PropertyValueId { get; set; }
+    public string? PropertyValueId { get; set; }
 
     public int? VariantId { get; set; }
 

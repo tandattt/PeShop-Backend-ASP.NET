@@ -27,21 +27,43 @@ public class VoucherController : ControllerBase
 
     [HttpPost("check-eligibility")]
     [Authorize(Roles = RoleConstants.User)]
-    public async Task<IActionResult> CheckVoucherEligibility([FromBody] CheckVoucherEligibilityRequest request)
+    public async Task<IActionResult> CheckVoucherEligibility([FromQuery] string orderId)
     {
-        if (!ModelState.IsValid)
-        {
-            return BadRequest(ModelState);
-        }
-
-        if (request.Items == null || !request.Items.Any())
-        {
-            return BadRequest("Danh sách sản phẩm không được rỗng");
-        }
-
         string userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "";
+        if (string.IsNullOrEmpty(userId))
+        {
+            return BadRequest("User not found");
+        }
+        if (string.IsNullOrEmpty(orderId))
+        {
+            return BadRequest("Order not found");
+        }
         
-        var result = await _voucherService.CheckVoucherEligibilityAsync(request, userId);
+        var result = await _voucherService.CheckVoucherEligibilityAsync(userId, orderId);
         return Ok(result);
+    }
+
+    [HttpPost("apply-voucher-system")]
+    [Authorize(Roles = RoleConstants.User)]
+    public async Task<IActionResult> ApplyVoucherSystem([FromBody] ApplyVoucherSystemRequest request)
+    {
+        string userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "";
+        if (string.IsNullOrEmpty(userId))
+        {
+            return BadRequest("User not found");
+        }
+        return Ok(await _voucherService.ApplyVoucherSystemAsync(userId, request));
+    }
+
+    [HttpPost("apply-voucher-shop")]
+    [Authorize(Roles = RoleConstants.User)]
+    public async Task<IActionResult> ApplyVoucherShop([FromBody] ApplyVoucherShopRequest request)
+    {
+        string userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "";
+        if (string.IsNullOrEmpty(userId))
+        {
+            return BadRequest("User not found");
+        }
+        return Ok(await _voucherService.ApplyVoucherShopAsync(userId, request));
     }
 }

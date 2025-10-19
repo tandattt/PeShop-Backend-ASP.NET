@@ -5,7 +5,7 @@ namespace PeShop.Models.Entities;
 
 public partial class PropertyValue
 {
-    public int Id { get; set; }
+    public string Id { get; set; } = string.Empty;
 
     public DateTime? CreatedAt { get; set; }
 

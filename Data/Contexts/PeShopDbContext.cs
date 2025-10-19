@@ -881,7 +881,7 @@ public partial class PeShopDbContext : DbContext
             entity.HasIndex(e => e.PropertyProductId, "FKnj5gmnfl8qi7d1e4kq1367y8e");
 
             entity.Property(e => e.Id)
-                .ValueGeneratedNever()
+                .HasMaxLength(36)
                 .HasColumnName("id");
             entity.Property(e => e.CreatedAt)
                 .HasMaxLength(6)
@@ -1378,7 +1378,9 @@ public partial class PeShopDbContext : DbContext
             entity.Property(e => e.PropertyProductId)
                 .HasMaxLength(36)
                 .HasColumnName("property_product_id");
-            entity.Property(e => e.PropertyValueId).HasColumnName("property_value_id");
+            entity.Property(e => e.PropertyValueId)
+                .HasMaxLength(36)
+                .HasColumnName("property_value_id");
             entity.Property(e => e.UpdatedAt)
                 .HasMaxLength(6)
                 .HasColumnName("updated_at");
@@ -1566,7 +1568,7 @@ public partial class PeShopDbContext : DbContext
         modelBuilder.Entity<User>()
             .Property(e => e.Status)
             .HasConversion<int>();
-        
+
         modelBuilder.Entity<User>()
             .Property(e => e.Gender)
             .HasConversion<int>();

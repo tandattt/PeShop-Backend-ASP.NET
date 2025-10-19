@@ -49,6 +49,7 @@ public class ProductService : IProductService
                 Price = v.Price ?? 0,
                 Quantity = (int)(v.Quantity ?? 0),
                 Status = v.Status,
+                StatusText = v.Status?.ToString(),
                 VariantValues = v.VariantValues.Select(vv => new VariantValueForProductDto
                 {
                     // Id = vv.Id.ToString(),
@@ -89,10 +90,14 @@ public class ProductService : IProductService
             Id = p.Id,
             Name = p.Name ?? string.Empty,
             Image = p.ImgMain ?? string.Empty,
+            ReviewCount = p.ReviewCount ?? 0,
+            ReviewPoint = p.ReviewPoint ?? 0,
             Price = p.Price ?? 0,
             BoughtCount = p.BoughtCount ?? 0,
             AddressShop = p.Shop?.NewProviceId ?? string.Empty,
-            Slug = p.Slug ?? string.Empty
+            Slug = p.Slug ?? string.Empty,
+            ShopId = p.Shop?.Id ?? string.Empty,
+            ShopName = p.Shop?.Name ?? string.Empty
         }).ToList();
 
         // Calculate pagination info

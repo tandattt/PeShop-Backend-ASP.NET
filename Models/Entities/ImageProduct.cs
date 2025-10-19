@@ -9,11 +9,11 @@ public partial class ImageProduct
 
     public DateTime? CreatedAt { get; set; }
 
-    public byte[]? CreatedBy { get; set; }
+    public string? CreatedBy { get; set; }
 
     public DateTime? UpdatedAt { get; set; }
 
-    public byte[]? UpdatedBy { get; set; }
+    public string? UpdatedBy { get; set; }
 
     public int? SortOrder { get; set; }
 

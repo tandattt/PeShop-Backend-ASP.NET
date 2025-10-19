@@ -54,9 +54,10 @@ public class VoucherRepository : IVoucherRepository
         }
         return null;
     }
-
-    public async Task<Product?> GetProductByIdAsync(string productId)
+    public async Task<List<VoucherShop>> GetVoucherShopsByShopIdAsync(string shopId)
     {
-        return await _context.Products.FirstOrDefaultAsync(p => p.Id == productId);
+        return await _context.VoucherShops
+        .Where(v => v.Status == VoucherStatus.Active && v.ShopId == shopId)
+        .ToListAsync();
     }
 }

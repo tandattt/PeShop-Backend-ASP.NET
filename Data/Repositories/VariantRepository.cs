@@ -33,4 +33,8 @@ public class VariantRepository : IVariantRepository
             })
             .FirstOrDefaultAsync();
     }
+    public async Task<Variant?> GetVariantByIdAsync(string id)
+    {
+        return await _context.Variants.FirstOrDefaultAsync(v => v.Id == int.Parse(id));
+    }
 }

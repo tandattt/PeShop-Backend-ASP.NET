@@ -16,7 +16,16 @@ public class VoucherTypeGroup
     public string? BestVoucherId { get; set; }
 }
 
+public class ShopVoucherGroup
+{
+    public string ShopId { get; set; } = string.Empty;
+    public string ShopName { get; set; } = string.Empty;
+    public List<VoucherEligibilityItem> Vouchers { get; set; } = new List<VoucherEligibilityItem>();
+    public string? BestVoucherId { get; set; }
+}
+
 public class CheckVoucherEligibilityResponse
 {
-    public List<VoucherTypeGroup> VoucherTypes { get; set; } = new List<VoucherTypeGroup>();
+    public VoucherTypeGroup? SystemVouchers { get; set; }
+    public List<ShopVoucherGroup> ShopVouchers { get; set; } = new List<ShopVoucherGroup>();
 }

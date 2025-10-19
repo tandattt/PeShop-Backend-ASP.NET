@@ -9,5 +9,5 @@ public interface IVoucherRepository
     Task<List<VoucherSystem>> GetVoucherSystemsByUserIdAsync( string userId);
     Task<List<VoucherShop>> GetUserVoucherShopsAsync( string userId);
     Task<Variant?> GetVariantByIdAsync(string variantId);
-    Task<Product?> GetProductByIdAsync(string productId);
+    Task<List<VoucherShop>> GetVoucherShopsByShopIdAsync(string shopId);
 }

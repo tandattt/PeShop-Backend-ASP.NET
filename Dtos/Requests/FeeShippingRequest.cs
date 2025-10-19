@@ -1,5 +1,5 @@
 using PeShop.Models.Entities;
-
+using System.ComponentModel.DataAnnotations;
 namespace PeShop.Dtos.Requests;
 
 public class FeeShippingRequest
@@ -17,7 +17,12 @@ public class ListFeeShippingRequest{
 }
 
 public class ProductRequest{
+   [Required(ErrorMessage = "ProductId là bắt buộc")]
     public string ProductId { get; set; } = string.Empty;
-    public string VariantId { get; set; } = string.Empty;
-    public int Quantity { get; set; } = 0;
+    
+    public string? VariantId { get; set; } // null thì lấy giá product
+    
+    [Required(ErrorMessage = "Số lượng là bắt buộc")]
+    [Range(1, int.MaxValue, ErrorMessage = "Số lượng phải lớn hơn 0")]
+    public int Quantity { get; set; }
 }

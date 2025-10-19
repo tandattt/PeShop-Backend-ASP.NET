@@ -54,4 +54,9 @@ public class ShopRepository : IShopRepository
             .Where(s => s.Name != null && s.Name.ToLower().Contains(searchTerm))
             .CountAsync();
     }
+
+    public async Task<Shop?> GetShopByIdAsync(string shopId)
+    {
+        return await _context.Shops.FirstOrDefaultAsync(s => s.Id == shopId);
+    }
 }
