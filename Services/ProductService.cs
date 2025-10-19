@@ -74,16 +74,35 @@ public class ProductService : IProductService
         };
     }
 
-    public async Task<PaginationResponse<ProductDto>> GetProductsWithPaginationAsync(PaginationRequest request)
+    public async Task<PaginationResponse<ProductDto>> GetProductsAsync(GetProductRequest request)
     {
         // Validate pagination parameters
         if (request.Page < 1) request.Page = 1;
         if (request.PageSize < 1) request.PageSize = 20;
-        if (request.PageSize > 100) request.PageSize = 100; // Limit max page size
+        if (request.PageSize > 100) request.PageSize = 100;
 
-        // Get random products using existing logic
-        var products = await GetRandomProductsAsync(request.PageSize);
-        var totalCount = await _productRepository.GetCountProductAsync();
+        // Check if any filter is applied
+        bool hasFilters = !string.IsNullOrEmpty(request.CategoryId) || 
+                         !string.IsNullOrEmpty(request.CategoryChildId) || 
+                         request.MinPrice > 0 || 
+                         request.MaxPrice.HasValue || 
+                         request.ReviewPoint.HasValue;
+
+        List<Product> products;
+        int totalCount;
+
+        if (hasFilters)
+        {
+            // Get filtered products
+            products = await _productRepository.GetListProductByAsync(request);
+            totalCount = await _productRepository.GetCountProductByAsync(request);
+        }
+        else
+        {
+            // Get random products
+            products = await _productRepository.GetListProductAsync(request.Page, request.PageSize);
+            totalCount = await _productRepository.GetCountProductAsync();
+        }
 
         var productDtos = products.Select(p => new ProductDto
         {
@@ -119,13 +138,48 @@ public class ProductService : IProductService
         };
     }
 
-    private async Task<List<Product>> GetRandomProductsAsync(int take)
+    // private async Task<List<Product>> GetRandomProductsAsync(int take)
+    // {
+    //     var count = await _productRepository.GetCountProductAsync();
+    //     count = count < take ? count : count - take;
+    //     var random = new Random();
+    //     var skip = random.Next(0, count);
+    //     var ListProducts = await _productRepository.GetListProductAsync(skip, take);
+    //     return ListProducts;
+    // }
+
+    public async Task<PaginationResponse<ProductDto>> GetProductsByShopAsync(GetProductByShopRequest request)
     {
-        var count = await _productRepository.GetCountProductAsync();
-        count = count < take ? count : count - take;
-        var random = new Random();
-        var skip = random.Next(0, count);
-        var ListProducts = await _productRepository.GetListProductAsync(skip, take);
-        return ListProducts;
+        var products = await _productRepository.GetListProductByShopAsync(request);
+        var totalCount = await _productRepository.GetCountProductByShopAsync(request);
+        var productDtos = products.Select(p => new ProductDto
+        {
+            Id = p.Id,
+            Name = p.Name ?? string.Empty,
+            Image = p.ImgMain ?? string.Empty,
+            ReviewCount = p.ReviewCount ?? 0,
+            ReviewPoint = p.ReviewPoint ?? 0,
+            Price = p.Price ?? 0,
+            BoughtCount = p.BoughtCount ?? 0,
+            AddressShop = p.Shop?.NewProviceId ?? string.Empty,
+            Slug = p.Slug ?? string.Empty,
+            ShopId = p.Shop?.Id ?? string.Empty,
+            ShopName = p.Shop?.Name ?? string.Empty
+        }).ToList();
+        var totalPages = (int)Math.Ceiling((double)totalCount / request.PageSize);
+        var hasNextPage = request.Page < totalPages;
+        var hasPreviousPage = request.Page > 1;
+        return new PaginationResponse<ProductDto>
+        {
+            Data = productDtos,
+            CurrentPage = request.Page,
+            PageSize = request.PageSize,
+            TotalCount = totalCount,
+            TotalPages = totalPages,
+            HasNextPage = hasNextPage,
+            HasPreviousPage = hasPreviousPage,
+            NextPage = hasNextPage ? request.Page + 1 : request.Page,
+            PreviousPage = hasPreviousPage ? request.Page - 1 : request.Page
+        };
     }
 }

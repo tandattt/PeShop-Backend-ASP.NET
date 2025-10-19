@@ -3,6 +3,7 @@ using PeShop.Dtos.Responses;
 namespace PeShop.Services.Interfaces;
 
 public interface IFeeShippingService
-{
-    Task<ListFeeShippingResponse> FeeShippingAsync(ListFeeShippingRequest request);
+    {
+    Task<ListFeeShippingResponse> FeeShippingAsync(ListFeeShippingRequest request, string userId);
+    Task<StatusResponse> ApplyFeeShippingAsync(ApplyFeeShippingRequest request, string userId);
 }

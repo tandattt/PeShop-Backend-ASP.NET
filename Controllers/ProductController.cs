@@ -26,9 +26,18 @@ public class ProductController : ControllerBase
 
     [HttpGet("get-products")]
     [Authorize(Roles = RoleConstants.User)]
-    public async Task<IActionResult> GetProducts([FromQuery] PaginationRequest request)
+    public async Task<IActionResult> GetProducts([FromQuery] GetProductRequest request)
     {
-        var result = await _productService.GetProductsWithPaginationAsync(request);
+        var result = await _productService.GetProductsAsync(request);
         return Ok(result);
     }
+
+    [HttpGet("get-products-by-shop")]
+    [Authorize(Roles = RoleConstants.User)]
+    public async Task<IActionResult> GetProductsByShop([FromQuery] GetProductByShopRequest request)
+    {
+        var result = await _productService.GetProductsByShopAsync(request);
+        return Ok(result);
+    }
+
 }

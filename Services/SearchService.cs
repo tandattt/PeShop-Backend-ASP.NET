@@ -111,7 +111,11 @@ public class SearchService : ISearchService
                 Price = p.Price ?? 0,
                 BoughtCount = p.BoughtCount ?? 0,
                 AddressShop = p.Shop?.NewProviceId ?? string.Empty,
-                Slug = p.Slug ?? string.Empty
+                Slug = p.Slug ?? string.Empty,
+                ReviewCount = p.ReviewCount ?? 0,
+                ReviewPoint = p.ReviewPoint ?? 0,
+                ShopId = p.Shop?.Id ?? string.Empty,
+                ShopName = p.Shop?.Name ?? string.Empty,
             }).ToList(),
             SearchType = "product",
             TotalCount = totalCount,

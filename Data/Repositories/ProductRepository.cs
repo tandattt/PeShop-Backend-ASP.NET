@@ -3,7 +3,7 @@ using PeShop.Models.Entities;
 using Microsoft.EntityFrameworkCore;
 using PeShop.Data.Contexts;
 using PeShop.Dtos.Responses;
-
+using PeShop.Dtos.Requests;
 namespace PeShop.Data.Repositories;
 
 public class ProductRepository : IProductRepository
@@ -120,5 +120,80 @@ public class ProductRepository : IProductRepository
         return await _context.Products
             .Where(p => p.Name != null && p.Name.ToLower().Contains(searchTerm))
             .CountAsync();
+    }
+    public async Task<List<Product>> GetListProductByAsync(GetProductRequest request)
+    {
+        var query = _context.Products.Include(p => p.Shop).AsQueryable();
+
+        // Filter by CategoryId if not null
+        if (!string.IsNullOrEmpty(request.CategoryId))
+        {
+            query = query.Where(p => p.CategoryId == request.CategoryId);
+        }
+
+        // Filter by CategoryChildId if not null
+        if (!string.IsNullOrEmpty(request.CategoryChildId))
+        {
+            query = query.Where(p => p.CategoryChildId == request.CategoryChildId);
+        }
+
+        // Filter by price range
+        query = query.Where(p => p.Price >= request.MinPrice);
+        if (request.MaxPrice.HasValue)
+        {
+            query = query.Where(p => p.Price <= request.MaxPrice.Value);
+        }
+
+        // Filter by review point if not null
+        if (request.ReviewPoint.HasValue)
+        {
+            query = query.Where(p => p.ReviewPoint >= request.ReviewPoint.Value);
+        }
+
+        return await query
+            .Skip((request.Page - 1) * request.PageSize)
+            .Take(request.PageSize)
+            .ToListAsync();
+    }
+    public async Task<int> GetCountProductByAsync(GetProductRequest request)
+    {
+        var query = _context.Products.AsQueryable();
+
+        // Filter by CategoryId if not null
+        if (!string.IsNullOrEmpty(request.CategoryId))
+        {
+            query = query.Where(p => p.CategoryId == request.CategoryId);
+        }
+
+        // Filter by CategoryChildId if not null
+        if (!string.IsNullOrEmpty(request.CategoryChildId))
+        {
+            query = query.Where(p => p.CategoryChildId == request.CategoryChildId);
+        }
+
+        // Filter by price range
+        query = query.Where(p => p.Price >= request.MinPrice);
+        if (request.MaxPrice.HasValue)
+        {
+            query = query.Where(p => p.Price <= request.MaxPrice.Value);
+        }
+
+        // Filter by review point if not null
+        if (request.ReviewPoint.HasValue)
+        {
+            query = query.Where(p => p.ReviewPoint >= request.ReviewPoint.Value);
+        }
+
+        return await query.CountAsync();
+    }
+    public async Task<List<Product>> GetListProductByShopAsync(GetProductByShopRequest request)
+    {
+        var query = _context.Products.Include(p => p.Shop).Where(p => p.ShopId == request.ShopId).AsQueryable();
+        return await query.Skip((request.Page - 1) * request.PageSize).Take(request.PageSize).ToListAsync();
+    }
+    public async Task<int> GetCountProductByShopAsync(GetProductByShopRequest request)
+    {
+        var query = _context.Products.Include(p => p.Shop).Where(p => p.ShopId == request.ShopId).AsQueryable();
+        return await query.CountAsync();
     }
 }

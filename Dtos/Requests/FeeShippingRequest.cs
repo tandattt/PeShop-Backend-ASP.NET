@@ -13,6 +13,9 @@ public class FeeShippingRequest
 }
 
 public class ListFeeShippingRequest{
+    [Required(ErrorMessage = "OrderId là bắt buộc")]
+    public string OrderId { get; set; } = string.Empty;
+    
     public List<FeeShippingRequest> ListFeeShipping { get; set; }
 }
 

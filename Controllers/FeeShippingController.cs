@@ -3,6 +3,8 @@ using PeShop.Services.Interfaces;
 using PeShop.Dtos.Requests;
 using Microsoft.AspNetCore.Authorization;
 using PeShop.Constants;
+using PeShop.Dtos.Responses;
+using System.Security.Claims;
 namespace Controllers;
 
 [ApiController]
@@ -19,7 +21,17 @@ public class FeeShippingController : ControllerBase
     [Authorize(Roles = RoleConstants.User)]
     public async Task<IActionResult> GetFeeShipping([FromBody] ListFeeShippingRequest request)
     {
-        var result = await _feeShippingService.FeeShippingAsync(request);
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "";
+        var result = await _feeShippingService.FeeShippingAsync(request, userId);
+        return Ok(result);
+    }
+
+    [HttpPost("apply-fee-shippingq")]
+    [Authorize(Roles = RoleConstants.User)]
+    public async Task<IActionResult> ApplyFeeShipping([FromBody] ApplyFeeShippingRequest request)
+    {
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "";
+        var result = await _feeShippingService.ApplyFeeShippingAsync(request, userId);
         return Ok(result);
     }
 }
