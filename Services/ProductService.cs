@@ -43,6 +43,16 @@ public class ProductService : IProductService
             Price = product.Price ?? 0,
             ProductId = product.Id,
             ProductName = product.Name ?? string.Empty,
+            Category = new CategoryForProductDto
+            {
+                Id = product.Category?.Id ?? string.Empty,
+                Name = product.Category?.Name ?? string.Empty
+            },
+            CategoryChild = new CategoryChildForProductDto
+            {
+                Id = product.CategoryChild?.Id ?? string.Empty,
+                Name = product.CategoryChild?.Name ?? string.Empty
+            },
             Variants = product.Variants.Select(v => new VariantForProductDto
             {
                 VariantId = v.Id.ToString(),

@@ -28,6 +28,8 @@ public class ProductRepository : IProductRepository
     {
         return await _context.Products
             .Include(p => p.Shop)
+            .Include(p => p.Category)
+            .Include(p => p.CategoryChild)
             .Include(p => p.Variants)
                 .ThenInclude(v => v.VariantValues)
                     .ThenInclude(vv => vv.PropertyValue)
@@ -39,6 +41,8 @@ public class ProductRepository : IProductRepository
     {
         return await _context.Products
             .Include(p => p.Shop)
+            .Include(p => p.Category)
+            .Include(p => p.CategoryChild)
             .Include(p => p.Variants)
             .ThenInclude(v => v.VariantValues)
                     .ThenInclude(vv => vv.PropertyValue)
