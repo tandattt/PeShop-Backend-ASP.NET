@@ -36,7 +36,7 @@ public partial class VoucherShop
 
     public DateTime? StartTime { get; set; }
 
-    public VoucherValueType? Type { get; set; }
+    public VoucherValueType Type { get; set; }
 
     public string? ShopId { get; set; }
 

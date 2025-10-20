@@ -5,5 +5,5 @@ namespace PeShop.Services.Interfaces;
 public interface IFeeShippingService
     {
     Task<ListFeeShippingResponse> FeeShippingAsync(ListFeeShippingRequest request, string userId);
-    Task<StatusResponse> ApplyFeeShippingAsync(ApplyFeeShippingRequest request, string userId);
+    Task<StatusResponse> ApplyFeeShippingAsync(ApplyListFeeShippingRequest request, string userId);
 }

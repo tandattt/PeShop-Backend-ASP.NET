@@ -26,9 +26,9 @@ public class FeeShippingController : ControllerBase
         return Ok(result);
     }
 
-    [HttpPost("apply-fee-shippingq")]
+    [HttpPost("apply-list-fee-shipping")]
     [Authorize(Roles = RoleConstants.User)]
-    public async Task<IActionResult> ApplyFeeShipping([FromBody] ApplyFeeShippingRequest request)
+    public async Task<IActionResult> ApplyListFeeShipping([FromBody] ApplyListFeeShippingRequest request)
     {
         var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "";
         var result = await _feeShippingService.ApplyFeeShippingAsync(request, userId);

@@ -22,4 +22,11 @@ public class OrderController : ControllerBase
         var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         return Ok(await _orderService.CreateVirtualOrder(request,userId));
     }
+    [HttpGet("Calclulate-order-total")]
+    [Authorize(Roles = RoleConstants.User)]
+    public async Task<IActionResult> CalclulateOrderTotal([FromQuery] string orderId)
+    {
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        return Ok(await _orderService.CalclulateOrderTotal(orderId,userId));
+    }
 }

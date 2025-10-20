@@ -61,8 +61,8 @@ public class VoucherService : IVoucherService
                 StartTime = voucherSystem.StartTime ?? DateTime.MinValue,
                 EndTime = voucherSystem.EndTime ?? DateTime.MinValue    ,
                 // Type = VoucherTypeConstant.System,
-                ValueType = voucherSystem.Type ?? null,
-                ValueTypeName = EnumExtensions.ToVietnameseString(voucherSystem.Type) ?? null
+                ValueType = voucherSystem.Type,
+                ValueTypeName = EnumExtensions.ToVietnameseString(voucherSystem.Type)
             });
         }
         voucherResponses.VoucherGroups.Add(new VoucherGroupResponse
@@ -84,8 +84,8 @@ public class VoucherService : IVoucherService
                 StartTime = voucherShop.StartTime ?? DateTime.MinValue,
                 EndTime = voucherShop.EndTime ?? DateTime.MinValue,
                 // Type = VoucherTypeConstant.Shop,
-                ValueType = voucherShop.Type ?? null,
-                ValueTypeName = EnumExtensions.ToVietnameseString(voucherShop.Type) ?? null
+                ValueType = voucherShop.Type,
+                ValueTypeName = EnumExtensions.ToVietnameseString(voucherShop.Type)
             });
         }
         voucherResponses.VoucherGroups.Add(new VoucherGroupResponse
@@ -150,7 +150,7 @@ public class VoucherService : IVoucherService
                 MiniumOrderValue = voucher.MinOrderValue ?? 0,
                 StartTime = voucher.StartTime ?? DateTime.MinValue,
                 EndTime = voucher.EndTime ?? DateTime.MinValue,
-                ValueType = voucher.Type,
+                ValueType = voucher.Type ?? VoucherValueType.Percentage,
                 ValueTypeName = EnumExtensions.ToVietnameseString(voucher.Type)
             };
 
@@ -225,7 +225,15 @@ public class VoucherService : IVoucherService
         {
             throw new BadRequestException("System voucher not found or not eligible");
         }
-
+        var voucherSystem = await _voucherRepository.GetVoucherSystemByIdAsync(request.VoucherId);
+        if (voucherSystem.Type == VoucherValueType.Percentage)
+        {
+            order.VoucherSystemValue = order.OrderTotal * (voucherSystem.DiscountValue ?? 0) > (voucherSystem.MaxdiscountAmount ?? 0) ? (voucherSystem.MaxdiscountAmount ?? 0) : order.OrderTotal * (voucherSystem.DiscountValue ?? 0);
+        }
+        else if (voucherSystem.Type == VoucherValueType.FixedAmount)
+        {
+            order.VoucherSystemValue = voucherSystem.DiscountValue ?? 0;
+        }
         order.VoucherSystemId = request.VoucherId;
         await _redisUtil.SetAsync($"order_{userId}_{request.OrderId}", JsonSerializer.Serialize(order), TimeSpan.FromMinutes(30));
         
@@ -254,6 +262,15 @@ public class VoucherService : IVoucherService
         if (shopVoucherGroup?.Vouchers?.FirstOrDefault(vv => vv.Voucher.Id == request.VoucherId) == null)
         {
             throw new BadRequestException("Shop voucher not found or not eligible for this shop");
+        }
+        var voucherShop = await _voucherRepository.GetVoucherShopByIdAsync(request.VoucherId);
+        if (voucherShop.Type == VoucherValueType.Percentage)
+        {
+            targetShop.VoucherValue = targetShop.Total * (voucherShop.DiscountValue ?? 0) > (voucherShop.MaxdiscountAmount ?? 0) ? (voucherShop.MaxdiscountAmount ?? 0) : targetShop.Total * (voucherShop.DiscountValue ?? 0);
+        }
+        else if (voucherShop.Type == VoucherValueType.FixedAmount)
+        {
+            targetShop.VoucherValue = voucherShop.DiscountValue ?? 0;
         }
 
         // Apply voucher to the specific shop

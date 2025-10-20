@@ -96,8 +96,8 @@ namespace PeShop.Extensions
             {
                 VoucherValueType.Percentage => "Giảm phần trăm",
                 VoucherValueType.FixedAmount => "Giảm tiền",
-                VoucherValueType.FreeShipping => "Miễn phí vận chuyển",
-                _ => null
+                // VoucherValueType.FreeShipping => "Miễn phí vận chuyển",
+                _ => type?.ToString() ?? string.Empty
             };
         }
 

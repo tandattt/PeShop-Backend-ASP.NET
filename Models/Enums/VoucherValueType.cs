@@ -8,17 +8,17 @@ namespace PeShop.Models.Enums
         /// <summary>
         /// Giảm phần trăm
         /// </summary>
-        Percentage = 1,
+        Percentage = 2,
         
         /// <summary>
         /// Giảm tiền
         /// </summary>
-        FixedAmount = 2,
+        FixedAmount = 1,
         
         /// <summary>
         /// Miễn phí vận chuyển
         /// </summary>
-        FreeShipping = 3,
+        // FreeShipping = 3,
     
     }
 }

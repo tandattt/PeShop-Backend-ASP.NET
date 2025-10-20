@@ -11,6 +11,6 @@ public class VoucherDto{
     public decimal MiniumOrderValue { get; set; }
     public DateTime StartTime { get; set; }
     public DateTime EndTime { get; set; }
-    public VoucherValueType? ValueType { get; set; } = null;
-    public string? ValueTypeName { get; set; } = null;
+    public VoucherValueType ValueType { get; set; }
+    public string ValueTypeName { get; set; } = string.Empty;
 }

@@ -87,7 +87,7 @@ public class FeeShippingService : IFeeShippingService
                 {
                     apiResponse.data.ForEach(x =>
                     {
-                        x.total_fee = x.total_fee / 10;
+                        x.total_fee = x.total_fee / 100;
                         x.total_amount = (int)(parcelDto.amount + x.total_fee);
                         x.shopId = item.ShopId;
                     });
@@ -103,30 +103,42 @@ public class FeeShippingService : IFeeShippingService
         await _redisUtil.SetAsync($"fee_shipping_{userId}_{request.OrderId}", JsonSerializer.Serialize(listFeeShippingResponse), TimeSpan.FromMinutes(30));
         return listFeeShippingResponse;
     }
-    public async Task<StatusResponse> ApplyFeeShippingAsync(ApplyFeeShippingRequest request, string userId)
+    public async Task<StatusResponse> ApplyFeeShippingAsync(ApplyListFeeShippingRequest request, string userId)
     {
-        var feeShipping = await _redisUtil.GetAsync<ListFeeShippingResponse>($"fee_shipping_{userId}_{request.OrderId}");
-        if (feeShipping == null)
-        {
-            return new StatusResponse { Status = false, Message = "Không tìm thấy fee shipping" };
-        }
-        var feeShippingResponse = feeShipping.ListFeeShipping.FirstOrDefault(x => x.shopId == request.ShopId);
-        if (feeShippingResponse == null)
-        {
-            return new StatusResponse { Status = false, Message = "Không tìm thấy fee shipping" };
-        }
         var order = await _redisUtil.GetAsync<OrderVirtualDto>($"order_{userId}_{request.OrderId}");
         if (order == null)
         {
             return new StatusResponse { Status = false, Message = "Không tìm thấy đơn hàng" };
         }
-        var targetShop = order.ItemShops.FirstOrDefault(x => x.ShopId == request.ShopId);
-        if (targetShop == null)
+        var feeShipping = await _redisUtil.GetAsync<ListFeeShippingResponse>($"fee_shipping_{userId}_{request.OrderId}");
+        if (feeShipping == null)
         {
-            return new StatusResponse { Status = false, Message = "Không tìm thấy shop trong đơn hàng" };
+            return new StatusResponse { Status = false, Message = "Không tìm thấy fee shipping" };
         }
-        targetShop.ShippingId = feeShippingResponse.id;
-        await _redisUtil.SetAsync($"order_{userId}_{request.OrderId}", JsonSerializer.Serialize(order), TimeSpan.FromMinutes(30));
+        // var targetShopOrder = feeShipping.ListFeeShipping.FirstOrDefault(x => x.shopId == item.ShopId);
+        foreach (var item in request.ListFeeShipping)
+        {
+
+            var feeShippingResponse = feeShipping.ListFeeShipping.FirstOrDefault(x => x.shopId == item.ShopId && x.id == item.ShippingId);
+            if (feeShippingResponse == null)
+            {
+                return new StatusResponse { Status = false, Message = "Không tìm thấy fee shipping" };
+            }
+
+            var targetShop = order.ItemShops.FirstOrDefault(x => x.ShopId == item.ShopId);
+         
+            if (targetShop == null)
+            {
+                return new StatusResponse { Status = false, Message = "Không tìm thấy shop trong đơn hàng" };
+            }
+            //    Console.WriteLine(JsonSerializer.Serialize(feeShippingResponse.id));
+            targetShop.ShippingId = item.ShippingId;
+            targetShop.FeeShipping = feeShippingResponse.total_fee;
+            order.TotalFeeShipping += feeShippingResponse.total_fee;
+//    Console.WriteLine(JsonSerializer.Serialize(targetShop));
+        }
+        
+        await _redisUtil.SetAsync($"order_{userId}_{request.OrderId}", JsonSerializer.Serialize(order));
         return new StatusResponse { Status = true, Message = "Áp dụng fee shipping thành công" };
     }
 }
