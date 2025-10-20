@@ -207,7 +207,7 @@ public class VoucherService : IVoucherService
             shopGroup.BestVoucherId = bestShopVoucher?.Voucher.Id;
             response.ShopVouchers.Add(shopGroup);
         }
-        await _redisUtil.SetAsync($"voucher_eligibility_{userId}_{orderId}", JsonSerializer.Serialize(response), TimeSpan.FromMinutes(30));
+        await _redisUtil.SetAsync($"voucher_eligibility_{userId}_{orderId}", JsonSerializer.Serialize(response));
         return response;
     }
 
@@ -235,7 +235,7 @@ public class VoucherService : IVoucherService
             order.VoucherSystemValue = voucherSystem.DiscountValue ?? 0;
         }
         order.VoucherSystemId = request.VoucherId;
-        await _redisUtil.SetAsync($"order_{userId}_{request.OrderId}", JsonSerializer.Serialize(order), TimeSpan.FromMinutes(30));
+        await _redisUtil.SetAsync($"order_{userId}_{request.OrderId}", JsonSerializer.Serialize(order));
         
         return new StatusResponse { Status = true, Message = "System voucher applied successfully" };
     }
@@ -275,7 +275,7 @@ public class VoucherService : IVoucherService
 
         // Apply voucher to the specific shop
         targetShop.VoucherId = request.VoucherId;
-        await _redisUtil.SetAsync($"order_{userId}_{request.OrderId}", JsonSerializer.Serialize(order), TimeSpan.FromMinutes(30));
+        await _redisUtil.SetAsync($"order_{userId}_{request.OrderId}", JsonSerializer.Serialize(order));
         
         return new StatusResponse { Status = true, Message = "Shop voucher applied successfully" };
     }

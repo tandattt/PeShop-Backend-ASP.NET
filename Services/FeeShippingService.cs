@@ -100,7 +100,7 @@ public class FeeShippingService : IFeeShippingService
                 throw new Exception($"Lỗi gọi API shipping. URL: {url}\nRequest: {requestJson}\nError: {ex.Message}", ex);
             }
         }
-        await _redisUtil.SetAsync($"fee_shipping_{userId}_{request.OrderId}", JsonSerializer.Serialize(listFeeShippingResponse), TimeSpan.FromMinutes(30));
+        await _redisUtil.SetAsync($"fee_shipping_{userId}_{request.OrderId}", JsonSerializer.Serialize(listFeeShippingResponse));
         return listFeeShippingResponse;
     }
     public async Task<StatusResponse> ApplyFeeShippingAsync(ApplyListFeeShippingRequest request, string userId)
