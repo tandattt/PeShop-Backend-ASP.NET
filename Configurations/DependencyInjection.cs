@@ -76,39 +76,20 @@ namespace PeShop.Configurations
 
 
 
-            if (environment.IsProduction())
+
+            // Đăng ký Hangfire
+            services.AddHangfireWithMySql(configuration.GetConnectionString("HangfireConnection"));
+
+            // Đăng ký Redis
+            services.AddSingleton<IConnectionMultiplexer>(provider =>
             {
-
-                // Đăng ký Hangfire
-                services.AddHangfireWithMySql(configuration.GetConnectionString("HangfireConnectionProduction"));
-
-                // Đăng ký Redis
-                services.AddSingleton<IConnectionMultiplexer>(provider =>
-                {
-                    var connectionString = configuration.GetConnectionString("RedisProduct");
-                    return ConnectionMultiplexer.Connect(connectionString);
-                });
-                // Đăng ký AppSetting
-                services.Configure<AppSetting>(configuration.GetSection("AppSettingProduction"));
-                services.AddSingleton<AppSetting>(provider =>
-                    configuration.GetSection("AppSettingProduction").Get<AppSetting>() ?? new AppSetting());
-            }
-            else
-            {
-                // Đăng ký Hangfire
-                services.AddHangfireWithMySql(configuration.GetConnectionString("HangfireConnectionLocal"));
-
-                // Đăng ký Redis
-                services.AddSingleton<IConnectionMultiplexer>(provider =>
-                {
-                    var connectionString = configuration.GetConnectionString("Redis");
-                    return ConnectionMultiplexer.Connect(connectionString);
-                });
-                // Đăng ký AppSetting
-                services.Configure<AppSetting>(configuration.GetSection("AppSetting"));
-                services.AddSingleton<AppSetting>(provider =>
-                    configuration.GetSection("AppSetting").Get<AppSetting>() ?? new AppSetting());
-            }
+                var connectionString = configuration.GetConnectionString("Redis");
+                return ConnectionMultiplexer.Connect(connectionString);
+            });
+            // Đăng ký AppSetting
+            services.Configure<AppSetting>(configuration.GetSection("AppSetting"));
+            services.AddSingleton<AppSetting>(provider =>
+                configuration.GetSection("AppSetting").Get<AppSetting>() ?? new AppSetting());
 
 
             // Đăng ký HttpClient
@@ -128,7 +109,7 @@ namespace PeShop.Configurations
                         .AllowCredentials()); // Cho phép cookie/token
             });
 
-            
+
             return services;
         }
     }
