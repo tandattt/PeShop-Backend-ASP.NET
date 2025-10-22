@@ -200,4 +200,7 @@ public class ProductRepository : IProductRepository
         var query = _context.Products.Include(p => p.Shop).Where(p => p.ShopId == request.ShopId).AsQueryable();
         return await query.CountAsync();
     }
+
+
+    
 }

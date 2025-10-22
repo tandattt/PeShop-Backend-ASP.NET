@@ -29,7 +29,7 @@ public class OrderService : IOrderService
             var itemShops = await _orderHelper.GroupItemsByShopAsync(request.Items);
 
             // Tính tổng giá trị đơn hàng
-            decimal orderTotal = itemShops.Sum(shop => shop.Total);
+            decimal orderTotal = itemShops.Sum(shop => shop.PriceOriginal);
 
             // Tạo đơn hàng ảo
             var order = new OrderVirtualDto
@@ -37,7 +37,7 @@ public class OrderService : IOrderService
                 OrderId = Guid.NewGuid().ToString(),
                 ItemShops = itemShops,
                 OrderTotal = orderTotal,
-                TotalAmount = orderTotal,
+                AmountTotal = orderTotal,
                 UserId = userId ?? string.Empty,
                 CreatedAt = DateTime.UtcNow
             };
@@ -78,20 +78,19 @@ public class OrderService : IOrderService
 
         foreach (var itemShop in order.ItemShops)
         {
+            itemShop.PriceAfterVoucher = itemShop.PriceOriginal - 0;
             if (itemShop.VoucherId == null) continue;
             
             var voucherShop = await _voucherRepository.GetVoucherShopByIdAsync(itemShop.VoucherId);
             if (voucherShop.Type == VoucherValueType.Percentage)
             {
-                decimal discountAmount = itemShop.Total * (voucherShop.DiscountValue ?? 0) > (voucherShop.MaxdiscountAmount ?? 0) ? (voucherShop.MaxdiscountAmount ?? 0) : itemShop.Total * (voucherShop.DiscountValue ?? 0);
-                itemShop.Total = itemShop.Total - discountAmount;
+                decimal discountAmount = itemShop.PriceOriginal * (voucherShop.DiscountValue ?? 0) > (voucherShop.MaxdiscountAmount ?? 0) ? (voucherShop.MaxdiscountAmount ?? 0) : itemShop.PriceOriginal * (voucherShop.DiscountValue ?? 0);
+                itemShop.PriceAfterVoucher = itemShop.PriceOriginal - discountAmount;
             }
             else if (voucherShop.Type == VoucherValueType.FixedAmount)
             {
-                itemShop.Total = itemShop.Total - voucherShop.DiscountValue ?? 0;
+                itemShop.PriceAfterVoucher = itemShop.PriceOriginal - voucherShop.DiscountValue ?? 0;
             }
-            itemShop.Total = itemShop.Total;
-            order.TotalFeeShipping +=   itemShop.FeeShipping; 
         }
 
         if (order.VoucherSystemId != null)
@@ -107,7 +106,7 @@ public class OrderService : IOrderService
                 order.OrderTotal = order.OrderTotal - voucherSystem.DiscountValue ?? 0;
             }
         }
-        order.TotalAmount = order.OrderTotal -  order.TotalFeeShipping;
+        order.AmountTotal = order.OrderTotal +  order.FeeShippingTotal;
         await _redisUtil.SetAsync($"calculated_order_{userId}_{orderId}", JsonSerializer.Serialize(order));
         return new CreateVirtualOrderResponse
         {

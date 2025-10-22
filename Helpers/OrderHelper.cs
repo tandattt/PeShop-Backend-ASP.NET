@@ -86,7 +86,7 @@ public class OrderHelper : IOrderHelper
                 ShopName = shop?.Name ?? "Unknown Shop",
                 ShopLogoUrl = shop?.LogoUrl,
                 Products = shopGroup.Value,
-                Total = shopTotal
+                PriceOriginal = shopTotal
             });
         }
         

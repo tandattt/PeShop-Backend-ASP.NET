@@ -104,7 +104,7 @@ public class VoucherService : IVoucherService
             throw new BadRequestException("Order not found");
         }
         // Calculate order total from items
-        decimal orderTotal = order.ItemShops.Sum(shop => shop.Total);
+        decimal orderTotal = order.ItemShops.Sum(shop => shop.PriceOriginal);
 
         // Get all available vouchers for the user
         var voucherSystems = await _voucherRepository.GetVoucherSystemsByUserIdAsync(userId);
@@ -266,7 +266,7 @@ public class VoucherService : IVoucherService
         var voucherShop = await _voucherRepository.GetVoucherShopByIdAsync(request.VoucherId);
         if (voucherShop.Type == VoucherValueType.Percentage)
         {
-            targetShop.VoucherValue = targetShop.Total * (voucherShop.DiscountValue ?? 0) > (voucherShop.MaxdiscountAmount ?? 0) ? (voucherShop.MaxdiscountAmount ?? 0) : targetShop.Total * (voucherShop.DiscountValue ?? 0);
+            targetShop.VoucherValue = targetShop.PriceOriginal * (voucherShop.DiscountValue ?? 0) > (voucherShop.MaxdiscountAmount ?? 0) ? (voucherShop.MaxdiscountAmount ?? 0) : targetShop.PriceOriginal * (voucherShop.DiscountValue ?? 0);
         }
         else if (voucherShop.Type == VoucherValueType.FixedAmount)
         {
@@ -304,7 +304,7 @@ public class VoucherService : IVoucherService
                 reasons.Add("Shop không tồn tại trong đơn hàng");
                 return (voucher.Id, voucher.Name, voucher.Code, isEligible, reasons, 0, orderTotal);
             }
-            relevantOrderTotal = shop.Total;
+            relevantOrderTotal = shop.PriceOriginal;
         }
         
         if (voucher.MinOrderValue.HasValue && relevantOrderTotal < voucher.MinOrderValue.Value)

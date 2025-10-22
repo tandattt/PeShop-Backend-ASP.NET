@@ -16,4 +16,5 @@ public interface IProductRepository
     Task<int> GetCountProductByAsync(GetProductRequest request);
     Task<List<Product>> GetListProductByShopAsync(GetProductByShopRequest request);
     Task<int> GetCountProductByShopAsync(GetProductByShopRequest request);
+    
 }
