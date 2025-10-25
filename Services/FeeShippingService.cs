@@ -41,9 +41,9 @@ public class FeeShippingService : IFeeShippingService
 
             foreach (var product in item.Product)
             {
-                if (product.VariantId != string.Empty)
+                if (product.VariantId != null)
                 {
-                    var variantResult = await _variantRepository.GetVariantForShippingByIdAsync(int.Parse(product.VariantId));
+                    var variantResult = await _variantRepository.GetVariantForShippingByIdAsync(product.VariantId.Value);
                     var quantity = product.Quantity;
 
                     parcelDto.cod += (variantResult.Price ?? 0) * quantity;
@@ -71,7 +71,7 @@ public class FeeShippingService : IFeeShippingService
                 shipment = new ShipmentDto
                 {
                     address_from = new AddressDto { district = shop.NewWardId, city = shop.NewProviceId },
-                    address_to = new AddressDto { district = item.UserNewWardId, city = item.UserNewProviceId },
+                    address_to = new AddressDto { district = request.UserNewWardId, city = request.UserNewProviceId },
                     parcel = new ParcelDto { cod = parcelDto.cod, amount = parcelDto.amount, width = parcelDto.width, height = parcelDto.height, length = parcelDto.length, weight = parcelDto.weight }
                 }
             };

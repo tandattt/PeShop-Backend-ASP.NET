@@ -5,4 +5,5 @@ public interface IOrderService
 {
     Task<CreateVirtualOrderResponse> CreateVirtualOrder(OrderVirtualRequest request, string userId);
     Task<CreateVirtualOrderResponse> CalclulateOrderTotal(string orderId, string userId);
+    Task<StatusResponse> CreateOrderCODAsync(string orderId, string userId);
 }

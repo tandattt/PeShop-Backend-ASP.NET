@@ -48,7 +48,7 @@ public class UserAddressService : IUserAddressService
 
     public async Task<UserAddressResponse> UpdateUserAddressAsync(string id, UserAddressRequest request, string userId)
     {
-        var existingUserAddress = await _userAddressRepository.GetUserAddressByIdAsync(id);
+        var existingUserAddress = await _userAddressRepository.GetUserAddressByIdAsync(id, userId);
         if (existingUserAddress == null)
         {
             throw new NotFoundException("UserAddress không tồn tại");
@@ -90,7 +90,7 @@ public class UserAddressService : IUserAddressService
 
     public async Task<string> DeleteUserAddressAsync(string id, string userId)
     {
-        var existingUserAddress = await _userAddressRepository.GetUserAddressByIdAsync(id);
+        var existingUserAddress = await _userAddressRepository.GetUserAddressByIdAsync(id, userId);
         if (existingUserAddress == null)
         {
             throw new NotFoundException("UserAddress không tồn tại");

@@ -1,5 +1,9 @@
 using Microsoft.OpenApi.Models;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.OpenApi.Any;
+using Swashbuckle.AspNetCore.SwaggerGen;
+using System.Reflection;
+using Microsoft.AspNetCore.Mvc;
 
 namespace PeShop.Configurations
 {
@@ -34,6 +38,18 @@ namespace PeShop.Configurations
             Array.Empty<string>()
         }
     });
+
+    // Configure file upload support
+    c.MapType<IFormFile>(() => new OpenApiSchema
+    {
+        Type = "string",
+        Format = "binary"
+    });
+
+    // Ignore problematic parameters
+    c.IgnoreObsoleteActions();
+    c.IgnoreObsoleteProperties();
+
     if (environment.IsProduction())
     {
         c.AddServer(new OpenApiServer { Url = "/dotnet-peshop" });

@@ -235,6 +235,7 @@ public class VoucherService : IVoucherService
             order.VoucherSystemValue = voucherSystem.DiscountValue ?? 0;
         }
         order.VoucherSystemId = request.VoucherId;
+        order.VoucherSystemName = voucherSystem.Name;
         await _redisUtil.SetAsync($"order_{userId}_{request.OrderId}", JsonSerializer.Serialize(order));
         
         return new StatusResponse { Status = true, Message = "System voucher applied successfully" };
@@ -275,6 +276,7 @@ public class VoucherService : IVoucherService
 
         // Apply voucher to the specific shop
         targetShop.VoucherId = request.VoucherId;
+        targetShop.VoucherName = voucherShop.Name;
         await _redisUtil.SetAsync($"order_{userId}_{request.OrderId}", JsonSerializer.Serialize(order));
         
         return new StatusResponse { Status = true, Message = "Shop voucher applied successfully" };

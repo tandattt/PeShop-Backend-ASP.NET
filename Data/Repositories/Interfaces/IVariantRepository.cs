@@ -6,4 +6,5 @@ public interface IVariantRepository
 {
     Task<VariantShippingDto?> GetVariantForShippingByIdAsync(int id);
     Task<Variant?> GetVariantByIdAsync(string id);
+    Task<bool> UpdateVariantAsync(Variant variant);
 }

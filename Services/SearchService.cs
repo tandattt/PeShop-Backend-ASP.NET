@@ -5,6 +5,7 @@ using PeShop.Interfaces;
 using PeShop.Setting;
 using System.Text.Json;
 using System.Web;
+using PeShop.Dtos.API;
 using PeShop.Dtos.Shared;
 using PeShop.Data.Repositories.Interfaces;
 using PeShop.Constants;
@@ -172,6 +173,102 @@ public class SearchService : ISearchService
             TotalPages = totalPages,
             HasNextPage = page < totalPages,
             HasPreviousPage = page > 1
+        };
+    }
+    // public async Task<PaginationResponse<ProductDto>> GetSearchByVectorAsync(string keyword, int page, int pageSize)
+    // {
+    //     var url = $"{_appSetting.BaseApiFlask}/find_similar_products";
+    //     var result = await _apiHelper.PostAsync<JsonElement>(url, new { keyword = keyword , page = page, pageSize = pageSize });
+    //     Console.WriteLine(result.GetProperty("Data"));
+    //     var data = result.GetProperty("Data").EnumerateArray().Select(item => new SearchVectorDto
+    //     {
+    //         Id = item.GetProperty("id").GetString() ?? string.Empty
+    //     }).ToList();
+    //     var totalCount = result.GetProperty("TotalCount").GetInt32();
+    //     var products = await _productRepository.GetListProductByVectorAsync(data.Select(item => item.Id).ToList());
+    //     var productDtos = products.Select(p => new ProductDto
+    //     {
+    //         Id = p.Id,
+    //         Name = p.Name ?? string.Empty,
+    //         Image = p.ImgMain ?? string.Empty,
+    //         Price = p.Price ?? 0,
+    //         BoughtCount = p.BoughtCount ?? 0,
+    //         AddressShop = p.Shop?.NewProviceId ?? string.Empty,
+    //         Slug = p.Slug ?? string.Empty,
+    //         ReviewCount = p.ReviewCount ?? 0,
+    //         ReviewPoint = p.ReviewPoint ?? 0,
+    //         ShopId = p.Shop?.Id ?? string.Empty,
+    //         ShopName = p.Shop?.Name ?? string.Empty,
+            
+    //     }).ToList();
+    //     var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
+    //     return new PaginationResponse<ProductDto>
+    //     {
+    //         Data = productDtos,
+    //         TotalCount = totalCount,
+    //         CurrentPage = page,
+    //         PageSize = pageSize,
+    //         TotalPages = totalPages,
+    //         HasNextPage = page < totalPages,
+    //         HasPreviousPage = page > 1,
+    //         NextPage = page < totalPages ? page + 1 : page,
+    //         PreviousPage = page > 1 ? page - 1 : page,
+    //     };
+    // }
+
+    public async Task<PaginationResponse<ProductDto>> GetSearchImageByVectorAsync(IFormFile image, int page = 1, int pageSize = 20)
+    {
+        if (image == null || image.Length == 0)
+        {
+            throw new ArgumentException("Image file is required");
+        }
+
+        // Send image as form data
+        var url = $"{_appSetting.BaseApiFlask}/search_by_image";
+        
+        // Create form data content
+        using var formContent = new MultipartFormDataContent();
+        formContent.Add(new StreamContent(image.OpenReadStream()), "image", image.FileName);
+        formContent.Add(new StringContent(page.ToString()), "page");
+        formContent.Add(new StringContent(pageSize.ToString()), "pageSize");
+        
+        var result = await _apiHelper.PostMultipartFormAsync<JsonElement>(url, formContent);
+        
+        Console.WriteLine(result.GetProperty("Data"));
+        var data = result.GetProperty("Data").EnumerateArray().Select(item => new SearchVectorDto
+        {
+            Id = item.GetProperty("id").GetString() ?? string.Empty
+        }).ToList();
+        
+        var totalCount = result.GetProperty("TotalCount").GetInt32();
+        var products = await _productRepository.GetListProductByVectorAsync(data.Select(item => item.Id).ToList());
+        var productDtos = products.Select(p => new ProductDto
+        {
+            Id = p.Id,
+            Name = p.Name ?? string.Empty,
+            Image = p.ImgMain ?? string.Empty,
+            Price = p.Price ?? 0,
+            BoughtCount = p.BoughtCount ?? 0,
+            AddressShop = p.Shop?.NewProviceId ?? string.Empty,
+            Slug = p.Slug ?? string.Empty,
+            ReviewCount = p.ReviewCount ?? 0,
+            ReviewPoint = p.ReviewPoint ?? 0,
+            ShopId = p.Shop?.Id ?? string.Empty,
+            ShopName = p.Shop?.Name ?? string.Empty,
+        }).ToList();
+        
+        var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
+        return new PaginationResponse<ProductDto>
+        {
+            Data = productDtos,
+            TotalCount = totalCount,
+            CurrentPage = page,
+            PageSize = pageSize,
+            TotalPages = totalPages,
+            HasNextPage = page < totalPages,
+            HasPreviousPage = page > 1,
+            NextPage = page < totalPages ? page + 1 : page,
+            PreviousPage = page > 1 ? page - 1 : page,
         };
     }
 }

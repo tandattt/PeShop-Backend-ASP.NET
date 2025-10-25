@@ -5,14 +5,21 @@ using PeShop.Dtos.Responses;
 using PeShop.Dtos.Requests;
 namespace PeShop.Services;
 using PeShop.Models.Entities;
+using PeShop.Dtos.API;
+using PeShop.Setting;
+using PeShop.Interfaces;
 public class ProductService : IProductService
 {
     private readonly IProductRepository _productRepository;
+    private readonly IApiHelper _apiHelper;
     private readonly IImageProductRepository _imageProductRepository;
-    public ProductService(IProductRepository productRepository, IImageProductRepository imageProductRepository)
+    private readonly AppSetting _appSetting;
+    public ProductService(IProductRepository productRepository, IApiHelper apiHelper, IImageProductRepository imageProductRepository, AppSetting appSetting)
     {
         _productRepository = productRepository;
+        _apiHelper = apiHelper;
         _imageProductRepository = imageProductRepository;
+        _appSetting = appSetting;
     }
     public async Task<ProductDetailResponse> GetProductDetailAsync(string? productId, string? slug)
     {
@@ -26,6 +33,12 @@ public class ProductService : IProductService
         else{
             throw new Exception("Product not found");
         }
+        
+        if (product == null)
+        {
+            throw new Exception("Product not found");
+        }
+        
         var imageProducts = await _imageProductRepository.GetListImageProductByProductIdAsync(product.Id);
         return new ProductDetailResponse
         {
@@ -191,5 +204,38 @@ public class ProductService : IProductService
             NextPage = hasNextPage ? request.Page + 1 : request.Page,
             PreviousPage = hasPreviousPage ? request.Page - 1 : request.Page
         };
+    }
+
+
+    public async Task<RecomemtProductDto> GetRecomemtProductsAsync(string product_id)
+    {
+        var product = await _productRepository.GetProductByIdAsync(product_id);
+        if (product == null)
+        {
+            throw new Exception("Product not found");
+        }
+        var products = await _productRepository.GetListProductByCategoryChildIdAsync(product.CategoryChildId);
+        Console.WriteLine(products.Count);
+        var productDtos = products.Select(p => new ProductDto
+        {
+            Id = p.Id,
+            Name = p.Name ?? string.Empty,
+            Image = p.ImgMain ?? string.Empty,
+            ReviewCount = p.ReviewCount ?? 0,
+            ReviewPoint = p.ReviewPoint ?? 0,
+            Price = p.Price ?? 0,
+            BoughtCount = p.BoughtCount ?? 0,
+            AddressShop = p.Shop?.NewProviceId ?? string.Empty,
+            Slug = p.Slug ?? string.Empty,
+            ShopId = p.Shop?.Id ?? string.Empty,
+            ShopName = p.Shop?.Name ?? string.Empty,
+        }).ToList();
+        var request = new RecomemtProductDto
+        {
+            Products = productDtos
+        };
+        
+        var result = await _apiHelper.PostAsync<RecomemtProductDto>($"{_appSetting.BaseApiFlask}/similar/{product_id}", request);
+        return result ?? new RecomemtProductDto { Products = new List<ProductDto>() };
     }
 }

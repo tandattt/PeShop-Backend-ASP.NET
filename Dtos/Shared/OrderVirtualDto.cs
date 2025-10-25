@@ -6,6 +6,8 @@ public class OrderVirtualDto
     public string OrderId { get; set; } = string.Empty;
     public string? VoucherSystemId { get; set; } = null;
     public decimal VoucherSystemValue {get;set;}
+    public string? VoucherSystemName { get; set; } = null;
+    public string UserFullNewAddress { get; set; } = string.Empty;
     public List<ItemShop> ItemShops { get; set; } = new List<ItemShop>();
     public string UserId { get; set; } = string.Empty;
     public decimal OrderTotal { get; set; }
@@ -28,4 +30,5 @@ public class ItemShop
     public decimal FeeShipping { get; set; } = 0;
     public string? VoucherId { get; set; } = null;
     public decimal VoucherValue {get;set;}
+    public string? VoucherName { get; set; } = null;
 }

@@ -24,10 +24,10 @@ public class OrderHelper : IOrderHelper
         {
             decimal price = 0;
 
-            if (!string.IsNullOrEmpty(item.VariantId))
+            if (item.VariantId != null)
             {
                 // Lấy giá từ variant
-                var variant = await _voucherRepository.GetVariantByIdAsync(item.VariantId);
+                var variant = await _voucherRepository.GetVariantByIdAsync(item.VariantId ?? 0);
                 if (variant != null)
                 {
                     price = variant.Price ?? 0;
@@ -42,7 +42,6 @@ public class OrderHelper : IOrderHelper
                     price = product.Price ?? 0;
                 }
             }
-
             total += price * item.Quantity;
         }
 
@@ -73,8 +72,10 @@ public class OrderHelper : IOrderHelper
             
             foreach (var product in shopGroup.Value)
             {
-                decimal price = await GetProductPriceAsync(product);
-                shopTotal += price * product.Quantity;
+                productDto productDto = await GetProductPriceAsync(product);
+                product.PriceOriginal = productDto.Price * product.Quantity;
+                product.CategoryId = productDto.CategoryId;
+                shopTotal += product.PriceOriginal;
             }
             
             // Lấy thông tin shop
@@ -92,18 +93,22 @@ public class OrderHelper : IOrderHelper
         
         return itemShops;
     }
-    
-    private async Task<decimal> GetProductPriceAsync(OrderRequest item)
+    private class productDto{
+        public decimal Price { get; set; } = 0;
+        public string CategoryId { get; set; } = string.Empty;
+    }
+    private async Task<productDto> GetProductPriceAsync(OrderRequest item)
     {
-        decimal price = 0;
-        
-        if (!string.IsNullOrEmpty(item.VariantId))
+        // decimal price = 0;
+        productDto productDto = new productDto();
+        if (item.VariantId != null)
         {
             // Lấy giá từ variant
-            var variant = await _voucherRepository.GetVariantByIdAsync(item.VariantId);
+            var variant = await _voucherRepository.GetVariantByIdAsync(item.VariantId ?? 0);
             if (variant != null)
             {
-                price = variant.Price ?? 0;
+                productDto.Price = variant.Price ?? 0;
+                productDto.CategoryId = variant.Product.CategoryId ?? string.Empty;
             }
         }
         else
@@ -112,10 +117,11 @@ public class OrderHelper : IOrderHelper
             var product = await _productRepository.GetProductByIdAsync(item.ProductId);
             if (product != null)
             {
-                price = product.Price ?? 0;
+                productDto.Price = product.Price ?? 0;
+                productDto.CategoryId = product.CategoryId ?? string.Empty;
             }
         }
         
-        return price;
+        return productDto;
     }
 }

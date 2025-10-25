@@ -5,7 +5,7 @@ namespace PeShop.Data.Repositories.Interfaces;
 public interface IUserAddressRepository
 {
     Task<UserAddress> CreateUserAddressAsync(UserAddress userAddress);
-    Task<UserAddress?> GetUserAddressByIdAsync(string id);
+    Task<UserAddress?> GetUserAddressByIdAsync(string id, string userId);
     Task<UserAddress> UpdateUserAddressAsync(UserAddress userAddress);
     Task<UserAddress> DeleteUserAddressAsync(string id);
     Task<List<UserAddress>> GetListAddressAsync(string userId);

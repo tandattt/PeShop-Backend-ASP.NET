@@ -46,13 +46,9 @@ public class VoucherRepository : IVoucherRepository
         .ToListAsync();
     }
 
-    public async Task<Variant?> GetVariantByIdAsync(string variantId)
+    public async Task<Variant?> GetVariantByIdAsync(int variantId)
     {
-        if (int.TryParse(variantId, out int id))
-        {
-            return await _context.Variants.FirstOrDefaultAsync(v => v.Id == id);
-        }
-        return null;
+        return await _context.Variants.Include(v => v.Product).FirstOrDefaultAsync(v => v.Id == variantId);
     }
     public async Task<List<VoucherShop>> GetVoucherShopsByShopIdAsync(string shopId)
     {
@@ -60,4 +56,42 @@ public class VoucherRepository : IVoucherRepository
         .Where(v => v.Status == VoucherStatus.Active && v.ShopId == shopId)
         .ToListAsync();
     }
+    public async Task<UserVoucherShop?> GetUserVoucherShopsByVoucherShopIdAsync(string userId, string voucherShopId)
+    {
+        return await _context.UserVoucherShops
+        .FirstOrDefaultAsync(v => v.UserId == userId && v.VoucherShopId == voucherShopId);
+    }
+    public async Task<bool> UpdateUserVoucherShopAsync(UserVoucherShop userVoucherShop)
+    {
+        _context.UserVoucherShops.Update(userVoucherShop);
+        if (await _context.SaveChangesAsync() > 0) return true;
+        else return false;
+    }
+    public async Task<bool> CreateUserVoucherShopAsync(UserVoucherShop userVoucherShop)
+    {
+        _context.UserVoucherShops.Add(userVoucherShop);
+        if (await _context.SaveChangesAsync() > 0) return true;
+        else return false;
+    }
+
+    public async Task<UserVoucherSystem?> GetUserVoucherSystemByVoucherSystemIdAsync(string userId, string voucherSystemId)
+    {
+        return await _context.UserVoucherSystems
+            .FirstOrDefaultAsync(u => u.UserId == userId && u.VoucherSystemId == voucherSystemId);
+    }
+
+    public async Task<bool> UpdateUserVoucherSystemAsync(UserVoucherSystem userVoucherSystem)
+    {
+        _context.UserVoucherSystems.Update(userVoucherSystem);
+        if (await _context.SaveChangesAsync() > 0) return true;
+        else return false;
+    }
+
+    public async Task<bool> CreateUserVoucherSystemAsync(UserVoucherSystem userVoucherSystem)
+    {
+        _context.UserVoucherSystems.Add(userVoucherSystem);
+        if (await _context.SaveChangesAsync() > 0) return true;
+        else return false;
+    }
+
 }

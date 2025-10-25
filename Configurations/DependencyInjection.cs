@@ -26,10 +26,7 @@ namespace PeShop.Configurations
             {
                 options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString), mySqlOptions =>
                 {
-                    mySqlOptions.EnableRetryOnFailure(
-                        maxRetryCount: 3,
-                        maxRetryDelay: TimeSpan.FromSeconds(30),
-                        errorNumbersToAdd: null);
+                    // Disable retry strategy to allow manual transactions
                     mySqlOptions.CommandTimeout(60);
                 });
                 options.EnableSensitiveDataLogging(environment.IsDevelopment());

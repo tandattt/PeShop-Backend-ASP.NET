@@ -16,6 +16,8 @@ public partial class Order
 
     public string? UpdatedBy { get; set; }
 
+    public decimal? DiscountPrice { get; set; }
+    public decimal? ShippingFee { get; set; }
     public string? DeliveryAddress { get; set; }
 
     public DeliveryStatus? DeliveryStatus { get; set; }
@@ -35,6 +37,8 @@ public partial class Order
     public string? UserId { get; set; }
 
     public virtual ICollection<OrderDetail> OrderDetails { get; set; } = new List<OrderDetail>();
+
+    public virtual ICollection<OrderVoucher> OrderVouchers { get; set; } = new List<OrderVoucher>();
 
     public virtual ICollection<Payout> Payouts { get; set; } = new List<Payout>();
 

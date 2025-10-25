@@ -1,5 +1,7 @@
-﻿using System;
+﻿
+using System;
 using System.Collections.Generic;
+using PeShop.Models.Enums;
 
 namespace PeShop.Models.Entities;
 
@@ -15,15 +17,15 @@ public partial class OrderVoucher
 
     public string? UpdatedBy { get; set; }
 
-    public decimal? PriceVoucherShop { get; set; }
+    public OrderVoucherType? Type { get; set; }
 
-    public decimal? PriceVoucherSystem { get; set; }
+    public decimal VoucherPrice { get; set; }
 
-    public string? VoucherShopName { get; set; }
+    public string? VoucherName { get; set; }
 
-    public string? VoucherSystemName { get; set; }
+    public string? OrderId { get; set; }
 
-    public string? OrderDetailId { get; set; }
+    public string? VoucherId { get; set; }
 
-    public virtual OrderDetail? OrderDetail { get; set; }
+    public virtual Order? Order { get; set; }
 }

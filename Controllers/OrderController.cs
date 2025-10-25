@@ -29,4 +29,11 @@ public class OrderController : ControllerBase
         var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         return Ok(await _orderService.CalclulateOrderTotal(orderId,userId));
     }
+    [HttpGet("create-order")]
+    [Authorize(Roles = RoleConstants.User)]
+    public async Task<IActionResult> CreateOrder([FromQuery] string orderId)
+    {
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        return Ok(await _orderService.CreateOrderCODAsync(orderId,userId));
+    }
 }

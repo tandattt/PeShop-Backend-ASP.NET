@@ -7,8 +7,8 @@ public interface IProductRepository
 {
     Task<int> GetCountProductAsync();
     Task<List<Product>> GetListProductAsync(int skip, int take);
-    Task<Product> GetProductByIdAsync(string productId);
-    Task<Product> GetProductBySlugAsync(string slug);
+    Task<Product?> GetProductByIdAsync(string productId);
+    Task<Product?> GetProductBySlugAsync(string slug);
     Task<ProductShippingDto?> GetProductForShippingByIdAsync(string productId);
     Task<List<Product>> SearchProductsAsync(string keyword, int skip = 0, int take = 20);
     Task<int> GetSearchProductsCountAsync(string keyword);
@@ -16,5 +16,7 @@ public interface IProductRepository
     Task<int> GetCountProductByAsync(GetProductRequest request);
     Task<List<Product>> GetListProductByShopAsync(GetProductByShopRequest request);
     Task<int> GetCountProductByShopAsync(GetProductByShopRequest request);
-    
+    Task<List<Product>> GetListProductByCategoryChildIdAsync(string? categoryChildId);
+    Task<List<Product>> GetListProductByVectorAsync(List<string> productIds);
+    Task<bool> UpdateProductAsync(Product product);
 }

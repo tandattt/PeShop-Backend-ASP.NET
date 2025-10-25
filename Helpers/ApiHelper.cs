@@ -177,6 +177,37 @@ namespace PeShop.Helpers
         }
 
         /// <summary>
+        /// Gọi API với multipart form data (cho file upload)
+        /// </summary>
+        public async Task<T?> PostMultipartFormAsync<T>(string url, MultipartFormDataContent formData, Dictionary<string, string>? headers = null)
+        {
+            try
+            {
+                var request = new HttpRequestMessage(HttpMethod.Post, url);
+                
+                if (headers != null)
+                {
+                    foreach (var header in headers)
+                    {
+                        request.Headers.Add(header.Key, header.Value);
+                    }
+                }
+
+                request.Content = formData;
+
+                var response = await _httpClient.SendAsync(request);
+                response.EnsureSuccessStatusCode();
+
+                var content = await response.Content.ReadAsStringAsync();
+                return JsonSerializer.Deserialize<T>(content);
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Lỗi khi gọi POST Multipart Form API: {ex.Message}", ex);
+            }
+        }
+
+        /// <summary>
         /// Lấy raw response để debug
         /// </summary>
         public async Task<string> GetRawResponseAsync(string url, object? data = null, Dictionary<string, string>? headers = null)

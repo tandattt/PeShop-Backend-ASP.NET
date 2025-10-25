@@ -15,7 +15,7 @@ public partial class OrderDetail
 
     public string? UpdatedBy { get; set; }
 
-    public decimal? DiscountPrice { get; set; }
+
 
     public string? Note { get; set; }
 
@@ -23,7 +23,7 @@ public partial class OrderDetail
 
     public uint? Quantity { get; set; }
 
-    public decimal? ShippingFee { get; set; }
+
 
     public string? OrderId { get; set; }
 
@@ -32,8 +32,6 @@ public partial class OrderDetail
     public int? VariantId { get; set; }
 
     public virtual Order? Order { get; set; }
-
-    public virtual ICollection<OrderVoucher> OrderVouchers { get; set; } = new List<OrderVoucher>();
 
     public virtual Product? Product { get; set; }
 

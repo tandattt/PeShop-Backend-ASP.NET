@@ -20,9 +20,9 @@ public class UserAddressRepository : IUserAddressRepository
         return userAddress;
     }
 
-    public async Task<UserAddress?> GetUserAddressByIdAsync(string id)
+    public async Task<UserAddress?> GetUserAddressByIdAsync(string id, string userId)
     {
-        return await _context.UserAddresses.FindAsync(id);
+        return await _context.UserAddresses.FirstOrDefaultAsync(x => x.Id == id && x.UserId == userId);
     }
 
     public async Task<UserAddress> UpdateUserAddressAsync(UserAddress userAddress)

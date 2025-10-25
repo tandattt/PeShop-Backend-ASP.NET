@@ -40,4 +40,12 @@ public class ProductController : ControllerBase
         return Ok(result);
     }
 
+    [HttpGet("get-similar-products")]
+    [Authorize(Roles = RoleConstants.User)]
+    public async Task<IActionResult> GetRecomemtProducts([FromQuery] string product_id)
+    {
+        var result = await _productService.GetRecomemtProductsAsync(product_id);
+        return Ok(result);
+    }
+
 }

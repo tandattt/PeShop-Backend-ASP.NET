@@ -37,4 +37,10 @@ public class VariantRepository : IVariantRepository
     {
         return await _context.Variants.FirstOrDefaultAsync(v => v.Id == int.Parse(id));
     }
+    public async Task<bool> UpdateVariantAsync(Variant variant)
+    {
+        _context.Variants.Update(variant);
+        if (await _context.SaveChangesAsync() > 0) return true;
+        else return false;
+    }
 }

@@ -24,7 +24,7 @@ public class ProductRepository : IProductRepository
             .Take(take)
             .ToListAsync();
     }
-    public async Task<Product> GetProductByIdAsync(string productId)
+    public async Task<Product?> GetProductByIdAsync(string productId)
     {
         return await _context.Products
             .Include(p => p.Shop)
@@ -37,7 +37,7 @@ public class ProductRepository : IProductRepository
             .FirstOrDefaultAsync(p => p.Id == productId);
     }
 
-    public async Task<Product> GetProductBySlugAsync(string slug)
+    public async Task<Product?> GetProductBySlugAsync(string slug)
     {
         return await _context.Products
             .Include(p => p.Shop)
@@ -202,5 +202,23 @@ public class ProductRepository : IProductRepository
     }
 
 
-    
+    public async Task<List<Product>> GetListProductByCategoryChildIdAsync(string? categoryChildId)
+    {
+        if (string.IsNullOrEmpty(categoryChildId))
+        {
+            return new List<Product>();
+        }
+        return await _context.Products.Include(p => p.Shop).Where(p => p.CategoryChildId == categoryChildId).ToListAsync();
+    }
+    public async Task<List<Product>> GetListProductByVectorAsync(List<string> productIds)
+    {
+        return await _context.Products.Include(p => p.Shop).Where(p => productIds.Contains(p.Id)).AsNoTracking().ToListAsync();
+    }
+
+    public async Task<bool> UpdateProductAsync(Product product)
+    {
+        _context.Products.Update(product);
+        if (await _context.SaveChangesAsync() > 0) return true;
+        else return false;
+    }
 }

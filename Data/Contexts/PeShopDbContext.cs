@@ -37,6 +37,8 @@ public partial class PeShopDbContext : DbContext
 
     public virtual DbSet<Payout> Payouts { get; set; }
 
+    public virtual DbSet<PlatformFee> PlatformFees { get; set; }
+
     public virtual DbSet<Product> Products { get; set; }
 
     public virtual DbSet<Promotion> Promotions { get; set; }
@@ -96,7 +98,7 @@ public partial class PeShopDbContext : DbContext
             entity.HasIndex(e => e.TemplateCategoryId, "FKeopegh7t3sx4p8pveldrlr6pm");
 
             entity.Property(e => e.Id)
-                .ValueGeneratedNever()
+                .ValueGeneratedOnAdd()
                 .HasColumnName("id");
             entity.Property(e => e.CreatedAt)
                 .HasMaxLength(6)
@@ -345,6 +347,9 @@ public partial class PeShopDbContext : DbContext
                 .HasMaxLength(255)
                 .HasColumnName("delivery_address");
             entity.Property(e => e.DeliveryStatus).HasColumnName("delivery_status");
+            entity.Property(e => e.DiscountPrice)
+                .HasPrecision(18, 3)
+                .HasColumnName("discount_price");
             entity.Property(e => e.FinalPrice)
                 .HasPrecision(18, 3)
                 .HasColumnName("final_price");
@@ -352,6 +357,9 @@ public partial class PeShopDbContext : DbContext
                 .HasPrecision(18, 3)
                 .HasColumnName("original_price");
             entity.Property(e => e.PaymentMethod).HasColumnName("payment_method");
+            entity.Property(e => e.ShippingFee)
+                .HasPrecision(18, 3)
+                .HasColumnName("shipping_fee");
             entity.Property(e => e.ShopId)
                 .HasMaxLength(36)
                 .HasColumnName("shop_id");
@@ -399,9 +407,6 @@ public partial class PeShopDbContext : DbContext
                 .HasMaxLength(16)
                 .IsFixedLength()
                 .HasColumnName("created_by");
-            entity.Property(e => e.DiscountPrice)
-                .HasPrecision(18, 3)
-                .HasColumnName("discount_price");
             entity.Property(e => e.Note)
                 .HasMaxLength(300)
                 .HasColumnName("note");
@@ -415,9 +420,6 @@ public partial class PeShopDbContext : DbContext
                 .HasMaxLength(36)
                 .HasColumnName("product_id");
             entity.Property(e => e.Quantity).HasColumnName("quantity");
-            entity.Property(e => e.ShippingFee)
-                .HasPrecision(10, 2)
-                .HasColumnName("shipping_fee");
             entity.Property(e => e.UpdatedAt)
                 .HasMaxLength(6)
                 .HasColumnName("updated_at");
@@ -446,44 +448,42 @@ public partial class PeShopDbContext : DbContext
 
             entity.ToTable("order_voucher");
 
-            entity.HasIndex(e => e.OrderDetailId, "FKfkbsbbmmayevbbainsbk30mk0");
+            entity.HasIndex(e => e.OrderId, "fk_order_id");
 
             entity.Property(e => e.Id)
-                .ValueGeneratedNever()
+                .ValueGeneratedOnAdd()
                 .HasColumnName("id");
             entity.Property(e => e.CreatedAt)
                 .HasMaxLength(6)
                 .HasColumnName("created_at");
             entity.Property(e => e.CreatedBy)
-                .HasMaxLength(16)
-                .IsFixedLength()
-                .HasColumnName("created_by");
-            entity.Property(e => e.OrderDetailId)
                 .HasMaxLength(36)
-                .HasColumnName("order_detail_id");
-            entity.Property(e => e.PriceVoucherShop)
-                .HasPrecision(18, 3)
-                .HasColumnName("price_voucher_shop");
-            entity.Property(e => e.PriceVoucherSystem)
-                .HasPrecision(18, 3)
-                .HasColumnName("price_voucher_system");
+                .HasColumnName("created_by");
             entity.Property(e => e.UpdatedAt)
                 .HasMaxLength(6)
                 .HasColumnName("updated_at");
             entity.Property(e => e.UpdatedBy)
-                .HasMaxLength(16)
-                .IsFixedLength()
+                .HasMaxLength(36)
                 .HasColumnName("updated_by");
-            entity.Property(e => e.VoucherShopName)
-                .HasMaxLength(45)
-                .HasColumnName("voucher_shop_name");
-            entity.Property(e => e.VoucherSystemName)
-                .HasMaxLength(45)
-                .HasColumnName("voucher_system_name");
+            entity.Property(e => e.Type)
+                // .HasConversion<int>()
+                .HasColumnName("type");
+            entity.Property(e => e.VoucherPrice)
+                .HasPrecision(10, 2)
+                .HasColumnName("voucher_price");
+            entity.Property(e => e.VoucherName)
+                .HasMaxLength(255)
+                .HasColumnName("voucher_name");
+            entity.Property(e => e.OrderId)
+                .HasMaxLength(36)
+                .HasColumnName("order_id");
+            entity.Property(e => e.VoucherId)
+                .HasMaxLength(36)
+                .HasColumnName("voucher_id");
 
-            entity.HasOne(d => d.OrderDetail).WithMany(p => p.OrderVouchers)
-                .HasForeignKey(d => d.OrderDetailId)
-                .HasConstraintName("FKfkbsbbmmayevbbainsbk30mk0");
+            entity.HasOne(d => d.Order).WithMany(p => p.OrderVouchers)
+                .HasForeignKey(d => d.OrderId)
+                .HasConstraintName("fk_order_id");
         });
 
         modelBuilder.Entity<Payout>(entity =>
@@ -497,7 +497,7 @@ public partial class PeShopDbContext : DbContext
             entity.HasIndex(e => e.ShopId, "FKepoaje1tfo0x60x9u0hysqkgk");
 
             entity.Property(e => e.Id)
-                .ValueGeneratedNever()
+                .ValueGeneratedOnAdd()
                 .HasColumnName("id");
             entity.Property(e => e.CreatedAt)
                 .HasMaxLength(6)
@@ -543,6 +543,42 @@ public partial class PeShopDbContext : DbContext
             entity.HasOne(d => d.Shop).WithMany(p => p.Payouts)
                 .HasForeignKey(d => d.ShopId)
                 .HasConstraintName("FKepoaje1tfo0x60x9u0hysqkgk");
+        });
+
+        modelBuilder.Entity<PlatformFee>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+
+            entity.ToTable("platform_fee");
+
+            entity.HasIndex(e => e.CategoryId, "FK_platform_fee_category");
+
+            entity.Property(e => e.Id)
+                .ValueGeneratedOnAdd()
+                .HasColumnName("id");
+            entity.Property(e => e.CategoryId)
+                .HasMaxLength(36)
+                .HasColumnName("category_id");
+            entity.Property(e => e.Fee)
+                .HasColumnName("fee");
+            entity.Property(e => e.CreatedAt)
+                .HasMaxLength(6)
+                .HasColumnName("created_at");
+            entity.Property(e => e.CreatedBy)
+                .HasMaxLength(36)
+                .HasColumnName("created_by");
+            entity.Property(e => e.UpdatedAt)
+                .HasMaxLength(6)
+                .HasColumnName("updated_at");
+            entity.Property(e => e.UpdatedBy)
+                .HasMaxLength(36)
+                .HasColumnName("updated_by");
+            entity.Property(e => e.IsActive)
+                .HasColumnName("is_active");
+
+            entity.HasOne(d => d.Category).WithMany()
+                .HasForeignKey(d => d.CategoryId)
+                .HasConstraintName("FK_platform_fee_category");
         });
 
         modelBuilder.Entity<Product>(entity =>
@@ -632,7 +668,7 @@ public partial class PeShopDbContext : DbContext
             entity.HasIndex(e => e.ProductId, "FK4sb3w74gm2nqxtoni3ti4yg86");
 
             entity.Property(e => e.Id)
-                .ValueGeneratedNever()
+                .ValueGeneratedOnAdd()
                 .HasColumnName("id");
             entity.Property(e => e.CreatedAt)
                 .HasMaxLength(6)
@@ -1015,7 +1051,7 @@ public partial class PeShopDbContext : DbContext
             entity.HasIndex(e => e.CategoryId, "FKnmndc7f5i6kvin6y9gwmg5io6");
 
             entity.Property(e => e.Id)
-                .ValueGeneratedNever()
+                .ValueGeneratedOnAdd()
                 .HasColumnName("id");
             entity.Property(e => e.CategoryId)
                 .HasMaxLength(36)
@@ -1052,7 +1088,7 @@ public partial class PeShopDbContext : DbContext
             entity.HasIndex(e => e.CategoryChildId, "FK9s20wftp8cbkcprr6yqr8aw76");
 
             entity.Property(e => e.Id)
-                .ValueGeneratedNever()
+                .ValueGeneratedOnAdd()
                 .HasColumnName("id");
             entity.Property(e => e.CategoryChildId)
                 .HasMaxLength(36)
@@ -1321,7 +1357,7 @@ public partial class PeShopDbContext : DbContext
             entity.HasIndex(e => e.ProductId, "FKjjpllnln6hk6hj98uesgxno00");
 
             entity.Property(e => e.Id)
-                .ValueGeneratedNever()
+                .ValueGeneratedOnAdd()
                 .HasColumnName("id");
             entity.Property(e => e.CreatedAt)
                 .HasMaxLength(6)
@@ -1366,7 +1402,7 @@ public partial class PeShopDbContext : DbContext
             entity.HasIndex(e => e.VariantId, "FKrx3kpmrdbxtml5wjxvmwuf1gd");
 
             entity.Property(e => e.Id)
-                .ValueGeneratedNever()
+                .ValueGeneratedOnAdd()
                 .HasColumnName("id");
             entity.Property(e => e.CreatedAt)
                 .HasMaxLength(6)
@@ -1630,6 +1666,10 @@ public partial class PeShopDbContext : DbContext
         modelBuilder.Entity<Variant>()
             .Property(e => e.Status)
             .HasConversion<int>();
+
+        // modelBuilder.Entity<OrderVoucher>()
+        //     .Property(e => e.Type)
+        //     .HasConversion<int>();
     }
 
     partial void OnModelCreatingPartial(ModelBuilder modelBuilder);
