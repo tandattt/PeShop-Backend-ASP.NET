@@ -53,6 +53,7 @@ public class VoucherRepository : IVoucherRepository
     public async Task<List<VoucherShop>> GetVoucherShopsByShopIdAsync(string shopId)
     {
         return await _context.VoucherShops
+        .Include(v => v.UserVoucherShops)
         .Where(v => v.Status == VoucherStatus.Active && v.ShopId == shopId)
         .ToListAsync();
     }

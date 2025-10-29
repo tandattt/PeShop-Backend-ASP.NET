@@ -48,7 +48,7 @@ public class VoucherService : IVoucherService
         var voucherResponses = new VoucherResponse();
         foreach (var voucherSystem in voucherSystems)
         {
-            
+
             voucherSystemDtos.Add(new VoucherDto
             {
                 Id = voucherSystem.Id,
@@ -59,7 +59,7 @@ public class VoucherService : IVoucherService
                 MaxdiscountAmount = voucherSystem.MaxdiscountAmount ?? 0,
                 MiniumOrderValue = voucherSystem.MiniumOrderValue ?? 0,
                 StartTime = voucherSystem.StartTime ?? DateTime.MinValue,
-                EndTime = voucherSystem.EndTime ?? DateTime.MinValue    ,
+                EndTime = voucherSystem.EndTime ?? DateTime.MinValue,
                 // Type = VoucherTypeConstant.System,
                 ValueType = voucherSystem.Type,
                 ValueTypeName = EnumExtensions.ToVietnameseString(voucherSystem.Type)
@@ -93,14 +93,15 @@ public class VoucherService : IVoucherService
             VoucherType = VoucherTypeConstant.Shop,
             Vouchers = voucherShopDtos
         });
-        return voucherResponses; 
+        return voucherResponses;
     }
 
-    public async Task<CheckVoucherEligibilityResponse> CheckVoucherEligibilityAsync(string userId,string orderId)
+    public async Task<CheckVoucherEligibilityResponse> CheckVoucherEligibilityAsync(string userId, string orderId)
     {
         var response = new CheckVoucherEligibilityResponse();
         var order = await _redisUtil.GetAsync<OrderVirtualDto>($"order_{userId}_{orderId}");
-        if (order == null) {
+        if (order == null)
+        {
             throw new BadRequestException("Order not found");
         }
         // Calculate order total from items
@@ -108,14 +109,16 @@ public class VoucherService : IVoucherService
 
         // Get all available vouchers for the user
         var voucherSystems = await _voucherRepository.GetVoucherSystemsByUserIdAsync(userId);
-        
+
         // Get shop vouchers for each shop in the order
         var allVouchers = new List<(string Id, string Name, string Code, decimal? DiscountValue, decimal? MaxDiscountAmount, decimal? MinOrderValue, VoucherValueType? Type, string VoucherType, DateTime? StartTime, DateTime? EndTime, uint? LimitForUser, uint? UsedCount, string ShopId)>();
 
         // Add system vouchers
         foreach (var vs in voucherSystems)
         {
-            var usedCount = vs.UserVoucherSystems?.Where(uv => uv.UserId == userId).Sum(uv => uv.UsedCount) ?? 0;
+            // if(vs.Quantity == 0) continue;
+            var usedCount = vs.UserVoucherSystems?.Where(uv => uv.UserId == userId && uv.VoucherSystemId == vs.Id).Sum(uv => uv.UsedCount) ?? 0;
+            Console.WriteLine($"Vouchers System: {vs.Id}, UsedCount: {usedCount}");
             allVouchers.Add((vs.Id, vs.Name ?? "", vs.Code ?? "", vs.DiscountValue, vs.MaxdiscountAmount, vs.MiniumOrderValue, vs.Type, VoucherTypeConstant.System, vs.StartTime, vs.EndTime, vs.LimitForUser, (uint)usedCount, ""));
         }
 
@@ -125,7 +128,10 @@ public class VoucherService : IVoucherService
             var voucherShops = await _voucherRepository.GetVoucherShopsByShopIdAsync(shop.ShopId);
             foreach (var vs in voucherShops)
             {
-                var usedCount = vs.UserVoucherShops?.Where(uv => uv.UserId == userId).Sum(uv => uv.UsedCount) ?? 0;
+                Console.WriteLine($"Voucher Shop: {vs.UserVoucherShops.Count()}");
+                // if(vs.Quantity == 0) continue;
+                var usedCount = vs.UserVoucherShops?.Where(uv => uv.UserId == userId && uv.VoucherShopId == vs.Id).Sum(uv => uv.UsedCount) ?? 0;
+                Console.WriteLine($"Voucher: {vs.Id}, UsedCount: {usedCount}");
                 allVouchers.Add((vs.Id, vs.Name ?? "", vs.Code ?? "", vs.DiscountValue, vs.MaxdiscountAmount, vs.MinimumOrderValue, vs.Type, VoucherTypeConstant.Shop, vs.StartTime, vs.EndTime, vs.LimitForUser, (uint)usedCount, shop.ShopId));
             }
         }
@@ -138,13 +144,15 @@ public class VoucherService : IVoucherService
 
         foreach (var voucher in allVouchers)
         {
+            // if(voucher.UsedCount >= voucher.LimitForUser) continue;
             var (voucherId, voucherName, voucherCode, isEligible, reasons, discountAmount, finalOrderTotal) = CheckSingleVoucherEligibility(voucher, orderTotal, userId, order.ItemShops);
-            
+
             var voucherDto = new VoucherDto
             {
                 Id = voucherId,
                 Name = voucherName,
                 Code = voucherCode,
+                Quantity = voucher.LimitForUser - voucher.UsedCount ?? 0,
                 DiscountValue = voucher.DiscountValue ?? 0,
                 MaxdiscountAmount = voucher.MaxDiscountAmount ?? 0,
                 MiniumOrderValue = voucher.MinOrderValue ?? 0,
@@ -153,7 +161,7 @@ public class VoucherService : IVoucherService
                 ValueType = voucher.Type ?? VoucherValueType.Percentage,
                 ValueTypeName = EnumExtensions.ToVietnameseString(voucher.Type)
             };
-
+            if (voucherDto.Quantity == 0) continue;
             var voucherItem = new VoucherEligibilityItem
             {
                 IsAllowed = isEligible,
@@ -167,6 +175,7 @@ public class VoucherService : IVoucherService
             }
             else
             {
+                
                 // Group shop vouchers by shop
                 if (!shopVoucherGroups.ContainsKey(voucher.ShopId))
                 {
@@ -186,7 +195,7 @@ public class VoucherService : IVoucherService
         if (systemVouchers.Any())
         {
             var eligibleSystemVouchers = systemVouchers.Where(v => v.IsAllowed).ToList();
-            var bestSystemVoucher = eligibleSystemVouchers.Any() ? 
+            var bestSystemVoucher = eligibleSystemVouchers.Any() ?
                 eligibleSystemVouchers.OrderByDescending(v => v.Voucher.DiscountValue).First() : null;
 
             response.SystemVouchers = new VoucherTypeGroup
@@ -201,12 +210,13 @@ public class VoucherService : IVoucherService
         foreach (var shopGroup in shopVoucherGroups.Values)
         {
             var eligibleShopVouchers = shopGroup.Vouchers.Where(v => v.IsAllowed).ToList();
-            var bestShopVoucher = eligibleShopVouchers.Any() ? 
+            var bestShopVoucher = eligibleShopVouchers.Any() ?
                 eligibleShopVouchers.OrderByDescending(v => v.Voucher.DiscountValue).First() : null;
 
             shopGroup.BestVoucherId = bestShopVoucher?.Voucher.Id;
             response.ShopVouchers.Add(shopGroup);
         }
+
         await _redisUtil.SetAsync($"voucher_eligibility_{userId}_{orderId}", JsonSerializer.Serialize(response));
         return response;
     }
@@ -215,7 +225,7 @@ public class VoucherService : IVoucherService
     {
         var order = await _redisUtil.GetAsync<OrderVirtualDto>($"order_{userId}_{request.OrderId}");
         var vouchers = await _redisUtil.GetAsync<CheckVoucherEligibilityResponse>($"voucher_eligibility_{userId}_{request.OrderId}");
-        
+
         if (order == null)
         {
             throw new BadRequestException("Order not found");
@@ -237,7 +247,7 @@ public class VoucherService : IVoucherService
         order.VoucherSystemId = request.VoucherId;
         order.VoucherSystemName = voucherSystem.Name;
         await _redisUtil.SetAsync($"order_{userId}_{request.OrderId}", JsonSerializer.Serialize(order));
-        
+
         return new StatusResponse { Status = true, Message = "System voucher applied successfully" };
     }
 
@@ -245,7 +255,7 @@ public class VoucherService : IVoucherService
     {
         var order = await _redisUtil.GetAsync<OrderVirtualDto>($"order_{userId}_{request.OrderId}");
         var vouchers = await _redisUtil.GetAsync<CheckVoucherEligibilityResponse>($"voucher_eligibility_{userId}_{request.OrderId}");
-        
+
         if (order == null)
         {
             throw new BadRequestException("Order not found");
@@ -278,7 +288,7 @@ public class VoucherService : IVoucherService
         targetShop.VoucherId = request.VoucherId;
         targetShop.VoucherName = voucherShop.Name;
         await _redisUtil.SetAsync($"order_{userId}_{request.OrderId}", JsonSerializer.Serialize(order));
-        
+
         return new StatusResponse { Status = true, Message = "Shop voucher applied successfully" };
     }
 
@@ -293,7 +303,7 @@ public class VoucherService : IVoucherService
         var reasons = new List<string>();
 
         // Check if voucher is active (status check would be done in repository)
-        
+
         // Check minimum order value
         decimal relevantOrderTotal = orderTotal;
         if (voucher.VoucherType == VoucherTypeConstant.Shop && !string.IsNullOrEmpty(voucher.ShopId))
@@ -308,7 +318,7 @@ public class VoucherService : IVoucherService
             }
             relevantOrderTotal = shop.PriceOriginal;
         }
-        
+
         if (voucher.MinOrderValue.HasValue && relevantOrderTotal < voucher.MinOrderValue.Value)
         {
             isEligible = false;
@@ -346,7 +356,7 @@ public class VoucherService : IVoucherService
         // Calculate discount amount if eligible
         decimal discountAmount = 0;
         decimal finalOrderTotal = orderTotal;
-        
+
         if (isEligible && voucher.DiscountValue.HasValue)
         {
             if (voucher.Type == VoucherValueType.Percentage)

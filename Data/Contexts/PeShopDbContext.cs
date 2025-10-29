@@ -728,6 +728,9 @@ public partial class PeShopDbContext : DbContext
                 .HasColumnName("status");
             entity.Property(e => e.TotalUsageLimit)
                 .HasColumnName("total_usage_limit");
+            entity.Property(e => e.ShopId)
+                .HasMaxLength(36)
+                .HasColumnName("shop_id");
             entity.Property(e => e.UpdatedAt)
                 .HasMaxLength(6)
                 .HasColumnName("updated_at");
@@ -735,6 +738,10 @@ public partial class PeShopDbContext : DbContext
                 .HasMaxLength(16)
                 .IsFixedLength()
                 .HasColumnName("updated_by");
+
+            entity.HasOne(d => d.Shop).WithMany()
+                .HasForeignKey(d => d.ShopId)
+                .OnDelete(DeleteBehavior.SetNull);
         });
 
         modelBuilder.Entity<PromotionGift>(entity =>
@@ -1252,6 +1259,9 @@ public partial class PeShopDbContext : DbContext
                 .HasColumnName("user_id");
             entity.Property(e => e.IsDefault)
                 .HasColumnName("is_default");
+            entity.Property(e => e.RecipientName)
+                .HasMaxLength(60)
+                .HasColumnName("recipient_name");
 
             entity.HasOne(d => d.User).WithMany(p => p.UserAddresses)
                 .HasForeignKey(d => d.UserId)

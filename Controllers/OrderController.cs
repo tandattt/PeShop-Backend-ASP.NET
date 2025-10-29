@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authorization;
 using PeShop.Constants;
 using System.Security.Claims;
 using PeShop.Dtos.Requests;
+using PeShop.Models.Enums;
 namespace PeShop.Controllers;
 
 [ApiController]
@@ -11,9 +12,11 @@ namespace PeShop.Controllers;
 public class OrderController : ControllerBase
 {
     private readonly IOrderService _orderService;
-    public OrderController(IOrderService orderService)
+    private readonly IPaymentService _paymentService;
+    public OrderController(IOrderService orderService, IPaymentService paymentService)
     {
         _orderService = orderService;
+        _paymentService = paymentService;
     }
     [HttpPost("create-virtual-order")]
     [Authorize(Roles = RoleConstants.User)]
@@ -29,11 +32,19 @@ public class OrderController : ControllerBase
         var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         return Ok(await _orderService.CalclulateOrderTotal(orderId,userId));
     }
-    [HttpGet("create-order")]
+    [HttpPost("create-order")]
     [Authorize(Roles = RoleConstants.User)]
-    public async Task<IActionResult> CreateOrder([FromQuery] string orderId)
+    public async Task<IActionResult> CreateOrder([FromBody] CreateOrderRequest request)
     {
         var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        return Ok(await _orderService.CreateOrderCODAsync(orderId,userId));
+        if(request.PaymentMethod == PaymentMethod.COD){
+            return Ok(await _orderService.CreateOrderCODAsync(request.OrderId,userId));
+        }
+        else if(request.PaymentMethod == PaymentMethod.VNPay){
+            return Ok(await _paymentService.CreatePaymentUrlAsync(request.OrderId, HttpContext, userId));
+        }
+        else{
+            return BadRequest("Phương thức thanh toán không hợp lệ");
+        }
     }
 }

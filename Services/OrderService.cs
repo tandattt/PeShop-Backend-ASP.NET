@@ -65,6 +65,7 @@ public class OrderService : IOrderService
                 OrderTotal = orderTotal,
                 AmountTotal = orderTotal,
                 UserId = userId ?? string.Empty,
+                UserFullName = userAddress?.RecipientName ?? string.Empty,
                 CreatedAt = DateTime.UtcNow,
                 UserFullNewAddress = userAddress?.FullNewAddress ?? string.Empty
             };
@@ -144,17 +145,21 @@ public class OrderService : IOrderService
     }
     public async Task<StatusResponse> CreateOrderCODAsync(string orderId, string userId)
     {
-        Console.WriteLine($"[DEBUG] Starting CreateOrderCODAsync for OrderId: {orderId}, UserId: {userId}");
+        // Console.WriteLine($"[DEBUG] Starting CreateOrderCODAsync for OrderId: {orderId}, UserId: {userId}");
 
         var orders = await _redisUtil.GetAsync<OrderVirtualDto>($"calculated_order_{userId}_{orderId}");
         if (orders == null)
         {
-            Console.WriteLine($"[DEBUG] Order not found in Redis for OrderId: {orderId}");
+            // Console.WriteLine($"[DEBUG] Order not found in Redis for OrderId: {orderId}");
             return new StatusResponse { Status = false, Message = "Đơn hàng không tồn tại" };
         }
 
-        Console.WriteLine($"[DEBUG] Order found in Redis, starting transaction");
+        // Console.WriteLine($"[DEBUG] Order found in Redis, starting transaction");
 
+        return await SaveOrderAsync(orders, userId, PaymentStatus.Unpaid, PaymentMethod.COD);
+    }
+    public async Task<StatusResponse<List<string>>> SaveOrderAsync(OrderVirtualDto orders, string userId, PaymentStatus paymentStatus, PaymentMethod paymentMethod)
+    {
         try
         {
             var result = await _transactionRepository.ExecuteInTransactionAsync(async () =>
@@ -180,18 +185,18 @@ public class OrderService : IOrderService
                         UserId = userId,
                         OriginalPrice = itemShop.PriceOriginal,
                         FinalPrice = itemShop.PriceAfterVoucher + itemShop.FeeShipping ?? 0,
-                        PaymentMethod = PaymentMethod.COD,
-                        StatusPayment = PaymentStatus.Unpaid,
+                        PaymentMethod = paymentMethod,
+                        StatusPayment = paymentStatus,
 
                     };
-                    Console.WriteLine($"[DEBUG] Creating Order for ShopId: {itemShop.ShopId}");
+                    // Console.WriteLine($"[DEBUG] Creating Order for ShopId: {itemShop.ShopId}");
                     var orderDB = await _orderRepository.CreateOrderAsync(order);
                     if (orderDB == null)
                     {
-                        Console.WriteLine($"[ERROR] Failed to create Order for ShopId: {itemShop.ShopId}");
+                        // Console.WriteLine($"[ERROR] Failed to create Order for ShopId: {itemShop.ShopId}");
                         throw new Exception("Lỗi khi tạo đơn hàng");
                     }
-                    Console.WriteLine($"[DEBUG] Order created successfully with ID: {orderDB.Id}");
+                    // Console.WriteLine($"[DEBUG] Order created successfully with ID: {orderDB.Id}");
 
                     // Lưu OrderId để tạo OrderVoucherSystem sau này
                     createdOrderIds.Add(orderDB.Id);
@@ -207,28 +212,34 @@ public class OrderService : IOrderService
                             voucher.UsedCount = voucher.UsedCount + 1;
                             await _voucherRepository.UpdateUserVoucherShopAsync(voucher);
                         }
-                        var voucherShop = await _voucherRepository.GetVoucherShopByIdAsync(itemShop.VoucherId);
-                        if (voucherShop == null)
+                        else
                         {
-                            throw new Exception("Voucher không tồn tại");
+                            var voucherShop = await _voucherRepository.GetVoucherShopByIdAsync(itemShop.VoucherId);
+                            if (voucherShop == null)
+                            {
+                                throw new Exception("Voucher không tồn tại");
+                            }
+                            var userVoucherShop = new UserVoucherShop
+                            {
+                                Id = Guid.NewGuid().ToString(),
+                                UserId = userId,
+                                VoucherShopId = itemShop.VoucherId,
+                                ClaimedCount = voucherShop.LimitForUser ?? 0,
+                                UsedCount = 1,
+                                CreatedAt = DateTime.UtcNow,
+                                CreatedBy = userId,
+                                UpdatedAt = DateTime.UtcNow,
+                                UpdatedBy = userId
+                            };
+                            // Console.WriteLine($"[DEBUG] Creating UserVoucherShop for UserId: {userId}, VoucherShopId: {itemShop.VoucherId}");
+                            await _voucherRepository.CreateUserVoucherShopAsync(userVoucherShop);
+                            // Console.WriteLine($"[DEBUG] UserVoucherShop created successfully");
+
+
+
+                            voucherShop.Quantity = voucherShop.Quantity - 1;
+                            await _voucherRepository.UpdateVoucherShopAsync(voucherShop);
                         }
-                        var userVoucherShop = new UserVoucherShop
-                        {
-                            Id = Guid.NewGuid().ToString(),
-                            UserId = userId,
-                            VoucherShopId = itemShop.VoucherId,
-                            ClaimedCount = voucherShop.LimitForUser ?? 0,
-                            UsedCount = 1,
-                            CreatedAt = DateTime.UtcNow,
-                            CreatedBy = userId,
-                            UpdatedAt = DateTime.UtcNow,
-                            UpdatedBy = userId
-                        };
-                        Console.WriteLine($"[DEBUG] Creating UserVoucherShop for UserId: {userId}, VoucherShopId: {itemShop.VoucherId}");
-                        await _voucherRepository.CreateUserVoucherShopAsync(userVoucherShop);
-                        Console.WriteLine($"[DEBUG] UserVoucherShop created successfully");
-
-
                         var orderVoucher = new OrderVoucher
                         {
                             OrderId = orderDB.Id,
@@ -241,17 +252,15 @@ public class OrderService : IOrderService
                             VoucherName = itemShop.VoucherName,
                             Type = OrderVoucherType.Shop,
                         };
-                        Console.WriteLine($"[DEBUG] Creating OrderVoucher for OrderId: {orderDB.Id}, VoucherId: {itemShop.VoucherId}");
+                        // Console.WriteLine($"[DEBUG] Creating OrderVoucher for OrderId: {orderDB.Id}, VoucherId: {itemShop.VoucherId}");
                         var orderVoucherDB = await _orderRepository.CreateOrderVoucherAsync(orderVoucher);
                         if (orderVoucherDB == null)
                         {
-                            Console.WriteLine($"[ERROR] Failed to create OrderVoucher for OrderId: {orderDB.Id}");
+                            // Console.WriteLine($"[ERROR] Failed to create OrderVoucher for OrderId: {orderDB.Id}");
                             throw new Exception("Lỗi khi tạo đơn hàng");
                         }
-                        Console.WriteLine($"[DEBUG] OrderVoucher created successfully with ID: {orderVoucherDB.Id}");
+                        // Console.WriteLine($"[DEBUG] OrderVoucher created successfully with ID: {orderVoucherDB.Id}");
 
-                        voucherShop.Quantity = voucherShop.Quantity - 1;
-                        await _voucherRepository.UpdateVoucherShopAsync(voucherShop);
                     }
 
                     foreach (var product in itemShop.Products)
@@ -270,14 +279,14 @@ public class OrderService : IOrderService
                             UpdatedAt = DateTime.UtcNow,
                             UpdatedBy = userId
                         };
-                        Console.WriteLine($"[DEBUG] Creating OrderDetail for ProductId: {product.ProductId}");
+                        // Console.WriteLine($"[DEBUG] Creating OrderDetail for ProductId: {product.ProductId}");
                         var orderDetailDB = await _orderDetailRepository.CreateOrderDetailAsync(orderDetail);
                         if (orderDetailDB == null)
                         {
-                            Console.WriteLine($"[ERROR] Failed to create OrderDetail for ProductId: {product.ProductId}");
+                            //      Console.WriteLine($"[ERROR] Failed to create OrderDetail for ProductId: {product.ProductId}");
                             throw new Exception("Lỗi khi tạo đơn hàng");
                         }
-                        Console.WriteLine($"[DEBUG] OrderDetail created successfully with ID: {orderDetailDB.Id}");
+                        // Console.WriteLine($"[DEBUG] OrderDetail created successfully with ID: {orderDetailDB.Id}");
                         var platformFee = await _platformFeeRepository.GetPlatformFeeByCategoryIdAsync(product.CategoryId);
                         if (platformFee == null)
                         {
@@ -300,11 +309,7 @@ public class OrderService : IOrderService
                         await _variantRepository.UpdateVariantAsync(variantDb);
                     }
 
-                    // Tạo OrderVoucher cho shop voucher (chỉ một lần cho mỗi shop)
-                    if (itemShop.VoucherId != null)
-                    {
 
-                    }
 
                     // Tạo Payout cho shop này
                     var payout = new Payout
@@ -321,21 +326,21 @@ public class OrderService : IOrderService
                         ShippingFee = itemShop.FeeShipping,
                         Status = PayoutStatus.Pending,
                     };
-                    Console.WriteLine($"[DEBUG] Creating Payout for OrderId: {orderDB.Id}, ShopId: {itemShop.ShopId}");
+                    // Console.WriteLine($"[DEBUG] Creating Payout for OrderId: {orderDB.Id}, ShopId: {itemShop.ShopId}");
                     // Sử dụng Add trực tiếp thay vì CreatePayoutAsync để tránh SaveChangesAsync trong transaction
                     await _payoutRepository.AddPayoutAsync(payout);
-                    Console.WriteLine($"[DEBUG] Payout created successfully");
+                    // Console.WriteLine($"[DEBUG] Payout created successfully");
 
 
 
                 }
-                Console.WriteLine($"[DEBUG] Created {createdOrderIds.Count} Orders");
+                // Console.WriteLine($"[DEBUG] Created {createdOrderIds.Count} Orders");
                 // Tạo OrderVoucherSystem cho TẤT CẢ các Orders (vì VoucherSystem áp dụng cho toàn bộ đơn hàng)
                 if (orders.VoucherSystemId != null)
                 {
                     foreach (var orderId in createdOrderIds)
                     {
-                        Console.WriteLine($"[DEBUG] Creating OrderVoucherSystem for OrderId: {orderId}, VoucherSystemId: {orders.VoucherSystemId}");
+                        // Console.WriteLine($"[DEBUG] Creating OrderVoucherSystem for OrderId: {orderId}, VoucherSystemId: {orders.VoucherSystemId}");
                         var orderVoucherSystem = new OrderVoucher
                         {
                             OrderId = orderId,
@@ -353,14 +358,19 @@ public class OrderService : IOrderService
                         {
                             throw new Exception("Lỗi khi tạo OrderVoucherSystem");
                         }
-                        Console.WriteLine($"[DEBUG] OrderVoucherSystem created successfully with ID: {orderVoucherSystemDB.Id}");
+                        // Console.WriteLine($"[DEBUG] OrderVoucherSystem created successfully with ID: {orderVoucherSystemDB.Id}");
                     }
-                }
+                    // }
 
-                // Xử lý UserVoucherSystem sau khi tạo tất cả orders
-                if (orders.VoucherSystemId != null)
-                {
+                    // // Xử lý UserVoucherSystem sau khi tạo tất cả orders
+                    // if (orders.VoucherSystemId != null)
+                    // {
                     var userVoucherSystem = await _voucherRepository.GetUserVoucherSystemByVoucherSystemIdAsync(userId, orders.VoucherSystemId);
+                    var voucherSystem = await _voucherRepository.GetVoucherSystemByIdAsync(orders.VoucherSystemId);
+                    if (voucherSystem == null)
+                    {
+                        throw new Exception("Voucher system không tồn tại");
+                    }
                     if (userVoucherSystem != null)
                     {
                         if (userVoucherSystem.UsedCount >= userVoucherSystem.ClaimedCount)
@@ -369,39 +379,39 @@ public class OrderService : IOrderService
                         }
                         userVoucherSystem.UsedCount = userVoucherSystem.UsedCount + 1;
                         await _voucherRepository.UpdateUserVoucherSystemAsync(userVoucherSystem);
-                        Console.WriteLine($"[DEBUG] Updated UserVoucherSystem UsedCount to: {userVoucherSystem.UsedCount}");
+                        // Console.WriteLine($"[DEBUG] Updated UserVoucherSystem UsedCount to: {userVoucherSystem.UsedCount}");
                     }
-                    var voucherSystem = await _voucherRepository.GetVoucherSystemByIdAsync(orders.VoucherSystemId);
-                    if (voucherSystem == null)
+                    else
                     {
-                        throw new Exception("Voucher system không tồn tại");
+                        var newUserVoucherSystem = new UserVoucherSystem
+                        {
+                            Id = Guid.NewGuid().ToString(),
+                            UserId = userId,
+                            VoucherSystemId = orders.VoucherSystemId,
+                            ClaimedCount = voucherSystem.LimitForUser ?? 0,
+                            UsedCount = 1,
+                            CreatedAt = DateTime.UtcNow,
+                            CreatedBy = userId,
+                            UpdatedAt = DateTime.UtcNow,
+                            UpdatedBy = userId
+                        };
+                        // Console.WriteLine($"[DEBUG] Creating UserVoucherSystem for UserId: {userId}, VoucherSystemId: {orders.VoucherSystemId}");
+                        await _voucherRepository.CreateUserVoucherSystemAsync(newUserVoucherSystem);
                     }
-                    var newUserVoucherSystem = new UserVoucherSystem
-                    {
-                        Id = Guid.NewGuid().ToString(),
-                        UserId = userId,
-                        VoucherSystemId = orders.VoucherSystemId,
-                        ClaimedCount = voucherSystem.LimitForUser ?? 0,
-                        UsedCount = 1,
-                        CreatedAt = DateTime.UtcNow,
-                        CreatedBy = userId,
-                        UpdatedAt = DateTime.UtcNow,
-                        UpdatedBy = userId
-                    };
-                    Console.WriteLine($"[DEBUG] Creating UserVoucherSystem for UserId: {userId}, VoucherSystemId: {orders.VoucherSystemId}");
-                    await _voucherRepository.CreateUserVoucherSystemAsync(newUserVoucherSystem);
-                    Console.WriteLine($"[DEBUG] UserVoucherSystem created successfully");
+
+
+                    // Console.WriteLine($"[DEBUG] UserVoucherSystem created successfully");
 
                     voucherSystem.Quantity = voucherSystem.Quantity - 1;
                     await _voucherRepository.UpdateVoucherSystemAsync(voucherSystem);
 
                 }
 
-                Console.WriteLine($"[DEBUG] All operations completed successfully");
-                return new StatusResponse { Status = true, Message = "Đơn hàng đã được tạo thành công" };
+                // Console.WriteLine($"[DEBUG] All operations completed successfully");
+                return new StatusResponse<List<string>> { Status = true, Message = "Đơn hàng đã được tạo thành công", Data = createdOrderIds.ToList() };
             });
 
-            Console.WriteLine($"[DEBUG] Transaction completed successfully");
+            // Console.WriteLine($"[DEBUG] Transaction completed successfully");
             return result;
         }
         catch (Exception ex)
@@ -410,7 +420,23 @@ public class OrderService : IOrderService
             Console.WriteLine($"[ERROR] Stack trace: {ex.StackTrace}");
             Console.WriteLine($"[DEBUG] Transaction was automatically rolled back");
 
-            return new StatusResponse { Status = false, Message = $"Lỗi khi tạo đơn hàng: {ex.Message}" };
+            return new StatusResponse<List<string>> { Status = false, Message = $"Lỗi khi tạo đơn hàng: {ex.Message}", Data = null };
         }
+    }
+    public async Task<StatusResponse> UpdatePaymentStatusInOrderAsync(string orderId, string userId, PaymentStatus paymentStatus)
+    {
+        var order = await _orderRepository.GetOrderByIdAsync(orderId, userId);
+        if (order == null)
+        {
+            return new StatusResponse { Status = false, Message = "Đơn hàng không tồn tại" };
+        }
+        order.StatusPayment = paymentStatus;
+        if(paymentStatus == PaymentStatus.Paid || paymentStatus == PaymentStatus.Failed)
+        {
+           await _redisUtil.DeleteAsync($"order_payment_processing_{userId}_{orderId}");
+        }
+        await _orderRepository.UpdatePaymentStatusInOrderAsync(order);
+        
+        return new StatusResponse { Status = true, Message = "Đơn hàng đã được cập nhật trạng thái thành công" };
     }
 }

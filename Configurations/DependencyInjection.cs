@@ -69,7 +69,10 @@ namespace PeShop.Configurations
             services.AddSingleton<SmtpSettings>(provider =>
                 configuration.GetSection("SmtpSettings").Get<SmtpSettings>() ?? new SmtpSettings());
 
-
+            // Đăng ký VnPaySetting
+            services.Configure<VnPaySetting>(configuration.GetSection("VnPay"));
+            services.AddSingleton<VnPaySetting>(provider =>
+                configuration.GetSection("VnPay").Get<VnPaySetting>() ?? new VnPaySetting());
 
 
 

@@ -36,5 +36,7 @@ public partial class UserAddress
 
     public bool IsDefault { get; set; } = false;
 
+    public string? RecipientName { get; set; }
+
     public virtual User? User { get; set; }
 }

@@ -2,7 +2,7 @@ namespace PeShop.Data.Repositories;
 using PeShop.Data.Repositories.Interfaces;
 using PeShop.Models.Entities;
 using PeShop.Data.Contexts;
-
+using Microsoft.EntityFrameworkCore;
 public class OrderRepository : IOrderRepository
 {
     private readonly PeShopDbContext _context;
@@ -22,5 +22,15 @@ public class OrderRepository : IOrderRepository
         await _context.OrderVouchers.AddAsync(orderVoucher);
         await _context.SaveChangesAsync();
         return orderVoucher;
+    }
+    public async Task<Order> GetOrderByIdAsync(string orderId, string userId)
+    {
+        return await _context.Orders.FirstOrDefaultAsync(o => o.Id == orderId && o.UserId == userId);
+    }
+    public async Task<bool> UpdatePaymentStatusInOrderAsync(Order order)
+    {
+        _context.Orders.Update(order);
+        await _context.SaveChangesAsync();
+        return true;
     }
 }

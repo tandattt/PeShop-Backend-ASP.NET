@@ -7,4 +7,6 @@ public interface IOrderRepository
     // Task<Order> UpdateOrderAsync(Order order);
     // Task<Order> DeleteOrderAsync(string orderId);
     Task<OrderVoucher> CreateOrderVoucherAsync(OrderVoucher orderVoucher);
+    Task<Order> GetOrderByIdAsync(string orderId, string userId);
+    Task<bool> UpdatePaymentStatusInOrderAsync(Order order);
 }

@@ -24,9 +24,13 @@ public partial class Promotion
 
     public int? TotalUsageLimit { get; set; }
 
+    public string? ShopId { get; set; }
+
     public virtual ICollection<PromotionGift> PromotionGifts { get; set; } = new List<PromotionGift>();
 
     public virtual ICollection<PromotionRule> PromotionRules { get; set; } = new List<PromotionRule>();
 
     public virtual ICollection<PromotionUsage> PromotionUsages { get; set; } = new List<PromotionUsage>();
+
+    public virtual Shop? Shop { get; set; }
 }

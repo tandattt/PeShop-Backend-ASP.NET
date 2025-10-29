@@ -4,6 +4,7 @@ namespace PeShop.Dtos.Shared;
 public class OrderVirtualDto
 {
     public string OrderId { get; set; } = string.Empty;
+    public string UserFullName { get; set; } = string.Empty;
     public string? VoucherSystemId { get; set; } = null;
     public decimal VoucherSystemValue {get;set;}
     public string? VoucherSystemName { get; set; } = null;

@@ -9,5 +9,6 @@ namespace PeShop.Setting
         public string BaseApiSearchTiki { get; set; } = string.Empty;
         public string BaseApiSearchSystem { get; set; } = string.Empty;
         public string BaseApiFlask { get; set; } = string.Empty;
+        public string BaseUrlFrontend { get; set; } = string.Empty;
     }
 }
