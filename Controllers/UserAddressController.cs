@@ -4,6 +4,7 @@ using PeShop.Constants;
 using PeShop.Dtos.Requests;
 using PeShop.Services.Interfaces;
 using System.Security.Claims;
+using PeShop.Dtos.Responses;
 namespace PeShop.Controllers;
 
 [ApiController]
@@ -18,7 +19,7 @@ public class UserAddressController : ControllerBase
 
     [HttpPost("create-list-address")]
     [Authorize(Roles = RoleConstants.User)]
-    public async Task<IActionResult> Create([FromBody] UserAddressRequest request)
+    public async Task<ActionResult<UserAddressResponse>> Create([FromBody] UserAddressRequest request)
     {
         string user_id =User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "";
         var result = await _userAddressService.CreateUserAddressAsync(request, user_id);
@@ -27,7 +28,7 @@ public class UserAddressController : ControllerBase
 
     [HttpPut("update-address")]
     [Authorize(Roles = RoleConstants.User)]
-    public async Task<IActionResult> Update([FromQuery] string id, [FromBody] UserAddressRequest request)
+    public async Task<ActionResult<UserAddressResponse>> Update([FromQuery] string id, [FromBody] UserAddressRequest request)
     {
         string user_id = User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "";
         var result = await _userAddressService.UpdateUserAddressAsync(id, request, user_id);
@@ -36,7 +37,7 @@ public class UserAddressController : ControllerBase
 
     [HttpDelete("delete-address")]
     [Authorize(Roles = RoleConstants.User)]
-    public async Task<IActionResult> Delete([FromQuery] string id)
+    public async Task<ActionResult<string>> Delete([FromQuery] string id)
     {
         string user_id = User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "";
         var result = await _userAddressService.DeleteUserAddressAsync(id, user_id);
@@ -45,7 +46,7 @@ public class UserAddressController : ControllerBase
 
     [HttpGet("get-list-address")]
     [Authorize(Roles = RoleConstants.User)]
-    public async Task<IActionResult> GetListAddress()
+    public async Task<ActionResult<List<UserAddressResponse>>> GetListAddress()
     {
         string user_id = User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "";
         var result = await _userAddressService.GetListAddressAsync(user_id);
@@ -54,7 +55,7 @@ public class UserAddressController : ControllerBase
 
     [HttpGet("get-address-default")]
     [Authorize(Roles = RoleConstants.User)]
-    public async Task<IActionResult> GetAddressDefault()
+    public async Task<ActionResult<UserAddressResponse>> GetAddressDefault()
     {
         string user_id = User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "";
         var result = await _userAddressService.GetAddressDefaultAsync(user_id);

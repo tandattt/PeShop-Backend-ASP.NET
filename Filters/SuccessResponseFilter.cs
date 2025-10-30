@@ -19,11 +19,18 @@ namespace PeShop.Filters
                 if (objectResult.Value is ResponseApi<object> || objectResult.Value is ErrorDto)
                     return;
 
+                // Nếu Value là null, bỏ qua không wrap
+                if (objectResult.Value == null)
+                    return;
+
                 var wrapped = typeof(ResponseApi<>)
-                    .MakeGenericType(objectResult.Value?.GetType() ?? typeof(object));
+                    .MakeGenericType(objectResult.Value.GetType());
 
                 var response = Activator.CreateInstance(wrapped);
-                var successMethod = wrapped.GetMethod("Success", new[] { objectResult.Value?.GetType() });
+                var successMethod = wrapped.GetMethod("Success", new[] { objectResult.Value.GetType() });
+
+                if (response == null || successMethod == null)
+                    return;
 
                 var responseValue = successMethod.Invoke(response, new[] { objectResult.Value });
 

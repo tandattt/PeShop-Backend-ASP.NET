@@ -118,6 +118,10 @@ public class UserAddressService : IUserAddressService
     public async Task<UserAddressResponse> GetAddressDefaultAsync(string userId)
     {
         var result = await _userAddressRepository.GetAddressDefaultAsync(userId);
+        if (result == null)
+        {
+            throw new BadRequestException("Không tìm thấy địa chỉ mặc định");
+        }
         return _mapper.Map<UserAddressResponse>(result);
     }
 }

@@ -6,7 +6,7 @@ using PeShop.Interfaces;
 using PeShop.Data.Repositories.Interfaces;
 using PeShop.Dtos.Shared;
 using System.Text.Json;
-
+using Hangfire;
 using System.Linq;
 using PeShop.Models.Entities;
 using PeShop.Models.Enums;
@@ -64,7 +64,7 @@ public class OrderService : IOrderService
                 ItemShops = itemShops,
                 OrderTotal = orderTotal,
                 AmountTotal = orderTotal,
-                UserId = userId ?? string.Empty,
+                UserId = userId,
                 UserFullName = userAddress?.RecipientName ?? string.Empty,
                 CreatedAt = DateTime.UtcNow,
                 UserFullNewAddress = userAddress?.FullNewAddress ?? string.Empty
@@ -72,7 +72,8 @@ public class OrderService : IOrderService
 
             // Lưu vào Redis
             bool isSaved = await _redisUtil.SetAsync($"order_{userId}_{order.OrderId}", JsonSerializer.Serialize(order));
-
+            // Xóa đơn hàng sau 60 phút
+            BackgroundJob.Schedule<IJobService>(service => service.DeleteOrderOnRedisAsync(order.OrderId, userId, false), TimeSpan.FromMinutes(60));
             if (isSaved)
             {
                 return new CreateVirtualOrderResponse
@@ -155,8 +156,11 @@ public class OrderService : IOrderService
         }
 
         // Console.WriteLine($"[DEBUG] Order found in Redis, starting transaction");
-
-        return await SaveOrderAsync(orders, userId, PaymentStatus.Unpaid, PaymentMethod.COD);
+        var result = await SaveOrderAsync(orders, userId, PaymentStatus.Unpaid, PaymentMethod.COD);
+        if (result.Status){
+            BackgroundJob.Enqueue<IJobService>(service => service.DeleteOrderOnRedisAsync(orderId, userId, false));
+        }
+        return result;
     }
     public async Task<StatusResponse<List<string>>> SaveOrderAsync(OrderVirtualDto orders, string userId, PaymentStatus paymentStatus, PaymentMethod paymentMethod)
     {
@@ -431,12 +435,12 @@ public class OrderService : IOrderService
             return new StatusResponse { Status = false, Message = "Đơn hàng không tồn tại" };
         }
         order.StatusPayment = paymentStatus;
-        if(paymentStatus == PaymentStatus.Paid || paymentStatus == PaymentStatus.Failed)
+        if (paymentStatus == PaymentStatus.Paid || paymentStatus == PaymentStatus.Failed)
         {
-           await _redisUtil.DeleteAsync($"order_payment_processing_{userId}_{orderId}");
+            await _redisUtil.DeleteAsync($"order_payment_processing_{userId}_{orderId}");
         }
         await _orderRepository.UpdatePaymentStatusInOrderAsync(order);
-        
+
         return new StatusResponse { Status = true, Message = "Đơn hàng đã được cập nhật trạng thái thành công" };
     }
 }

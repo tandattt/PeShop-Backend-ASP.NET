@@ -8,6 +8,7 @@ using PeShop.Models.Enums;
 using System.Text.Json;
 using PeShop.Data.Repositories.Interfaces;
 using System.Diagnostics;
+using Hangfire;
 public class PaymentService : IPaymentService
 {
     private readonly IVnPayUtil _vnPayUtil;
@@ -71,7 +72,7 @@ public class PaymentService : IPaymentService
         var response = await _vnPayUtil.ProcessCallbackAsync(context.Request.Query);
         Console.WriteLine($"[ProcessCallbackAsync] Response từ VnPay: Success={response.Success}");
         Console.WriteLine($"[ProcessCallbackAsync] Response.OrderDescription: {response.OrderDescription}");
-        
+        var orderId = response.OrderDescription.Split("_")[0];
         if (response.Success)
         {
             Console.WriteLine("[ProcessCallbackAsync] VnPay callback thành công, bắt đầu xử lý...");
@@ -79,7 +80,7 @@ public class PaymentService : IPaymentService
             
             Console.WriteLine("[ProcessCallbackAsync] Đang parse OrderDescription...");
             var userId = response.OrderDescription.Split("_")[1];
-            var orderId = response.OrderDescription.Split("_")[0];
+            
             var readOrdIds = response.OrderDescription.Split("_")[2];
             
             Console.WriteLine($"[ProcessCallbackAsync] Parsed - userId: {userId}, orderId: {orderId}, readOrdIds: {readOrdIds}");
@@ -108,6 +109,8 @@ public class PaymentService : IPaymentService
                         
                         Console.WriteLine($"[ProcessCallbackAsync] Order {readOrdId} đã được cập nhật thành công");
                     }
+                    // Xóa đơn hàng sau khi thanh toán thành công
+                    BackgroundJob.Enqueue<IJobService>(service => service.DeleteOrderOnRedisAsync(orderId, userId, true));
                     
                     var successUrl = _appSetting.BaseUrlFrontend + "/Payment/success?orderId=" + orderId;
                     Console.WriteLine($"[ProcessCallbackAsync] Transaction thành công, redirect URL: {successUrl}");
@@ -135,7 +138,7 @@ public class PaymentService : IPaymentService
         {
             Debug.WriteLine("[ProcessCallbackAsync] ===== VNPAY CALLBACK THẤT BẠI =====");
             Debug.WriteLine($"[ProcessCallbackAsync] Response không thành công, throwing exception...");
-            throw new Exception("Thanh toán không thành công");
+            return _appSetting.BaseUrlFrontend + "/Payment/failed?orderId=" + orderId;
         }
     }
 }

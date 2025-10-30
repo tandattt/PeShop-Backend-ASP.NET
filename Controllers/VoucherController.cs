@@ -25,7 +25,7 @@ public class VoucherController : ControllerBase
         return Ok(result);
     }
 
-    [HttpPost("check-eligibility")]
+    [HttpGet("check-eligibility")]
     [Authorize(Roles = RoleConstants.User)]
     public async Task<IActionResult> CheckVoucherEligibility([FromQuery] string orderId)
     {
