@@ -9,6 +9,7 @@ using PeShop.Extensions;
 using PeShop.Interfaces;
 using PeShop.Exceptions;
 using System.Text.Json;
+using Hangfire;
 namespace PeShop.Services;
 
 public class VoucherService : IVoucherService
@@ -23,21 +24,62 @@ public class VoucherService : IVoucherService
         _orderHelper = orderHelper;
         _redisUtil = redisUtil;
     }
-    public async Task<StatusResponse> UpdateStatusVoucherSystemAsync(string voucherSystemId, VoucherStatus status)
+    public async Task<StatusResponse> UpdateStatusVoucherSystemAsync(string voucherSystemId, VoucherStatus status, DateTime? endTime = null)
     {
         var voucherSystem = await _voucherRepository.GetVoucherSystemByIdAsync(voucherSystemId);
         if (voucherSystem == null) return new StatusResponse { Status = false };
-        voucherSystem.Status = status;
-        if (await _voucherRepository.UpdateVoucherSystemAsync(voucherSystem)) return new StatusResponse { Status = true };
+        if (status == VoucherStatus.Expired)
+        {
+            if (endTime.HasValue && voucherSystem.EndTime == endTime && status == VoucherStatus.Active)
+            {
+                voucherSystem.Status = status;
+                await _voucherRepository.UpdateVoucherSystemAsync(voucherSystem);
+            }
+            else if (endTime.HasValue && voucherSystem.EndTime != endTime)
+            {
+                var endDelay = (voucherSystem.EndTime - DateTime.Now).Value.TotalDays;
+                BackgroundJob.Schedule<IVoucherService>(
+                    s => s.UpdateStatusVoucherSystemAsync(voucherSystemId, status, endTime),
+                    TimeSpan.FromDays(endDelay)
+                );
+            }
+            else return new StatusResponse { Status = false };
+        }
+        else if (status == VoucherStatus.Active)
+        {
+            voucherSystem.Status = status;
+            await _voucherRepository.UpdateVoucherSystemAsync(voucherSystem);
+        }
         else return new StatusResponse { Status = false };
+        return new StatusResponse { Status = true };
     }
-    public async Task<StatusResponse> UpdateStatusVoucherShopAsync(string voucherShopId, VoucherStatus status)
+    public async Task<StatusResponse> UpdateStatusVoucherShopAsync(string voucherShopId, VoucherStatus status, DateTime? endTime = null)
     {
         var voucherShop = await _voucherRepository.GetVoucherShopByIdAsync(voucherShopId);
         if (voucherShop == null) return new StatusResponse { Status = false };
-        voucherShop.Status = status;
-        if (await _voucherRepository.UpdateVoucherShopAsync(voucherShop)) return new StatusResponse { Status = true };
+        if (status == VoucherStatus.Expired)
+        {
+            if (endTime.HasValue && voucherShop.EndTime == endTime && status == VoucherStatus.Active)
+            {
+                voucherShop.Status = status;
+                await _voucherRepository.UpdateVoucherShopAsync(voucherShop);
+            }
+            else if (endTime.HasValue && voucherShop.EndTime != endTime)
+            {
+                var endDelay = (voucherShop.EndTime - DateTime.Now).Value.TotalDays;
+                BackgroundJob.Schedule<IVoucherService>(
+                    s => s.UpdateStatusVoucherShopAsync(voucherShopId, status, endTime),
+                    TimeSpan.FromDays(endDelay)
+                );
+            }
+            else if (status == VoucherStatus.Active)
+            {
+                voucherShop.Status = status;
+                await _voucherRepository.UpdateVoucherShopAsync(voucherShop);
+            }
+        }
         else return new StatusResponse { Status = false };
+        return new StatusResponse { Status = true };
     }
     public async Task<VoucherResponse> GetVouchersAsync(string userId)
     {
@@ -175,7 +217,7 @@ public class VoucherService : IVoucherService
             }
             else
             {
-                
+
                 // Group shop vouchers by shop
                 if (!shopVoucherGroups.ContainsKey(voucher.ShopId))
                 {

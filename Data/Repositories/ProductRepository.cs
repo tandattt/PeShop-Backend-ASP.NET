@@ -19,6 +19,7 @@ public class ProductRepository : IProductRepository
     public async Task<List<Product>> GetListProductAsync(int skip, int take)
     {
         return await _context.Products
+            .OrderByDescending(p => p.score)
             .Include(p => p.Shop)
             .Skip(skip)
             .Take(take)
@@ -155,6 +156,7 @@ public class ProductRepository : IProductRepository
         }
 
         return await query
+            .OrderByDescending(p => p.score)
             .Skip((request.Page - 1) * request.PageSize)
             .Take(request.PageSize)
             .ToListAsync();

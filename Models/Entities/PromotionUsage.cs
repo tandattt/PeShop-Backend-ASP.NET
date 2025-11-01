@@ -14,17 +14,15 @@ public partial class PromotionUsage
 
     public int? GiftUsedQuantity { get; set; }
 
-    public int? UsedQuantity { get; set; }
-
     public DateTime? UsedAt { get; set; }
 
-    public string? OrderDetailId { get; set; }
+    public string? OrderId { get; set; }
 
     public string? PromotionRuleId { get; set; }
 
     public string? PromotionId { get; set; }
 
-    public virtual OrderDetail? OrderDetail { get; set; }
+    public virtual Order? Order { get; set; }
 
     public virtual Promotion? Promotion { get; set; }
 

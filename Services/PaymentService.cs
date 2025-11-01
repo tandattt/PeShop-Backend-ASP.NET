@@ -42,11 +42,11 @@ public class PaymentService : IPaymentService
 
             return orderResponse.Message;
         }
-        
+
         var readOrdIds = orderResponse.Data != null ? string.Join(",", orderResponse.Data) : string.Empty;
         Debug.WriteLine($"[CreatePaymentUrlAsync] OrderResponse.Data Count: {orderResponse.Data?.Count ?? 0}");
         Debug.WriteLine($"[CreatePaymentUrlAsync] ReadOrdIds: {readOrdIds}");
-        
+
         var paymentUrl = await _vnPayUtil.CreatePaymentUrlAsync(new PaymentInformationDto
         {
             Amount = order.AmountTotal,
@@ -62,7 +62,7 @@ public class PaymentService : IPaymentService
         Console.WriteLine("[ProcessCallbackAsync] ===== BẮT ĐẦU XỬ LÝ CALLBACK =====");
         Console.WriteLine($"[ProcessCallbackAsync] QueryString: {context.Request.QueryString}");
         Console.WriteLine($"[ProcessCallbackAsync] Query Parameters Count: {context.Request.Query.Count}");
-        
+
         foreach (var queryParam in context.Request.Query)
         {
             Console.WriteLine($"[ProcessCallbackAsync] Query Param - {queryParam.Key}: {queryParam.Value}");
@@ -73,50 +73,52 @@ public class PaymentService : IPaymentService
         Console.WriteLine($"[ProcessCallbackAsync] Response từ VnPay: Success={response.Success}");
         Console.WriteLine($"[ProcessCallbackAsync] Response.OrderDescription: {response.OrderDescription}");
         var orderId = response.OrderDescription.Split("_")[0];
+        var userId = response.OrderDescription.Split("_")[1];
+
+        var readOrdIds = response.OrderDescription.Split("_")[2];
+
+        Console.WriteLine($"[ProcessCallbackAsync] Parsed - userId: {userId}, orderId: {orderId}, readOrdIds: {readOrdIds}");
         if (response.Success)
         {
             Console.WriteLine("[ProcessCallbackAsync] VnPay callback thành công, bắt đầu xử lý...");
             Console.WriteLine("response.OrderDescription: " + response.OrderDescription);
-            
+
             Console.WriteLine("[ProcessCallbackAsync] Đang parse OrderDescription...");
-            var userId = response.OrderDescription.Split("_")[1];
-            
-            var readOrdIds = response.OrderDescription.Split("_")[2];
-            
-            Console.WriteLine($"[ProcessCallbackAsync] Parsed - userId: {userId}, orderId: {orderId}, readOrdIds: {readOrdIds}");
-            
+
+
             // var order = await _redisUtil.GetAsync<OrderVirtualDto>($"calculated_order_{userId}_{orderId}");
-            try 
-            { 
+            try
+            {
                 Console.WriteLine("[ProcessCallbackAsync] Bắt đầu transaction...");
-                var result = await _transactionRepository.ExecuteInTransactionAsync(async () => {
+                var result = await _transactionRepository.ExecuteInTransactionAsync(async () =>
+                {
                     Console.WriteLine($"[ProcessCallbackAsync] Trong transaction, đang xử lý {readOrdIds.Split(",").Length} order(s)...");
-                    
+
                     var orderIds = readOrdIds.Split(",");
                     for (int i = 0; i < orderIds.Length; i++)
                     {
                         var readOrdId = orderIds[i];
                         Console.WriteLine($"[ProcessCallbackAsync] Xử lý order {i + 1}/{orderIds.Length}: OrderId={readOrdId}");
-                        
+
                         var orderResponse = await _orderService.UpdatePaymentStatusInOrderAsync(readOrdId, userId, PaymentStatus.Paid);
                         Console.WriteLine($"[ProcessCallbackAsync] Order {readOrdId} - Status: {orderResponse.Status}, Message: {orderResponse.Message}");
-                        
+
                         if (!orderResponse.Status)
                         {
                             Console.WriteLine($"[ProcessCallbackAsync] ERROR: Không thể cập nhật trạng thái thanh toán cho order {readOrdId}");
                             throw new Exception("Lỗi khi cập nhật trạng thái thanh toán");
                         }
-                        
+
                         Console.WriteLine($"[ProcessCallbackAsync] Order {readOrdId} đã được cập nhật thành công");
                     }
                     // Xóa đơn hàng sau khi thanh toán thành công
                     BackgroundJob.Enqueue<IJobService>(service => service.DeleteOrderOnRedisAsync(orderId, userId, true));
-                    
+
                     var successUrl = _appSetting.BaseUrlFrontend + "/Payment/success?orderId=" + orderId;
                     Console.WriteLine($"[ProcessCallbackAsync] Transaction thành công, redirect URL: {successUrl}");
                     return await Task.FromResult(successUrl);
                 });
-                
+
                 Console.WriteLine("[ProcessCallbackAsync] Transaction hoàn thành thành công");
                 Console.WriteLine($"[ProcessCallbackAsync] ===== KẾT THÚC XỬ LÝ CALLBACK THÀNH CÔNG =====");
                 return result;

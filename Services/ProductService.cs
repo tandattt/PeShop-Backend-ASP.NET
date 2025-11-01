@@ -14,12 +14,14 @@ public class ProductService : IProductService
     private readonly IApiHelper _apiHelper;
     private readonly IImageProductRepository _imageProductRepository;
     private readonly AppSetting _appSetting;
-    public ProductService(IProductRepository productRepository, IApiHelper apiHelper, IImageProductRepository imageProductRepository, AppSetting appSetting)
+    private readonly IPromotionRepository _promotionRepository;
+    public ProductService(IProductRepository productRepository, IApiHelper apiHelper, IImageProductRepository imageProductRepository, AppSetting appSetting, IPromotionRepository promotionRepository)
     {
         _productRepository = productRepository;
         _apiHelper = apiHelper;
         _imageProductRepository = imageProductRepository;
         _appSetting = appSetting;
+        _promotionRepository = promotionRepository;
     }
     public async Task<ProductDetailResponse> GetProductDetailAsync(string? productId, string? slug)
     {
@@ -103,7 +105,7 @@ public class ProductService : IProductService
         if (request.Page < 1) request.Page = 1;
         if (request.PageSize < 1) request.PageSize = 20;
         if (request.PageSize > 100) request.PageSize = 100;
-
+        
         // Check if any filter is applied
         bool hasFilters = !string.IsNullOrEmpty(request.CategoryId) || 
                          !string.IsNullOrEmpty(request.CategoryChildId) || 
@@ -139,9 +141,13 @@ public class ProductService : IProductService
             AddressShop = p.Shop?.NewProviceId ?? string.Empty,
             Slug = p.Slug ?? string.Empty,
             ShopId = p.Shop?.Id ?? string.Empty,
-            ShopName = p.Shop?.Name ?? string.Empty
+            ShopName = p.Shop?.Name ?? string.Empty,
+            HasPromotion = null
         }).ToList();
-
+        foreach (var productDto in productDtos)
+        {
+            productDto.HasPromotion = await _promotionRepository.HasPromotionAsync(productDto.Id);
+        }
         // Calculate pagination info
         var totalPages = (int)Math.Ceiling((double)totalCount / request.PageSize);
         var hasNextPage = request.Page < totalPages;

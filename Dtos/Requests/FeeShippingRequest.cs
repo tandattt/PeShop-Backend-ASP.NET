@@ -11,10 +11,11 @@ public class FeeShippingRequest
 }
 
 public class ListFeeShippingRequest{
+    
+     public string UserOldFullAddress { get; set; }
+    public string UserOldProviceId { get; set; }
+    public string UserOldWardId { get; set; }
     [Required(ErrorMessage = "OrderId là bắt buộc")]
-     public string UserNewFullAddress { get; set; }
-    public string UserNewProviceId { get; set; }
-    public string UserNewWardId { get; set; }
     public string OrderId { get; set; } = string.Empty;
     
     public List<FeeShippingRequest> ListFeeShipping { get; set; }

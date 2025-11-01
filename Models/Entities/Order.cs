@@ -42,6 +42,8 @@ public partial class Order
 
     public virtual ICollection<Payout> Payouts { get; set; } = new List<Payout>();
 
+    public virtual ICollection<PromotionUsage> PromotionUsages { get; set; } = new List<PromotionUsage>();
+
     public virtual Shop? Shop { get; set; }
 
     public virtual User? User { get; set; }

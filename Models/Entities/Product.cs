@@ -43,6 +43,7 @@ public partial class Product
     public uint? Weight { get; set; }
 
     public uint? Width { get; set; }
+    public float? score { get; set; }
 
     public string? CategoryChildId { get; set; }
 

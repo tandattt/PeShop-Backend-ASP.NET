@@ -35,7 +35,5 @@ public partial class OrderDetail
 
     public virtual Product? Product { get; set; }
 
-    public virtual ICollection<PromotionUsage> PromotionUsages { get; set; } = new List<PromotionUsage>();
-
     public virtual Variant? Variant { get; set; }
 }

@@ -37,6 +37,7 @@ public class FeeShippingService : IFeeShippingService
         foreach (var item in request.ListFeeShipping)
         {
             var shop = await _shopRepository.GetAddressShopById(item.ShopId);
+            Console.WriteLine(JsonSerializer.Serialize(shop));
             var parcelDto = new ParcelDto { cod = 0, amount = 0, width = 0, height = 0, length = 0, weight = 0 };
 
             foreach (var product in item.Product)
@@ -70,8 +71,8 @@ public class FeeShippingService : IFeeShippingService
             {
                 shipment = new ShipmentDto
                 {
-                    address_from = new AddressDto { district = shop.NewWardId, city = shop.NewProviceId },
-                    address_to = new AddressDto { district = request.UserNewWardId, city = request.UserNewProviceId },
+                    address_from = new AddressDto { district = shop.OldDistrictId, city = shop.OldProviceId },
+                    address_to = new AddressDto { district = request.UserOldWardId, city = request.UserOldProviceId },
                     parcel = new ParcelDto { cod = parcelDto.cod, amount = parcelDto.amount, width = parcelDto.width, height = parcelDto.height, length = parcelDto.length, weight = parcelDto.weight }
                 }
             };
@@ -87,7 +88,7 @@ public class FeeShippingService : IFeeShippingService
                 {
                     apiResponse.data.ForEach(x =>
                     {
-                        x.total_fee = x.total_fee / 100;
+                        x.total_fee = x.total_fee / 10;
                         x.total_amount = (int)(parcelDto.amount + x.total_fee);
                         x.shopId = item.ShopId;
                     });

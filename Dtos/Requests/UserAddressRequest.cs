@@ -3,15 +3,12 @@ namespace PeShop.Dtos.Requests;
 
 public class UserAddressRequest
 {
-    [Required(ErrorMessage = "FullNewAddress là bắt buộc")]
     public string FullNewAddress { get; set; } = string.Empty;
     [Required(ErrorMessage = "FullOldAddress là bắt buộc")]
     public string FullOldAddress { get; set; } = string.Empty;  
     [Required(ErrorMessage = "Phone là bắt buộc")]
     public string Phone { get; set; } = string.Empty;
-    [Required(ErrorMessage = "NewProviceId là bắt buộc")]
     public string NewProviceId { get; set; } = string.Empty;
-    [Required(ErrorMessage = "NewWardId là bắt buộc")]
     public string NewWardId { get; set; } = string.Empty;
     [Required(ErrorMessage = "OldDistrictId là bắt buộc")]
     public string OldDistrictId { get; set; } = string.Empty;

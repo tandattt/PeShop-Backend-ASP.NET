@@ -4,6 +4,7 @@ using PeShop.Dtos.Job;
 using PeShop.Setting;
 using PeShop.Constants;
 using PeShop.Services.Interfaces;
+using PeShop.Exceptions;
 
 namespace PeShop.Controllers
 {
@@ -47,6 +48,20 @@ namespace PeShop.Controllers
             }
             return BadRequest("VoucherSystemId or VoucherShopId is required");
         }
-
+        [HttpPost("set-job")]
+        public async Task<IActionResult> SetJobAsync([FromBody] JobDto dto)
+        {
+            if (!Request.Headers.TryGetValue("Authorization", out var authHeader))
+            {
+                throw new UnauthorizedException("Missing Authorization header");
+            }
+            var token = authHeader.ToString().Replace("Bearer ", "");
+            if (token != _appSetting.ApiKeySystem)
+            {
+                throw new ForBidenException("Invalid API key");
+            }
+            await _jobService.SetJobAsync(dto);
+            return Ok(new { message = "Job set successfully" });
+        }
     }
 }

@@ -5,16 +5,22 @@ using PeShop.Constants;
 using PeShop.Dtos.Responses;
 using PeShop.Interfaces;
 using PeShop.Dtos.Shared;
+using PeShop.Dtos.Job;
+using PeShop.Setting;
 namespace PeShop.Services;
 
 public class JobService : IJobService
 {
     private readonly IVoucherService _voucherService;
     private readonly IRedisUtil _redisUtil;
-    public JobService(IVoucherService voucherService, IRedisUtil redisUtil)
+    private readonly AppSetting _appSetting;
+    private readonly IApiHelper _apiHelper;
+    public JobService(IVoucherService voucherService, IRedisUtil redisUtil, AppSetting appSetting, IApiHelper apiHelper)
     {
         _voucherService = voucherService;
         _redisUtil = redisUtil;
+        _appSetting = appSetting;
+        _apiHelper = apiHelper;
     }
 
     public async Task SetExpireVoucherAsync(string voucherId, DateTime startTime, DateTime endTime, string voucherType)
@@ -29,14 +35,14 @@ public class JobService : IJobService
             if (voucherType == VoucherTypeConstant.System)
             {
                 BackgroundJob.Schedule<IVoucherService>(
-                    s => s.UpdateStatusVoucherSystemAsync(voucherId, VoucherStatus.Active),
+                    s => s.UpdateStatusVoucherSystemAsync(voucherId, VoucherStatus.Active, null),
                     startDelay
                 );
             }
             else if (voucherType == VoucherTypeConstant.Shop)
             {
                 BackgroundJob.Schedule<IVoucherService>(
-                    s => s.UpdateStatusVoucherShopAsync(voucherId, VoucherStatus.Active),
+                    s => s.UpdateStatusVoucherShopAsync(voucherId, VoucherStatus.Active, null),
                     startDelay
                 );
             }
@@ -46,11 +52,11 @@ public class JobService : IJobService
             Console.WriteLine("startDelay: " + startDelay);
             if (voucherType == VoucherTypeConstant.System)
             {
-                await _voucherService.UpdateStatusVoucherSystemAsync(voucherId, VoucherStatus.Active);
+                await _voucherService.UpdateStatusVoucherSystemAsync(voucherId, VoucherStatus.Active, null);
             }
             else if (voucherType == VoucherTypeConstant.Shop)
             {
-                await _voucherService.UpdateStatusVoucherShopAsync(voucherId, VoucherStatus.Active);
+                await _voucherService.UpdateStatusVoucherShopAsync(voucherId, VoucherStatus.Active, null);
             }
         }
 
@@ -60,14 +66,14 @@ public class JobService : IJobService
             if (voucherType == VoucherTypeConstant.System)
             {
                 BackgroundJob.Schedule<IVoucherService>(
-                    s => s.UpdateStatusVoucherSystemAsync(voucherId, VoucherStatus.Expired),
+                    s => s.UpdateStatusVoucherSystemAsync(voucherId, VoucherStatus.Expired, endTime),
                     endDelay
                 );
             }
             else if (voucherType == VoucherTypeConstant.Shop)
             {
                 BackgroundJob.Schedule<IVoucherService>(
-                    s => s.UpdateStatusVoucherShopAsync(voucherId, VoucherStatus.Expired),
+                    s => s.UpdateStatusVoucherShopAsync(voucherId, VoucherStatus.Expired, endTime),
                     endDelay
                 );
             }
@@ -85,6 +91,35 @@ public class JobService : IJobService
         if (isBank)
         {
             await _redisUtil.DeleteAsync($"order_payment_processing_{userId}_{orderId}");
+        }
+    }
+    public async Task SetJobAsync(JobDto dto)
+    {
+       
+       var runTime = new DateTimeOffset(dto.RunTime,TimeSpan.FromHours(7));
+       BackgroundJob.Schedule<JobService>(
+        s => s.RunJobAsync(dto),
+        runTime
+       );
+    }
+
+    public async Task RunJobAsync(JobDto dto)
+    {
+        var apiName = dto.ApiName;
+        var jsonData = dto.JsonData;
+        var apiUrl = $"{_appSetting.BaseApiBackendJava}{apiName}";
+        var headers = new Dictionary<string, string>
+        {
+            { "Authorization", $"Bearer {_appSetting.ApiKeySystem}"}
+        };
+        var response = await _apiHelper.PostAsync<dynamic>(apiUrl, jsonData, headers);
+        if (response?.data != null)
+        {
+            Console.WriteLine("Job executed successfully");
+        }
+        else
+        {
+            Console.WriteLine("Job executed failed");
         }
     }
 }

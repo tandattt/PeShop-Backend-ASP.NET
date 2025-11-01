@@ -14,13 +14,11 @@ public partial class PromotionGift
 
     public int? GiftQuantity { get; set; }
 
-    public int? MaxGiftPerOrder { get; set; }
-
     public string? PromotionId { get; set; }
 
-    public int? VariantId { get; set; }
+    public string? ProductId { get; set; }
 
     public virtual Promotion? Promotion { get; set; }
 
-    public virtual Variant? Variant { get; set; }
+    public virtual Product? Product { get; set; }
 }

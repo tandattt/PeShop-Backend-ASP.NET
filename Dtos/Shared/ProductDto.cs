@@ -13,5 +13,6 @@ namespace PeShop.Dtos.Shared
         public string Slug { get; set; } = string.Empty;
         public string ShopId { get; set; } = string.Empty;
         public string ShopName { get; set; } = string.Empty;
+        public bool? HasPromotion { get; set; }
     }
 }

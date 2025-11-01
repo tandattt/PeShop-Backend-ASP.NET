@@ -21,6 +21,9 @@ public class ShopRepository : IShopRepository
             FullNewAddress = x.FullNewAddress,
             NewProviceId = x.NewProviceId,
             NewWardId = x.NewWardId,
+            OldDistrictId = x.OldDistrictId,
+            OldProviceId = x.OldProviceId,
+            OldWardId = x.OldWardId,
         }).FirstOrDefaultAsync(x => x.Id == id) ?? new Shop();
     }
 

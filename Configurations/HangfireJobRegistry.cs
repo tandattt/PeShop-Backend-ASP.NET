@@ -1,6 +1,5 @@
 using Hangfire;
-using PeShop.Services;
-
+using PeShop.Services.Interfaces;
 namespace PeShop.Configurations
 {
     public static class HangfireJobRegistry
@@ -14,10 +13,10 @@ namespace PeShop.Configurations
             //     "*/10 * * * *");
 
             // Đồng bộ dữ liệu người dùng mỗi ngày 0h
-            // RecurringJob.AddOrUpdate<UserService>(
-            //     "sync-user-stats",
-            //     service => service.SyncUserStatistics(),
-            //     Cron.Daily);
+            RecurringJob.AddOrUpdate<ISQLPureService>(
+                "sort-products",
+                service => service.SortProductsAsync(),
+                Cron.Daily);
         }
     }
 }

@@ -11,9 +11,11 @@ namespace PeShop.Controllers;
 public class ProductController : ControllerBase
 {
     private readonly IProductService _productService;
-    public ProductController(IProductService productService)
+    private readonly ISQLPureService _sqlPureService;
+    public ProductController(IProductService productService, ISQLPureService sqlPureService)
     {
         _productService = productService;
+        _sqlPureService = sqlPureService;
     }
 
     [HttpGet("get-product-detail")]
@@ -47,5 +49,6 @@ public class ProductController : ControllerBase
         var result = await _productService.GetRecomemtProductsAsync(product_id);
         return Ok(result);
     }
+
 
 }
