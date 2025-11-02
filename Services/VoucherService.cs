@@ -375,18 +375,18 @@ public class VoucherService : IVoucherService
         }
 
         // Check time validity
-        var now = DateTime.Now;
-        if (voucher.StartTime.HasValue && now < voucher.StartTime.Value)
-        {
-            isEligible = false;
-            reasons.Add($"Voucher chưa có hiệu lực (bắt đầu từ {voucher.StartTime.Value:dd/MM/yyyy HH:mm})");
-        }
+        // var now = DateTime.Now;
+        // if (voucher.StartTime.HasValue && now < voucher.StartTime.Value)
+        // {
+        //     isEligible = false;
+        //     reasons.Add($"Voucher chưa có hiệu lực (bắt đầu từ {voucher.StartTime.Value:dd/MM/yyyy HH:mm})");
+        // }
 
-        if (voucher.EndTime.HasValue && now > voucher.EndTime.Value)
-        {
-            isEligible = false;
-            reasons.Add($"Voucher đã hết hạn (kết thúc lúc {voucher.EndTime.Value:dd/MM/yyyy HH:mm})");
-        }
+        // if (voucher.EndTime.HasValue && now > voucher.EndTime.Value)
+        // {
+        //     isEligible = false;
+        //     reasons.Add($"Voucher đã hết hạn (kết thúc lúc {voucher.EndTime.Value:dd/MM/yyyy HH:mm})");
+        // }
 
         // Check usage limit
         if (voucher.LimitForUser.HasValue && voucher.UsedCount >= voucher.LimitForUser.Value)

@@ -1,6 +1,9 @@
 using Microsoft.AspNetCore.Mvc;
 using PeShop.Services.Interfaces;
-
+using Microsoft.AspNetCore.Authorization;
+using PeShop.Constants;
+using System.Security.Claims;
+using PeShop.Dtos.Responses;
 namespace PeShop.Controllers;
 
 [ApiController]
@@ -15,9 +18,18 @@ public class PromotionController : ControllerBase
     }
 
     [HttpGet("get-promotions-by-product")]
-    public async Task<IActionResult> GetPromotionsByProductId([FromQuery] string productId)
+    public async Task<ActionResult<List<PromotionResponse>>> GetPromotionsByProductId([FromQuery] string productId)
     {
         var promotions = await _promotionService.GetPromotionsByProductAsync(productId);
+        return Ok(promotions);
+    }
+    [HttpGet("check-promotions-in-order")]
+    [Authorize(Roles = RoleConstants.User)]
+    public async Task<ActionResult<List<PromotionInOrderResponse>>> CheckPromotionsInOrder([FromQuery] string orderId)
+    {
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(userId)) return BadRequest("User not found");
+        var promotions = await _promotionService.CheckPromotionsInOrderAsync(orderId, userId);
         return Ok(promotions);
     }
 }

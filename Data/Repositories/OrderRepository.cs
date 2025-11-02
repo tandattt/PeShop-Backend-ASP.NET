@@ -27,6 +27,30 @@ public class OrderRepository : IOrderRepository
     {
         return await _context.Orders.FirstOrDefaultAsync(o => o.Id == orderId && o.UserId == userId);
     }
+    public async Task<Order?> GetOrderDetailAsync(string orderId, string userId)
+    {
+        return await _context.Orders
+        .Include(o => o.OrderDetails)
+        .ThenInclude(od => od.Product)
+        .Include(o => o.OrderDetails)
+        .ThenInclude(od => od.Variant)
+        .ThenInclude(v => v.VariantValues)
+        .ThenInclude(vv => vv.PropertyValue)
+        .FirstOrDefaultAsync(o => o.Id == orderId && o.UserId == userId);
+    }
+    public async Task<List<Order>> GetOrderByUserIdAsync(string userId)
+    {
+        return await _context.Orders
+        .Include(o => o.Shop)
+        .Include(o => o.OrderDetails)
+        .ThenInclude(od => od.Product)
+        .Include(o => o.OrderDetails)
+        .ThenInclude(od => od.Variant)
+        .ThenInclude(v => v.VariantValues)
+        .ThenInclude(vv => vv.PropertyValue)
+        .Where(o => o.UserId == userId)
+        .ToListAsync();
+    }
     public async Task<bool> UpdatePaymentStatusInOrderAsync(Order order)
     {
         _context.Orders.Update(order);

@@ -31,6 +31,8 @@ public partial class Order
     public OrderStatus? StatusOrder { get; set; }
 
     public PaymentStatus? StatusPayment { get; set; }
+    public string? RecipientName { get; set; }
+    public string? RecipientPhone { get; set; }
 
     public string? ShopId { get; set; }
 

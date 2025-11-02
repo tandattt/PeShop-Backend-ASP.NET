@@ -55,6 +55,7 @@ public class PaymentService : IPaymentService
             ReadOrdIds = readOrdIds,
         }, context, userId);
         await _redisUtil.SetAsync($"order_payment_processing_{userId}_{orderId}", paymentUrl, TimeSpan.FromMinutes(15));
+        BackgroundJob.Schedule<IJobService>(service => service.UpdatePaymentStatusFailedInOrderAsync(orderId, userId), TimeSpan.FromMinutes(15));
         return paymentUrl;
     }
     public async Task<string> ProcessCallbackAsync(HttpContext context)
@@ -138,6 +139,9 @@ public class PaymentService : IPaymentService
         }
         else
         {
+            var orderResponse = await _orderService.UpdatePaymentStatusInOrderAsync(orderId, userId, PaymentStatus.Failed);
+             // Xóa đơn hàng sau khi thanh toán thất bại
+            BackgroundJob.Enqueue<IJobService>(service => service.DeleteOrderOnRedisAsync(orderId, userId, true));
             Debug.WriteLine("[ProcessCallbackAsync] ===== VNPAY CALLBACK THẤT BẠI =====");
             Debug.WriteLine($"[ProcessCallbackAsync] Response không thành công, throwing exception...");
             return _appSetting.BaseUrlFrontend + "/Payment/failed?orderId=" + orderId;

@@ -5,6 +5,7 @@ using PeShop.Constants;
 using System.Security.Claims;
 using PeShop.Dtos.Requests;
 using PeShop.Models.Enums;
+using PeShop.Dtos.Responses;
 namespace PeShop.Controllers;
 
 [ApiController]
@@ -24,6 +25,13 @@ public class OrderController : ControllerBase
     {
         var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         return Ok(await _orderService.CreateVirtualOrder(request,userId));
+    }
+    [HttpPut("update-virtual-order")]
+    [Authorize(Roles = RoleConstants.User)]
+    public async Task<ActionResult<CreateVirtualOrderResponse>> UpdateVirtualOrder([FromBody] UpdateVirtualOrderRequest request)
+    {
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        return Ok(await _orderService.UpdateVirtualOrder(request, userId));
     }
     [HttpGet("Calclulate-order-total")]
     [Authorize(Roles = RoleConstants.User)]
@@ -46,5 +54,31 @@ public class OrderController : ControllerBase
         else{
             return BadRequest("Phương thức thanh toán không hợp lệ");
         }
+    }
+
+    [HttpGet("get-order")]
+    [Authorize(Roles = RoleConstants.User)]
+    public async Task<ActionResult<List<OrderResponse>>> GetOrder()
+    {
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        var order = await _orderService.GetOrderAsync( userId);
+        if (order == null)
+        {
+            return NotFound("Đơn hàng không tồn tại");
+        }
+        return Ok(order);
+    }
+
+    [HttpGet("get-order-detail")]
+    [Authorize(Roles = RoleConstants.User)]
+    public async Task<IActionResult> GetOrderDetail([FromQuery] string orderId)
+    {
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        var order = await _orderService.GetOrderDetailAsync(orderId, userId);
+        if (order == null)
+        {
+            return NotFound("Đơn hàng không tồn tại");
+        }
+        return Ok(order);
     }
 }

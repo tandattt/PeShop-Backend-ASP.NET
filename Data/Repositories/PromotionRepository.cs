@@ -30,7 +30,28 @@ public class PromotionRepository : IPromotionRepository
         Console.WriteLine(string.Join(", ", promotions.Select(p => p.Id)));
         return promotions;
     }
-    public async Task<bool> HasPromotionAsync(string productId){
+    public async Task<bool> HasPromotionAsync(string productId)
+    {
         return await _context.PromotionRules.AnyAsync(p => p.ProductId == productId);
+    }
+    public async Task<List<Promotion?>> GetPromotionsByShopAsync(string shopId)
+    {
+        var promotions = await _context.Promotions
+            .Include(p => p.PromotionRules)
+                .ThenInclude(p => p.Product)
+            .Include(p => p.PromotionGifts)
+                .ThenInclude(p => p.Product)
+            .Where(p => p.ShopId == shopId).ToListAsync();
+        return promotions;
+    }
+    public async Task<Promotion?> GetPromotionByIdAsync(string promotionId)
+    {
+        return await _context.Promotions.FindAsync(promotionId);
+    }
+    public async Task<bool> UpdatePromotionAsync(Promotion promotion)
+    {
+        _context.Promotions.Update(promotion);
+        if (await _context.SaveChangesAsync() > 0) return true;
+        else return false;
     }
 }

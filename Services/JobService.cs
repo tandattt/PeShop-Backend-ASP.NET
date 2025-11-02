@@ -7,6 +7,7 @@ using PeShop.Interfaces;
 using PeShop.Dtos.Shared;
 using PeShop.Dtos.Job;
 using PeShop.Setting;
+using PeShop.Data.Repositories.Interfaces;
 namespace PeShop.Services;
 
 public class JobService : IJobService
@@ -15,14 +16,28 @@ public class JobService : IJobService
     private readonly IRedisUtil _redisUtil;
     private readonly AppSetting _appSetting;
     private readonly IApiHelper _apiHelper;
-    public JobService(IVoucherService voucherService, IRedisUtil redisUtil, AppSetting appSetting, IApiHelper apiHelper)
+    private readonly IOrderRepository _orderRepository;
+    public JobService(IVoucherService voucherService, IRedisUtil redisUtil, AppSetting appSetting, IApiHelper apiHelper, IOrderRepository orderRepository)
     {
         _voucherService = voucherService;
         _redisUtil = redisUtil;
         _appSetting = appSetting;
         _apiHelper = apiHelper;
+        _orderRepository = orderRepository;
     }
-
+    public async Task UpdatePaymentStatusFailedInOrderAsync(string orderId, string userId)
+    {
+        
+        var order = await _orderRepository.GetOrderByIdAsync(orderId, userId);
+        if (order == null)
+        {
+            return;
+        }
+        if (order.StatusPayment == PaymentStatus.Processing){
+            order.StatusPayment = PaymentStatus.Failed;
+            await _orderRepository.UpdatePaymentStatusInOrderAsync(order);
+        }
+    }
     public async Task SetExpireVoucherAsync(string voucherId, DateTime startTime, DateTime endTime, string voucherType)
     {
         var now = DateTime.Now;
@@ -88,6 +103,8 @@ public class JobService : IJobService
         await _redisUtil.DeleteAsync($"calculated_order_{userId}_{orderId}");
 
         await _redisUtil.DeleteAsync($"fee_shipping_{userId}_{orderId}");
+        
+        await _redisUtil.DeleteAsync($"promotion_in_order_{userId}_{orderId}");
         if (isBank)
         {
             await _redisUtil.DeleteAsync($"order_payment_processing_{userId}_{orderId}");

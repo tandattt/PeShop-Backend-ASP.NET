@@ -15,12 +15,14 @@ public class SearchService : ISearchService
     private readonly AppSetting _appSetting;
     private readonly IProductRepository _productRepository;
     private readonly IShopRepository _shopRepository;
-    public SearchService(IApiHelper apiHelper, AppSetting appSetting, IProductRepository productRepository, IShopRepository shopRepository)
+    private readonly IPromotionRepository _promotionRepository;
+    public SearchService(IApiHelper apiHelper, AppSetting appSetting, IProductRepository productRepository, IShopRepository shopRepository, IPromotionRepository promotionRepository)
     {
         _apiHelper = apiHelper;
         _appSetting = appSetting;
         _productRepository = productRepository;
         _shopRepository = shopRepository;
+        _promotionRepository = promotionRepository;
     }
     public async Task<List<SearchSuggestResponse>> GetSearchSuggestAsync(string keyword)
     {
@@ -101,8 +103,7 @@ public class SearchService : ISearchService
         var products = await _productRepository.SearchProductsAsync(keyword, skip, pageSize);
         
         var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
-        
-        return new SearchResponse
+        var searchResponse = new SearchResponse
         {
             Products = products.Select(p => new ProductDto
             {
@@ -117,6 +118,7 @@ public class SearchService : ISearchService
                 ReviewPoint = p.ReviewPoint ?? 0,
                 ShopId = p.Shop?.Id ?? string.Empty,
                 ShopName = p.Shop?.Name ?? string.Empty,
+                HasPromotion = null
             }).ToList(),
             SearchType = "product",
             TotalCount = totalCount,
@@ -126,6 +128,11 @@ public class SearchService : ISearchService
             HasNextPage = page < totalPages,
             HasPreviousPage = page > 1
         };
+        foreach (var productDto in searchResponse.Products)
+        {
+            productDto.HasPromotion = await _promotionRepository.HasPromotionAsync(productDto.Id);
+        }
+        return searchResponse;
     }
 
     public async Task<ShopSearchResponse> GetShopSearchAsync(string keyword, int page = 1, int pageSize = 20)

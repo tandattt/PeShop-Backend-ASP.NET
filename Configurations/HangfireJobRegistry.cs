@@ -6,14 +6,16 @@ namespace PeShop.Configurations
     {
         public static void RegisterRecurringJobs(this IServiceProvider provider)
         {
+            var recurringJobManager = provider.GetRequiredService<IRecurringJobManager>();
+            
             // Dọn token hết hạn mỗi 10 phút
-            // RecurringJob.AddOrUpdate<AuthService>(
+            // recurringJobManager.AddOrUpdate<AuthService>(
             //     "clear-expired-tokens",
             //     service => service.ClearExpiredTokens(),
             //     "*/10 * * * *");
 
-            // Đồng bộ dữ liệu người dùng mỗi ngày 0h
-            RecurringJob.AddOrUpdate<ISQLPureService>(
+            // Sắp xếp sản phẩm mỗi ngày 0h
+            recurringJobManager.AddOrUpdate<ISQLPureService>(
                 "sort-products",
                 service => service.SortProductsAsync(),
                 Cron.Daily);

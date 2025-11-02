@@ -45,6 +45,8 @@ public partial class Product
     public uint? Width { get; set; }
     public float? score { get; set; }
 
+    public uint? Classify { get; set; }
+
     public string? CategoryChildId { get; set; }
 
     public string? CategoryId { get; set; }

@@ -19,3 +19,8 @@ public class CreateOrderRequest{
     public string OrderId { get; set; } = string.Empty;
     public PaymentMethod PaymentMethod { get; set; }
 }
+
+public class UpdateVirtualOrderRequest{
+    public string OrderId { get; set; } = string.Empty;
+    public List<OrderRequest> Items { get; set; } = new List<OrderRequest>();
+}

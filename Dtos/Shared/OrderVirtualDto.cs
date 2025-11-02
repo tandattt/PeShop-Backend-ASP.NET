@@ -4,7 +4,9 @@ namespace PeShop.Dtos.Shared;
 public class OrderVirtualDto
 {
     public string OrderId { get; set; } = string.Empty;
-    public string UserFullName { get; set; } = string.Empty;
+    public string RecipientName { get; set; } = string.Empty;
+    
+    public string? RecipientPhone { get; set; } = null;
     public string? VoucherSystemId { get; set; } = null;
     public decimal VoucherSystemValue {get;set;}
     public string? VoucherSystemName { get; set; } = null;
@@ -17,7 +19,12 @@ public class OrderVirtualDto
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }
 
-
+public class GiftInOrder
+{
+    public OrderRequest? Product { get; set; } = null;
+    public string? PromotionName { get; set; } = null;
+    public string? PromotionId { get; set; } = null;
+}
 public class ItemShop
 {
     public string ShopId { get; set; } = string.Empty;
@@ -26,6 +33,7 @@ public class ItemShop
     
     public string? ShippingId { get; set; } = null;
     public List<OrderRequest> Products { get; set; } = new List<OrderRequest>();
+    public List<GiftInOrder>   Gifts { get; set; } = new List<GiftInOrder>();
     public decimal PriceOriginal { get; set; }
     public decimal? PriceAfterVoucher { get; set; } = null;
     public decimal FeeShipping { get; set; } = 0;

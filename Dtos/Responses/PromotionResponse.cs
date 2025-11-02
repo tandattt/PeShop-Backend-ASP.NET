@@ -9,7 +9,11 @@ public class PromotionResponse
     public PromotionGiftDto? PromotionGifts { get; set; }
 }
 
+public class PromotionInOrderResponse : PromotionResponse
+{
+    public string? ShopId { get; set; } = null;
+}
 public class ProductInPromotion : ProductDto{
-    public decimal Quantity { get; set; }
+    public uint Quantity { get; set; }
 
 }

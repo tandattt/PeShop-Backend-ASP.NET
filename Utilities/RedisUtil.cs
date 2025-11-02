@@ -21,7 +21,12 @@ namespace PeShop.Utilities
             var value = await _db.StringGetAsync(_appSetting.NameProjectRedis + ":" + key);
             return value.HasValue ? value.ToString() : null;
         }
-
+        public async Task<KeyValuePair<string?, TimeSpan?>> GetAsyncWithTtl(string key)
+        {
+            var value = await _db.StringGetAsync(_appSetting.NameProjectRedis + ":" + key);
+            var ttl = await _db.KeyTimeToLiveAsync(_appSetting.NameProjectRedis + ":" + key);
+            return new KeyValuePair<string?, TimeSpan?>(value.HasValue ? value.ToString() : null, ttl);
+        }
         public async Task<T?> GetAsync<T>(string key) where T : class
         {
             var value = await _db.StringGetAsync(_appSetting.NameProjectRedis + ":" + key);

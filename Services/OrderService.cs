@@ -10,6 +10,8 @@ using Hangfire;
 using System.Linq;
 using PeShop.Models.Entities;
 using PeShop.Models.Enums;
+using Microsoft.IdentityModel.Tokens;
+
 public class OrderService : IOrderService
 {
     private readonly IOrderHelper _orderHelper;
@@ -22,6 +24,8 @@ public class OrderService : IOrderService
     private readonly IPayoutRepository _payoutRepository;
     private readonly ITransactionRepository _transactionRepository;
     private readonly IVariantRepository _variantRepository;
+    private readonly IPromotionService _promotionService;
+    private readonly IPromotionRepository _promotionRepository;
     public OrderService(
         IOrderHelper orderHelper,
         IRedisUtil redisUtil,
@@ -32,7 +36,9 @@ public class OrderService : IOrderService
         IPlatformFeeRepository platformFeeRepository,
         IPayoutRepository payoutRepository,
         ITransactionRepository transactionRepository,
-        IVariantRepository variantRepository
+        IVariantRepository variantRepository,
+        IPromotionService promotionService,
+        IPromotionRepository promotionRepository
         )
     {
         _orderHelper = orderHelper;
@@ -45,6 +51,8 @@ public class OrderService : IOrderService
         _payoutRepository = payoutRepository;
         _transactionRepository = transactionRepository;
         _variantRepository = variantRepository;
+        _promotionService = promotionService;
+        _promotionRepository = promotionRepository;
     }
     public async Task<CreateVirtualOrderResponse> CreateVirtualOrder(OrderVirtualRequest request, string userId)
     {
@@ -65,7 +73,8 @@ public class OrderService : IOrderService
                 OrderTotal = orderTotal,
                 AmountTotal = orderTotal,
                 UserId = userId,
-                UserFullName = userAddress?.RecipientName ?? string.Empty,
+                RecipientName = userAddress?.RecipientName ?? string.Empty,
+                RecipientPhone = userAddress?.Phone ?? string.Empty,
                 CreatedAt = DateTime.UtcNow,
                 UserFullNewAddress = userAddress?.FullNewAddress ?? string.Empty
             };
@@ -101,12 +110,92 @@ public class OrderService : IOrderService
             };
         }
     }
+    public async Task<CreateVirtualOrderResponse> UpdateVirtualOrder(UpdateVirtualOrderRequest request, string userId)
+    {
+        try
+        {
+            // Lấy order hiện tại từ Redis
+            var existingOrder = await _redisUtil.GetAsync<OrderVirtualDto>($"order_{userId}_{request.OrderId}");
+            if (existingOrder == null)
+            {
+                return new CreateVirtualOrderResponse
+                {
+                    Status = false,
+                    Message = "Đơn hàng không tồn tại"
+                };
+            }
+
+            // Nhóm các sản phẩm mới theo shop
+            var itemShops = await _orderHelper.GroupItemsByShopAsync(request.Items);
+
+            // Tính tổng giá trị đơn hàng mới
+            decimal orderTotal = itemShops.Sum(shop => shop.PriceOriginal);
+
+            // Cập nhật order với dữ liệu mới
+            existingOrder.ItemShops = itemShops;
+            existingOrder.OrderTotal = orderTotal;
+            existingOrder.AmountTotal = orderTotal;
+            existingOrder.FeeShippingTotal = 0; // Reset shipping fee
+
+            // Lưu lại vào Redis
+            bool isSaved = await _redisUtil.SetAsync($"order_{userId}_{existingOrder.OrderId}", JsonSerializer.Serialize(existingOrder));
+            if (!isSaved)
+            {
+                return new CreateVirtualOrderResponse
+                {
+                    Status = false,
+                    Message = "Lỗi khi cập nhật đơn hàng vào Redis"
+                };
+            }
+
+            // Gọi service check promotion để cập nhật promotion
+            await _promotionService.CheckPromotionsInOrderAsync(existingOrder.OrderId, userId);
+
+            // Gọi service tính order để cập nhật lại giá trị
+            var calculateResult = await CalclulateOrderTotal(existingOrder.OrderId, userId);
+
+            return calculateResult;
+        }
+        catch (Exception ex)
+        {
+            return new CreateVirtualOrderResponse
+            {
+                Status = false,
+                Message = $"Lỗi khi cập nhật đơn hàng: {ex.Message}"
+            };
+        }
+    }
     public async Task<CreateVirtualOrderResponse> CalclulateOrderTotal(string orderId, string userId)
     {
         var order = await _redisUtil.GetAsync<OrderVirtualDto>($"order_{userId}_{orderId}");
+        if (order == null)
+        {
+            return new CreateVirtualOrderResponse
+            {
+                Status = false,
+                Message = "Đơn hàng không tồn tại"
+            };
+        }
+
+        var Promotion = await _redisUtil.GetAsync<List<PromotionInOrderResponse>>($"promotion_in_order_{userId}_{orderId}");
+        if (Promotion == null)
+        {
+            Promotion = new List<PromotionInOrderResponse>();
+        }
 
         foreach (var itemShop in order.ItemShops)
         {
+            foreach (var promotion in Promotion)
+            {
+                if (promotion.ShopId == itemShop.ShopId)
+                {
+                    if (promotion.Products.IsNullOrEmpty() == true)
+                    {
+                        itemShop.Gifts.Add(new GiftInOrder { Product = promotion.PromotionGifts.Product != null ? new OrderRequest { ProductId = promotion.PromotionGifts.Product.Id, Quantity = (uint)promotion.PromotionGifts.GiftQuantity, PriceOriginal = 0, ShopId = itemShop.ShopId } : null, PromotionName = promotion.PromotionName, PromotionId = promotion.PromotionId });
+                        // .Select(p => new OrderRequest { ProductId = p.Id, Quantity = p.Quantity, PriceOriginal = 0, ShopId = itemShop.ShopId}).FirstOrDefault(), PromotionName = promotion.PromotionName, PromotionId = promotion.PromotionId });
+                    }
+                }
+            }
             itemShop.PriceAfterVoucher = itemShop.PriceOriginal - 0;
             if (itemShop.VoucherId == null) continue;
 
@@ -157,7 +246,8 @@ public class OrderService : IOrderService
 
         // Console.WriteLine($"[DEBUG] Order found in Redis, starting transaction");
         var result = await SaveOrderAsync(orders, userId, PaymentStatus.Unpaid, PaymentMethod.COD);
-        if (result.Status){
+        if (result.Status)
+        {
             BackgroundJob.Enqueue<IJobService>(service => service.DeleteOrderOnRedisAsync(orderId, userId, false));
         }
         return result;
@@ -239,8 +329,11 @@ public class OrderService : IOrderService
                             await _voucherRepository.CreateUserVoucherShopAsync(userVoucherShop);
                             // Console.WriteLine($"[DEBUG] UserVoucherShop created successfully");
 
-
-
+                            // Kiểm tra số lượng voucher shop trước khi trừ
+                            if (voucherShop.Quantity == null || voucherShop.Quantity <= 0)
+                            {
+                                throw new Exception("Voucher shop đã hết số lượng");
+                            }
                             voucherShop.Quantity = voucherShop.Quantity - 1;
                             await _voucherRepository.UpdateVoucherShopAsync(voucherShop);
                         }
@@ -266,7 +359,45 @@ public class OrderService : IOrderService
                         // Console.WriteLine($"[DEBUG] OrderVoucher created successfully with ID: {orderVoucherDB.Id}");
 
                     }
-
+                    if (itemShop.Gifts.IsNullOrEmpty() == false)
+                    {
+                        foreach (var gift in itemShop.Gifts)
+                        {
+                            if (gift.PromotionId != null)
+                            {
+                                var promotion = await _promotionRepository.GetPromotionByIdAsync(gift.PromotionId);
+                                if (promotion != null && promotion.TotalUsageLimit <= 0)
+                                {
+                                    throw new Exception("Promotion đã đạt giới hạn sử dụng");
+                                }
+                                else if (promotion != null)
+                                {
+                                    promotion.TotalUsageLimit = promotion.TotalUsageLimit - 1;
+                                    await _promotionRepository.UpdatePromotionAsync(promotion);
+                                }
+                            }
+                            var orderDetail = new OrderDetail
+                            {
+                                Id = Guid.NewGuid().ToString(),
+                                OrderId = orderDB.Id,
+                                ProductId = gift.Product?.ProductId,
+                                OriginalPrice = gift.Product?.PriceOriginal ?? 0,
+                                Quantity = gift.Product?.Quantity ?? 0,
+                                VariantId = gift.Product?.VariantId,
+                                Note = gift.Product?.Note,
+                                CreatedAt = DateTime.UtcNow,
+                                CreatedBy = userId,
+                                UpdatedAt = DateTime.UtcNow,
+                                UpdatedBy = userId
+                            };
+                            var orderDetailDB = await _orderDetailRepository.CreateOrderDetailAsync(orderDetail);
+                            if (orderDetailDB == null)
+                            {
+                                throw new Exception("Lỗi khi tạo đơn hàng");
+                            }
+                            // Console.WriteLine($"[DEBUG] Creating OrderDetail for ProductId: {gift.Product?.ProductId}");
+                        }
+                    }
                     foreach (var product in itemShop.Products)
                     {
                         var orderDetail = new OrderDetail
@@ -304,10 +435,27 @@ public class OrderService : IOrderService
                         // }
                         // productDb.BoughtCount = productDb.BoughtCount + product.Quantity;
                         // await _productRepository.UpdateProductAsync(productDb);
-                        var variantDb = await _variantRepository.GetVariantByIdAsync(product.VariantId.ToString());
+                        // if (product.VariantId == null)
+                        // {
+                        //     throw new Exception("VariantId không được để trống");
+                        // }
+
+
+
+
+
+
+
+
+                        var variantDb = await _variantRepository.GetVariantByIdAsync(product.VariantId.Value.ToString());
                         if (variantDb == null)
                         {
                             throw new Exception("Biến thể không tồn tại");
+                        }
+                        // Kiểm tra số lượng variant trước khi trừ
+                        if (variantDb.Quantity == null || variantDb.Quantity < product.Quantity)
+                        {
+                            throw new Exception($"Số lượng sản phẩm không đủ");
                         }
                         variantDb.Quantity = variantDb.Quantity - product.Quantity;
                         await _variantRepository.UpdateVariantAsync(variantDb);
@@ -406,6 +554,11 @@ public class OrderService : IOrderService
 
                     // Console.WriteLine($"[DEBUG] UserVoucherSystem created successfully");
 
+                    // Kiểm tra số lượng voucher system trước khi trừ
+                    if (voucherSystem.Quantity == null || voucherSystem.Quantity <= 0)
+                    {
+                        throw new Exception("Voucher system đã hết số lượng");
+                    }
                     voucherSystem.Quantity = voucherSystem.Quantity - 1;
                     await _voucherRepository.UpdateVoucherSystemAsync(voucherSystem);
 
@@ -434,13 +587,108 @@ public class OrderService : IOrderService
         {
             return new StatusResponse { Status = false, Message = "Đơn hàng không tồn tại" };
         }
-        order.StatusPayment = paymentStatus;
-        if (paymentStatus == PaymentStatus.Paid || paymentStatus == PaymentStatus.Failed)
-        {
-            await _redisUtil.DeleteAsync($"order_payment_processing_{userId}_{orderId}");
-        }
         await _orderRepository.UpdatePaymentStatusInOrderAsync(order);
 
         return new StatusResponse { Status = true, Message = "Đơn hàng đã được cập nhật trạng thái thành công" };
+    }
+
+    public async Task<OrderDetailResponse> GetOrderDetailAsync(string orderId, string userId)
+    {
+        var order = await _orderRepository.GetOrderDetailAsync(orderId, userId);
+        if (order == null)
+        {
+            return new OrderDetailResponse();
+        }
+        var orderDetailResponse = new OrderDetailResponse
+        {
+            OrderId = order.Id,
+            ShopId = order.ShopId,
+            ShopName = order.Shop?.Name ?? string.Empty,
+            FinalPrice = order.FinalPrice ?? 0,
+            PaymentMethod = order.PaymentMethod ?? PaymentMethod.COD,
+            PaymentStatus = order.StatusPayment ?? PaymentStatus.Unpaid,
+            RecipientName = order.RecipientName ?? string.Empty,
+            RecipientPhone = order.RecipientPhone ?? string.Empty,
+            RecipientAddress = order.DeliveryAddress ?? string.Empty,
+            CreatedAt = order.CreatedAt ?? DateTime.UtcNow,
+            DiscountPrice = order.DiscountPrice ?? 0,
+            ShippingFee = order.ShippingFee ?? 0,
+            OriginalPrice = order.OriginalPrice ?? 0,
+            OrderStatus = order.StatusOrder ?? OrderStatus.Pending,
+            Items = order.OrderDetails
+            .Select(y => new OrderItemResponse
+            {
+                ProductId = y.ProductId,
+                ProductName = y.Product?.Name,
+                ProductImage = y.Product?.ImgMain,
+                VariantId = y.VariantId.ToString(),
+                VariantValues = y.Variant?.VariantValues?.Select(z => new PropertyValueForCartDto { Value = z.PropertyValue?.Value ?? string.Empty, ImgUrl = z.PropertyValue?.ImgUrl ?? string.Empty, Level = z.PropertyValue?.Level ?? 0 }).ToList() ?? new List<PropertyValueForCartDto>(),
+                Price = y.OriginalPrice ?? 0,
+                Quantity = (int)(y.Quantity ?? 0)
+            }).ToList()
+        };
+        if (orderDetailResponse.PaymentMethod == PaymentMethod.VNPay && orderDetailResponse.PaymentStatus == PaymentStatus.Processing)
+        {
+            var paymentLink = await _redisUtil.GetAsyncWithTtl($"order_payment_processing_{userId}_{orderDetailResponse.OrderId}");
+            if (paymentLink.Key != null)
+            {
+                orderDetailResponse.PaymentProcessing = new OrderPaymentProcessing
+                {
+                    Time = paymentLink.Value.Value.TotalSeconds,
+                    PaymentLink = paymentLink.Key ?? string.Empty,
+                };
+            }
+        }
+        return orderDetailResponse;
+
+    }
+    public async Task<List<OrderResponse>> GetOrderAsync(string userId)
+    {
+        var order = await _orderRepository.GetOrderByUserIdAsync(userId);
+        if (order.IsNullOrEmpty())
+        {
+            return new List<OrderResponse>();
+        }
+        var orderResponses = order
+            .Select(x => new OrderResponse
+            {
+                OrderId = x.Id,
+                ShopId = x.ShopId,
+                ShopName = x.Shop?.Name ?? string.Empty,
+                FinalPrice = x.FinalPrice ?? 0,
+                // RecipientName = x.RecipientName ?? string.Empty,
+                // RecipientPhone = x.RecipientPhone ?? string.Empty,
+                // RecipientAddress = x.DeliveryAddress ?? string.Empty,
+                PaymentMethod = x.PaymentMethod ?? PaymentMethod.COD,
+                PaymentStatus = x.StatusPayment ?? PaymentStatus.Unpaid,
+                OrderStatus = x.StatusOrder ?? OrderStatus.Pending,
+                Items = x.OrderDetails
+                .Select(y => new OrderItemResponse
+                {
+                    ProductId = y.ProductId,
+                    ProductName = y.Product?.Name,
+                    ProductImage = y.Product?.ImgMain,
+                    VariantId = y.VariantId.ToString(),
+                    VariantValues = y.Variant?.VariantValues?.Select(z => new PropertyValueForCartDto { Value = z.PropertyValue?.Value ?? string.Empty, ImgUrl = z.PropertyValue?.ImgUrl ?? string.Empty, Level = z.PropertyValue?.Level ?? 0 }).ToList() ?? new List<PropertyValueForCartDto>(),
+                    Price = y.OriginalPrice ?? 0,
+                    Quantity = (int)(y.Quantity ?? 0)
+                })
+                    .ToList()
+            }).ToList();
+        var orderPaymentProcessing = orderResponses.Where(x => x.PaymentMethod == PaymentMethod.VNPay && x.PaymentStatus == PaymentStatus.Processing).ToList();
+        foreach (var item in orderPaymentProcessing)
+        {
+            var paymentLink = await _redisUtil.GetAsyncWithTtl($"order_payment_processing_{userId}_{item.OrderId}");
+            if (paymentLink.Key != null)
+            {
+                item.PaymentProcessing = new OrderPaymentProcessing
+                {
+                    Time = paymentLink.Value.Value.TotalSeconds,
+                    PaymentLink = paymentLink.Key ?? string.Empty,
+                };
+            }
+        }
+
+        return orderResponses;
     }
 }

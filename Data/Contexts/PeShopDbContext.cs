@@ -346,7 +346,14 @@ public partial class PeShopDbContext : DbContext
             entity.Property(e => e.DeliveryAddress)
                 .HasMaxLength(255)
                 .HasColumnName("delivery_address");
-            entity.Property(e => e.DeliveryStatus).HasColumnName("delivery_status");
+            entity.Property(e => e.RecipientName)
+                .HasMaxLength(60)
+                .HasColumnName("recipient_name");
+            entity.Property(e => e.RecipientPhone)
+                .HasMaxLength(20)
+                .HasColumnName("recipient_phone");
+            entity.Property(e => e.DeliveryStatus)
+            .HasColumnName("delivery_status");
             entity.Property(e => e.DiscountPrice)
                 .HasPrecision(18, 3)
                 .HasColumnName("discount_price");
@@ -636,6 +643,8 @@ public partial class PeShopDbContext : DbContext
                 .HasColumnName("status");
             entity.Property(e => e.score)
                 .HasColumnName("score");
+            entity.Property(e => e.Classify)
+            .HasColumnName("classify");
             entity.Property(e => e.UpdatedAt)
                 .HasMaxLength(6)
                 .HasColumnName("updated_at");
