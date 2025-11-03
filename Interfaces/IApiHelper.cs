@@ -28,6 +28,11 @@ namespace PeShop.Interfaces
         Task<T?> PostFormAsync<T>(string url, Dictionary<string, string> formData, Dictionary<string, string>? headers = null);
 
         /// <summary>
+        /// Upload 1 file đơn giản
+        /// </summary>
+        Task<T?> PostFileAsync<T>(string url, IFormFile file, Dictionary<string, string>? formData = null, Dictionary<string, string>? headers = null);
+
+        /// <summary>
         /// Gọi API với multipart form data (cho file upload)
         /// </summary>
         Task<T?> PostMultipartFormAsync<T>(string url, MultipartFormDataContent formData, Dictionary<string, string>? headers = null);

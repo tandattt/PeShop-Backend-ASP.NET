@@ -15,6 +15,7 @@ public class OrderVirtualDto
     public string UserId { get; set; } = string.Empty;
     public decimal OrderTotal { get; set; }
     public decimal FeeShippingTotal { get; set; }
+    public decimal DiscountTotal { get; set; }
     public decimal AmountTotal {get;set;} 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }
@@ -35,7 +36,7 @@ public class ItemShop
     public List<OrderRequest> Products { get; set; } = new List<OrderRequest>();
     public List<GiftInOrder>   Gifts { get; set; } = new List<GiftInOrder>();
     public decimal PriceOriginal { get; set; }
-    public decimal? PriceAfterVoucher { get; set; } = null;
+    // public decimal? PriceAfterVoucher { get; set; } = null;
     public decimal FeeShipping { get; set; } = 0;
     public string? VoucherId { get; set; } = null;
     public decimal VoucherValue {get;set;}

@@ -26,6 +26,7 @@ public class OrderService : IOrderService
     private readonly IVariantRepository _variantRepository;
     private readonly IPromotionService _promotionService;
     private readonly IPromotionRepository _promotionRepository;
+    private readonly IReviewService _reviewService;
     public OrderService(
         IOrderHelper orderHelper,
         IRedisUtil redisUtil,
@@ -38,7 +39,8 @@ public class OrderService : IOrderService
         ITransactionRepository transactionRepository,
         IVariantRepository variantRepository,
         IPromotionService promotionService,
-        IPromotionRepository promotionRepository
+        IPromotionRepository promotionRepository,
+        IReviewService reviewService
         )
     {
         _orderHelper = orderHelper;
@@ -53,6 +55,7 @@ public class OrderService : IOrderService
         _variantRepository = variantRepository;
         _promotionService = promotionService;
         _promotionRepository = promotionRepository;
+        _reviewService = reviewService;
     }
     public async Task<CreateVirtualOrderResponse> CreateVirtualOrder(OrderVirtualRequest request, string userId)
     {
@@ -62,7 +65,7 @@ public class OrderService : IOrderService
             var itemShops = await _orderHelper.GroupItemsByShopAsync(request.Items);
 
             // Tính tổng giá trị đơn hàng
-            decimal orderTotal = itemShops.Sum(shop => shop.PriceOriginal);
+            // decimal orderTotal = itemShops.Sum(shop => shop.PriceOriginal);
 
             var userAddress = await _userAddressRepository.GetUserAddressByIdAsync(request.UserAddressId, userId);
             // Tạo đơn hàng ảo
@@ -70,8 +73,8 @@ public class OrderService : IOrderService
             {
                 OrderId = Guid.NewGuid().ToString(),
                 ItemShops = itemShops,
-                OrderTotal = orderTotal,
-                AmountTotal = orderTotal,
+                // OrderTotal = orderTotal,
+                // AmountTotal = orderTotal,
                 UserId = userId,
                 RecipientName = userAddress?.RecipientName ?? string.Empty,
                 RecipientPhone = userAddress?.Phone ?? string.Empty,
@@ -176,7 +179,8 @@ public class OrderService : IOrderService
                 Message = "Đơn hàng không tồn tại"
             };
         }
-
+        order.OrderTotal = order.ItemShops.Sum(x => x.PriceOriginal);
+        order.FeeShippingTotal = order.ItemShops.Sum(x => x.FeeShipping);
         var Promotion = await _redisUtil.GetAsync<List<PromotionInOrderResponse>>($"promotion_in_order_{userId}_{orderId}");
         if (Promotion == null)
         {
@@ -196,18 +200,19 @@ public class OrderService : IOrderService
                     }
                 }
             }
-            itemShop.PriceAfterVoucher = itemShop.PriceOriginal - 0;
+            // itemShop.PriceAfterVoucher = itemShop.PriceOriginal - 0;
             if (itemShop.VoucherId == null) continue;
 
             var voucherShop = await _voucherRepository.GetVoucherShopByIdAsync(itemShop.VoucherId);
             if (voucherShop.Type == VoucherValueType.Percentage)
             {
                 decimal discountAmount = itemShop.PriceOriginal * (voucherShop.DiscountValue ?? 0) > (voucherShop.MaxdiscountAmount ?? 0) ? (voucherShop.MaxdiscountAmount ?? 0) : itemShop.PriceOriginal * (voucherShop.DiscountValue ?? 0);
-                itemShop.PriceAfterVoucher = itemShop.PriceOriginal - discountAmount;
+                // itemShop.PriceAfterVoucher = itemShop.PriceOriginal - discountAmount;
+                order.DiscountTotal = order.DiscountTotal + discountAmount;
             }
             else if (voucherShop.Type == VoucherValueType.FixedAmount)
             {
-                itemShop.PriceAfterVoucher = itemShop.PriceOriginal - voucherShop.DiscountValue ?? 0;
+                order.DiscountTotal = order.DiscountTotal + voucherShop.DiscountValue ?? 0;
             }
         }
 
@@ -217,14 +222,14 @@ public class OrderService : IOrderService
             if (voucherSystem.Type == VoucherValueType.Percentage)
             {
                 decimal discountAmount = order.OrderTotal * (voucherSystem.DiscountValue ?? 0) > (voucherSystem.MaxdiscountAmount ?? 0) ? (voucherSystem.MaxdiscountAmount ?? 0) : order.OrderTotal * (voucherSystem.DiscountValue ?? 0);
-                order.OrderTotal = order.OrderTotal - discountAmount;
+                order.DiscountTotal = order.DiscountTotal + discountAmount;
             }
             else if (voucherSystem.Type == VoucherValueType.FixedAmount)
             {
-                order.OrderTotal = order.OrderTotal - voucherSystem.DiscountValue ?? 0;
+                order.DiscountTotal = order.DiscountTotal + voucherSystem.DiscountValue ?? 0;
             }
         }
-        order.AmountTotal = order.OrderTotal + order.FeeShippingTotal - order.VoucherSystemValue;
+        order.AmountTotal = order.OrderTotal + order.FeeShippingTotal - order.DiscountTotal;
         await _redisUtil.SetAsync($"calculated_order_{userId}_{orderId}", JsonSerializer.Serialize(order));
         return new CreateVirtualOrderResponse
         {
@@ -278,7 +283,7 @@ public class OrderService : IOrderService
                         ShopId = itemShop.ShopId,
                         UserId = userId,
                         OriginalPrice = itemShop.PriceOriginal,
-                        FinalPrice = itemShop.PriceAfterVoucher + itemShop.FeeShipping ?? 0,
+                        FinalPrice = itemShop.PriceOriginal + itemShop.FeeShipping - itemShop.VoucherValue,
                         PaymentMethod = paymentMethod,
                         StatusPayment = paymentStatus,
 
@@ -440,13 +445,6 @@ public class OrderService : IOrderService
                         //     throw new Exception("VariantId không được để trống");
                         // }
 
-
-
-
-
-
-
-
                         var variantDb = await _variantRepository.GetVariantByIdAsync(product.VariantId.Value.ToString());
                         if (variantDb == null)
                         {
@@ -461,8 +459,6 @@ public class OrderService : IOrderService
                         await _variantRepository.UpdateVariantAsync(variantDb);
                     }
 
-
-
                     // Tạo Payout cho shop này
                     var payout = new Payout
                     {
@@ -472,8 +468,8 @@ public class OrderService : IOrderService
                         CreatedBy = userId,
                         UpdatedAt = DateTime.UtcNow,
                         UpdatedBy = userId,
-                        GrossAmount = itemShop.PriceAfterVoucher + itemShop.FeeShipping,
-                        NetAmount = (itemShop.PriceAfterVoucher + itemShop.FeeShipping) - itemShop.FeeShipping - platformFeeTotal,
+                        GrossAmount = itemShop.PriceOriginal + itemShop.FeeShipping - itemShop.VoucherValue,
+                        NetAmount = (itemShop.PriceOriginal + itemShop.FeeShipping - itemShop.VoucherValue) - itemShop.FeeShipping - platformFeeTotal,
                         PlatformFee = platformFeeTotal,
                         ShippingFee = itemShop.FeeShipping,
                         Status = PayoutStatus.Pending,
@@ -671,21 +667,30 @@ public class OrderService : IOrderService
                     VariantId = y.VariantId.ToString(),
                     VariantValues = y.Variant?.VariantValues?.Select(z => new PropertyValueForCartDto { Value = z.PropertyValue?.Value ?? string.Empty, ImgUrl = z.PropertyValue?.ImgUrl ?? string.Empty, Level = z.PropertyValue?.Level ?? 0 }).ToList() ?? new List<PropertyValueForCartDto>(),
                     Price = y.OriginalPrice ?? 0,
-                    Quantity = (int)(y.Quantity ?? 0)
+                    Quantity = (int)(y.Quantity ?? 0),
+
                 })
                     .ToList()
             }).ToList();
         var orderPaymentProcessing = orderResponses.Where(x => x.PaymentMethod == PaymentMethod.VNPay && x.PaymentStatus == PaymentStatus.Processing).ToList();
-        foreach (var item in orderPaymentProcessing)
+        foreach (var item in orderResponses)
         {
-            var paymentLink = await _redisUtil.GetAsyncWithTtl($"order_payment_processing_{userId}_{item.OrderId}");
-            if (paymentLink.Key != null)
+            if (item.PaymentMethod == PaymentMethod.VNPay && item.PaymentStatus == PaymentStatus.Processing)
             {
-                item.PaymentProcessing = new OrderPaymentProcessing
+                var paymentLink = await _redisUtil.GetAsyncWithTtl($"order_payment_processing_{userId}_{item.OrderId}");
+                if (paymentLink.Key != null)
                 {
-                    Time = paymentLink.Value.Value.TotalSeconds,
-                    PaymentLink = paymentLink.Key ?? string.Empty,
-                };
+                    item.PaymentProcessing = new OrderPaymentProcessing
+                    {
+                        Time = paymentLink.Value.Value.TotalSeconds,
+                        PaymentLink = paymentLink.Key ?? string.Empty,
+                    };
+                }
+            }
+
+            foreach (var orderItem in item.Items)
+            {
+                orderItem.IsAllowReview = await _reviewService.IsAllowReviewAsync(item.OrderId, orderItem.ProductId, userId);
             }
         }
 

@@ -161,7 +161,12 @@ namespace PeShop.Helpers
                     }
                 }
 
-                var formContent = new FormUrlEncodedContent(formData);
+                var formContent = new MultipartFormDataContent();
+
+                foreach (var item in formData)
+                {
+                    formContent.Add(new StringContent(item.Value), item.Key);
+                }
                 request.Content = formContent;
 
                 var response = await _httpClient.SendAsync(request);
@@ -173,6 +178,90 @@ namespace PeShop.Helpers
             catch (Exception ex)
             {
                 throw new Exception($"Lỗi khi gọi POST Form API: {ex.Message}", ex);
+            }
+        }
+
+        /// <summary>
+        /// Upload 1 file đơn giản
+        /// </summary>
+        public async Task<T?> PostFileAsync<T>(string url, IFormFile file, Dictionary<string, string>? formData = null, Dictionary<string, string>? headers = null)
+        {
+            try
+            {
+                var request = new HttpRequestMessage(HttpMethod.Post, url);
+                
+                if (headers != null)
+                {
+                    foreach (var header in headers)
+                    {
+                        request.Headers.Add(header.Key, header.Value);
+                    }
+                }
+
+                var formContent = new MultipartFormDataContent();
+                // Tạo StreamContent với Content-Type từ file
+                var fileStream = file.OpenReadStream();
+                var streamContent = new StreamContent(fileStream);
+                
+                // Thêm Content-Type cho file nếu có
+                if (!string.IsNullOrEmpty(file.ContentType))
+                {
+                    streamContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(file.ContentType);
+                }
+                
+                formContent.Add(streamContent, "file", file.FileName ?? "file");
+                
+                // Thêm các form data parameters nếu có
+                if (formData != null)
+                {
+                    foreach (var item in formData)
+                    {
+                        formContent.Add(new StringContent(item.Value), item.Key);
+                    }
+                }
+                
+                request.Content = formContent;
+
+                var response = await _httpClient.SendAsync(request);
+                
+                var content = await response.Content.ReadAsStringAsync();
+                
+                if (!response.IsSuccessStatusCode)
+                {
+                    Console.WriteLine($"Upload file failed - Status: {response.StatusCode}");
+                    Console.WriteLine($"URL: {url}");
+                    Console.WriteLine($"FileName: {file.FileName}");
+                    Console.WriteLine($"Response: {content}");
+                    throw new Exception($"Lỗi khi upload file: {response.StatusCode} - {content}");
+                }
+
+                // Kiểm tra nếu response là string trực tiếp (như URL) thì không cần deserialize JSON
+                if (typeof(T) == typeof(string))
+                {
+                    // Trim whitespace và quotes nếu có
+                    var trimmed = content.Trim().Trim('"').Trim('\'');
+                    return (T)(object)trimmed;
+                }
+
+                // Nếu là type khác, thử parse JSON
+                try
+                {
+                    return JsonSerializer.Deserialize<T>(content);
+                }
+                catch (JsonException)
+                {
+                    // Nếu không parse được JSON và T là string, trả về content trực tiếp
+                    if (typeof(T) == typeof(string))
+                    {
+                        return (T)(object)content.Trim();
+                    }
+                    throw;
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Exception in PostFileAsync: {ex.Message}");
+                throw new Exception($"Lỗi khi upload file: {ex.Message}", ex);
             }
         }
 

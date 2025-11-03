@@ -11,5 +11,6 @@ namespace PeShop.Setting
         public string BaseApiFlask { get; set; } = string.Empty;
         public string BaseUrlFrontend { get; set; } = string.Empty;
         public string BaseApiBackendJava { get; set; } = string.Empty;
+        public string FolderImagesReview { get; set; } = string.Empty;
     }
 }

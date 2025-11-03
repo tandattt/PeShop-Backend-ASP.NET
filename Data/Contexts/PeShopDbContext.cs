@@ -51,6 +51,8 @@ public partial class PeShopDbContext : DbContext
 
     public virtual DbSet<ProductInfomation> ProductInfomations { get; set; }
 
+    public virtual DbSet<Review> Reviews { get; set; }
+
     public virtual DbSet<PropertyProduct> PropertyProducts { get; set; }
 
     public virtual DbSet<PropertyValue> PropertyValues { get; set; }
@@ -1602,6 +1604,68 @@ public partial class PeShopDbContext : DbContext
             entity.HasOne(d => d.Shop).WithMany(p => p.Wallets)
                 .HasForeignKey(d => d.ShopId)
                 .HasConstraintName("FK3haasvu2qmffnkk2nqxgt7q6w");
+        });
+
+        modelBuilder.Entity<Review>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+
+            entity.ToTable("review");
+
+            entity.HasIndex(e => e.UserId, "review_ibfk_2");
+            entity.HasIndex(e => e.OrderId, "fk_review_order");
+            entity.HasIndex(e => e.ProductId, "review_ibfk_1");
+
+            entity.HasIndex(e => e.VariantId, "review_ibfk_3");
+
+            entity.Property(e => e.Id)
+                .ValueGeneratedOnAdd()
+                .HasColumnName("id");
+            entity.Property(e => e.UserId)
+                .HasMaxLength(36)
+                .HasColumnName("user_id");
+            entity.Property(e => e.ProductId)
+                .HasMaxLength(36)
+                .HasColumnName("product_id");
+            entity.Property(e => e.VariantId)
+                .HasColumnName("variant_id");
+            entity.Property(e => e.OrderId)
+                .HasColumnName("order_id");
+            entity.Property(e => e.Rating)
+                .HasColumnName("rating");
+            entity.Property(e => e.Content)
+                .HasColumnType("text")
+                .HasColumnName("content");
+            entity.Property(e => e.ReplyContent)
+                .HasColumnType("text")
+                .HasColumnName("reply_content");
+            entity.Property(e => e.UrlImg)
+                .HasColumnType("text")
+                .HasColumnName("url_img");
+            entity.Property(e => e.CreatedAt)
+                .HasColumnName("created_at");
+            entity.Property(e => e.UpdatedAt)
+                .HasColumnName("updated_at");
+            entity.Property(e => e.CreatedBy)
+                .HasMaxLength(255)
+                .HasColumnName("created_by");
+            entity.Property(e => e.UpdatedBy)
+                .HasMaxLength(255)
+                .HasColumnName("updated_by");
+
+            entity.HasOne(d => d.User).WithMany()
+                .HasForeignKey(d => d.UserId)
+                .HasConstraintName("review_ibfk_2");
+            entity.HasOne(d => d.Order).WithMany()
+                .HasForeignKey(d => d.OrderId)
+                .HasConstraintName("fk_review_order");
+            entity.HasOne(d => d.Product).WithMany()
+                .HasForeignKey(d => d.ProductId)
+                .HasConstraintName("review_ibfk_1");
+
+            entity.HasOne(d => d.Variant).WithMany()
+                .HasForeignKey(d => d.VariantId)
+                .HasConstraintName("review_ibfk_3");
         });
 
         // Enum Mappings

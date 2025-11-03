@@ -135,7 +135,7 @@ public class FeeShippingService : IFeeShippingService
             //    Console.WriteLine(JsonSerializer.Serialize(feeShippingResponse.id));
             targetShop.ShippingId = item.ShippingId;
             targetShop.FeeShipping = feeShippingResponse.total_fee;
-            order.FeeShippingTotal += feeShippingResponse.total_fee;
+            // order.FeeShippingTotal += feeShippingResponse.total_fee;
 //    Console.WriteLine(JsonSerializer.Serialize(targetShop));
         }
         

@@ -25,14 +25,14 @@ namespace PeShop.Controllers
         public async Task<IActionResult> SetExpireVoucherSystem([FromBody] VoucherJobDto dto)
         {
 
-            if (!Request.Headers.TryGetValue("Authorization", out var authHeader))
+            if (!Request.Headers.TryGetValue("API-KEY", out var authHeader))
             {
 
                 return Unauthorized("Missing Authorization header");
             }
 
-            var token = authHeader.ToString().Replace("Bearer ", "");
-            if (token != _appSetting.ApiKeySystem)
+            // var token = authHeader.ToString().Replace("Bearer ", "");
+            if (authHeader != _appSetting.ApiKeySystem)
             {
                 return Forbid("Invalid API key");
             }
@@ -51,12 +51,12 @@ namespace PeShop.Controllers
         [HttpPost("set-job")]
         public async Task<IActionResult> SetJobAsync([FromBody] JobDto dto)
         {
-            if (!Request.Headers.TryGetValue("Authorization", out var authHeader))
+            if (!Request.Headers.TryGetValue("API-KEY", out var authHeader))
             {
                 throw new UnauthorizedException("Missing Authorization header");
             }
-            var token = authHeader.ToString().Replace("Bearer ", "");
-            if (token != _appSetting.ApiKeySystem)
+            // var token = authHeader.ToString().Replace("Bearer ", "");
+            if (authHeader != _appSetting.ApiKeySystem)
             {
                 throw new ForBidenException("Invalid API key");
             }

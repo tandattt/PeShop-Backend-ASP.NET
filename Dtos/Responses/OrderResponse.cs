@@ -28,6 +28,7 @@ public class OrderItemResponse{
     public List<PropertyValueForCartDto> VariantValues { get; set; } = new List<PropertyValueForCartDto>();
     public decimal Price { get; set; } = 0;
     public int Quantity { get; set; } = 0;
+    public bool IsAllowReview { get; set; } = false;
 }
 
 public class OrderPaymentProcessing{
