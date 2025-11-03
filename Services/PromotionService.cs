@@ -5,6 +5,7 @@ using PeShop.Data.Repositories.Interfaces;
 using PeShop.Dtos.Shared;
 using PeShop.Interfaces;
 using PeShop.Exceptions;
+using Models.Enums;
 public class PromotionService : IPromotionService
 {
     private readonly IPromotionRepository _promotionRepository;
@@ -139,76 +140,45 @@ public class PromotionService : IPromotionService
                         }
                     }
                     
-                    var gift = promotion.PromotionGifts.FirstOrDefault(g => g.Product != null);
-                    if (gift != null && gift.Product != null)
+                    // Lấy tất cả gifts có product (đã được filter active ở repository)
+                    var gifts = promotion.PromotionGifts.Where(g => g.Product != null).ToList();
+                    if (gifts.Any())
                     {
-                        var giftQuantity = gift.GiftQuantity ?? 0;
+                        // Map tất cả gifts thành PromotionGiftDto
+                        var promotionGiftsList = gifts.Select(g => new PromotionGiftDto
+                        {
+                            Id = g.Id,
+                            GiftQuantity = g.GiftQuantity ?? 0,
+                            Product = new ProductInPromotionGiftDto
+                            {
+                                Id = g.Product!.Id,
+                                Name = g.Product.Name ?? string.Empty,
+                                Image = g.Product.ImgMain ?? string.Empty,
+                                ReviewCount = g.Product.ReviewCount ?? 0,
+                                ReviewPoint = g.Product.ReviewPoint ?? 0,
+                                Price = g.Product.Price ?? 0,
+                                BoughtCount = g.Product.BoughtCount ?? 0,
+                                AddressShop = g.Product.Shop?.NewProviceId ?? string.Empty,
+                                Slug = g.Product.Slug ?? string.Empty
+                            }
+                        }).ToList();
+
+                        // Lấy gift đầu tiên để backward compatibility
+                        var firstGift = gifts.FirstOrDefault();
                         var promotionResponse = new PromotionInOrderResponse
                         {
                             PromotionId = promotion.Id,
                             PromotionName = promotion.Name ?? string.Empty,
                             ShopId = itemShop.ShopId,
                             Products = new List<ProductInPromotion>(),
-                            PromotionGifts = null
+                            PromotionGifts = firstGift != null ? promotionGiftsList.FirstOrDefault() : null,
+                            PromotionGiftsList = promotionGiftsList
                         };
                         
-                        if (allRulesSatisfied)
+                        if (!allRulesSatisfied)
                         {
-                            // Đủ điều kiện -> product rỗng (giá = 0) + gift
-                            // promotionResponse.Products.Add(new ProductInPromotion
-                            // {
-                            //     Id = gift.Product.Id,
-                            //     Name = gift.Product.Name ?? string.Empty,
-                            //     Image = gift.Product.ImgMain ?? string.Empty,
-                            //     ReviewCount = gift.Product.ReviewCount ?? 0,
-                            //     ReviewPoint = gift.Product.ReviewPoint ?? 0,
-                            //     Price = 0, // Product rỗng nên giá = 0
-                            //     BoughtCount = gift.Product.BoughtCount ?? 0,
-                            //     AddressShop = gift.Product.Shop?.NewProviceId ?? string.Empty,
-                            //     Slug = gift.Product.Slug ?? string.Empty,
-                            //     Quantity = giftQuantity
-                            // });
-                            
-                            promotionResponse.PromotionGifts = new PromotionGiftDto
-                            {
-                                Id = gift.Id,
-                                GiftQuantity = giftQuantity,
-                                Product = new ProductInPromotionGiftDto
-                                {
-                                    Id = gift.Product.Id,
-                                    Name = gift.Product.Name ?? string.Empty,
-                                    Image = gift.Product.ImgMain ?? string.Empty,
-                                    ReviewCount = gift.Product.ReviewCount ?? 0,
-                                    ReviewPoint = gift.Product.ReviewPoint ?? 0,
-                                    Price = gift.Product.Price ?? 0,
-                                    BoughtCount = gift.Product.BoughtCount ?? 0,
-                                    AddressShop = gift.Product.Shop?.NewProviceId ?? string.Empty,
-                                    Slug = gift.Product.Slug ?? string.Empty
-                                }
-                            };
-                        }
-                        else
-                        {
-                            // Chưa đủ điều kiện -> hiển thị số lượng còn thiếu + gift
+                            // Chưa đủ điều kiện -> hiển thị số lượng còn thiếu
                             promotionResponse.Products = missingProducts;
-                            
-                            promotionResponse.PromotionGifts = new PromotionGiftDto
-                            {
-                                Id = gift.Id,
-                                GiftQuantity = giftQuantity,
-                                Product = new ProductInPromotionGiftDto
-                                {
-                                    Id = gift.Product.Id,
-                                    Name = gift.Product.Name ?? string.Empty,
-                                    Image = gift.Product.ImgMain ?? string.Empty,
-                                    ReviewCount = gift.Product.ReviewCount ?? 0,
-                                    ReviewPoint = gift.Product.ReviewPoint ?? 0,
-                                    Price = gift.Product.Price ?? 0,
-                                    BoughtCount = gift.Product.BoughtCount ?? 0,
-                                    AddressShop = gift.Product.Shop?.NewProviceId ?? string.Empty,
-                                    Slug = gift.Product.Slug ?? string.Empty
-                                }
-                            };
                         }
                         
                         promotionInOrderResponses.Add(promotionResponse);

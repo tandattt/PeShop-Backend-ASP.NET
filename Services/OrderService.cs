@@ -195,8 +195,43 @@ public class OrderService : IOrderService
                 {
                     if (promotion.Products.IsNullOrEmpty() == true)
                     {
-                        itemShop.Gifts.Add(new GiftInOrder { Product = promotion.PromotionGifts.Product != null ? new OrderRequest { ProductId = promotion.PromotionGifts.Product.Id, Quantity = (uint)promotion.PromotionGifts.GiftQuantity, PriceOriginal = 0, ShopId = itemShop.ShopId } : null, PromotionName = promotion.PromotionName, PromotionId = promotion.PromotionId });
-                        // .Select(p => new OrderRequest { ProductId = p.Id, Quantity = p.Quantity, PriceOriginal = 0, ShopId = itemShop.ShopId}).FirstOrDefault(), PromotionName = promotion.PromotionName, PromotionId = promotion.PromotionId });
+                        // Add tất cả gifts với PromotionGiftId
+                        if (promotion.PromotionGiftsList != null && promotion.PromotionGiftsList.Any())
+                        {
+                            foreach (var gift in promotion.PromotionGiftsList)
+                            {
+                                itemShop.Gifts.Add(new GiftInOrder 
+                                { 
+                                    Product = gift.Product != null ? new OrderRequest 
+                                    { 
+                                        ProductId = gift.Product.Id, 
+                                        Quantity = (uint)gift.GiftQuantity, 
+                                        PriceOriginal = 0, 
+                                        ShopId = itemShop.ShopId 
+                                    } : null, 
+                                    PromotionName = promotion.PromotionName, 
+                                    PromotionId = promotion.PromotionId,
+                                    PromotionGiftId = gift.Id
+                                });
+                            }
+                        }
+                        // Backward compatibility với PromotionGifts (single gift)
+                        else if (promotion.PromotionGifts != null)
+                        {
+                            itemShop.Gifts.Add(new GiftInOrder 
+                            { 
+                                Product = promotion.PromotionGifts.Product != null ? new OrderRequest 
+                                { 
+                                    ProductId = promotion.PromotionGifts.Product.Id, 
+                                    Quantity = (uint)promotion.PromotionGifts.GiftQuantity, 
+                                    PriceOriginal = 0, 
+                                    ShopId = itemShop.ShopId 
+                                } : null, 
+                                PromotionName = promotion.PromotionName, 
+                                PromotionId = promotion.PromotionId,
+                                PromotionGiftId = promotion.PromotionGifts.Id
+                            });
+                        }
                     }
                 }
             }
@@ -366,43 +401,72 @@ public class OrderService : IOrderService
                     }
                     if (itemShop.Gifts.IsNullOrEmpty() == false)
                     {
-                        foreach (var gift in itemShop.Gifts)
+                        // Nhóm gifts theo PromotionId để chỉ tăng used_count 1 lần cho mỗi promotion
+                        var giftsByPromotion = itemShop.Gifts
+                            .Where(g => g.PromotionId != null)
+                            .GroupBy(g => g.PromotionId!)
+                            .ToList();
+                        
+                        foreach (var promotionGroup in giftsByPromotion)
                         {
-                            if (gift.PromotionId != null)
+                            var promotionId = promotionGroup.Key;
+                            
+                            // Kiểm tra giới hạn sử dụng promotion (chỉ check 1 lần cho mỗi promotion)
+                            var promotion = await _promotionRepository.GetPromotionByIdAsync(promotionId);
+                            if (promotion != null && promotion.TotalUsageLimit.HasValue && promotion.TotalUsageLimit == promotion.UsedCount)
                             {
-                                var promotion = await _promotionRepository.GetPromotionByIdAsync(gift.PromotionId);
-                                if (promotion != null && promotion.TotalUsageLimit <= 0)
-                                {
-                                    throw new Exception("Promotion đã đạt giới hạn sử dụng");
-                                }
-                                else if (promotion != null)
-                                {
-                                    promotion.TotalUsageLimit = promotion.TotalUsageLimit - 1;
-                                    await _promotionRepository.UpdatePromotionAsync(promotion);
-                                }
+                                throw new Exception("Promotion đã đạt giới hạn sử dụng");
                             }
-                            var orderDetail = new OrderDetail
+                            
+                            // Tăng used_count 1 lần cho promotion này
+                            if (promotion != null)
                             {
-                                Id = Guid.NewGuid().ToString(),
-                                OrderId = orderDB.Id,
-                                ProductId = gift.Product?.ProductId,
-                                OriginalPrice = gift.Product?.PriceOriginal ?? 0,
-                                Quantity = gift.Product?.Quantity ?? 0,
-                                VariantId = gift.Product?.VariantId,
-                                Note = gift.Product?.Note,
-                                CreatedAt = DateTime.UtcNow,
-                                CreatedBy = userId,
-                                UpdatedAt = DateTime.UtcNow,
-                                UpdatedBy = userId
-                            };
-                            var orderDetailDB = await _orderDetailRepository.CreateOrderDetailAsync(orderDetail);
-                            if (orderDetailDB == null)
-                            {
-                                throw new Exception("Lỗi khi tạo đơn hàng");
+                                promotion.UsedCount = (promotion.UsedCount ?? 0) + 1;
+                                promotion.UpdatedAt = DateTime.UtcNow;
+                                await _promotionRepository.UpdatePromotionAsync(promotion);
                             }
-                            // Console.WriteLine($"[DEBUG] Creating OrderDetail for ProductId: {gift.Product?.ProductId}");
+                            
+                            // Tạo PromotionUsage cho tất cả gifts trong promotion này (nhưng không tăng used_count nữa)
+                            foreach (var gift in promotionGroup)
+                            {
+                                var promotionUsage = new PromotionUsage
+                                {
+                                    Id = Guid.NewGuid().ToString(),
+                                    PromotionId = gift.PromotionId,
+                                    PromotionGiftId = gift.PromotionGiftId,
+                                    OrderId = orderDB.Id,
+                                    CreatedAt = DateTime.UtcNow,
+                                    CreatedBy = userId,
+                                    UpdatedAt = DateTime.UtcNow,
+                                    UpdatedBy = userId
+                                };
+                                // Tạo PromotionUsage mà không tăng used_count (vì đã tăng ở trên)
+                                await _promotionRepository.CreatePromotionUsageWithoutIncrementAsync(promotionUsage);
+                            }
                         }
                     }
+                    // foreach (var product in itemShop.Products)
+                            // {
+                            //     Id = Guid.NewGuid().ToString(),
+                            //     OrderId = orderDB.Id,
+                            //     ProductId = gift.Product?.ProductId,
+                            //     OriginalPrice = gift.Product?.PriceOriginal ?? 0,
+                            //     Quantity = gift.Product?.Quantity ?? 0,
+                            //     VariantId = gift.Product?.VariantId,
+                            //     Note = gift.Product?.Note,
+                            //     CreatedAt = DateTime.UtcNow,
+                            //     CreatedBy = userId,
+                            //     UpdatedAt = DateTime.UtcNow,
+                            //     UpdatedBy = userId
+                            // };
+                            // var orderDetailDB = await _orderDetailRepository.CreateOrderDetailAsync(orderDetail);
+                            // if (orderDetailDB == null)
+                            // {
+                            //     throw new Exception("Lỗi khi tạo đơn hàng");
+                            // }
+                            // Console.WriteLine($"[DEBUG] Creating OrderDetail for ProductId: {gift.Product?.ProductId}");
+                        // }
+                    // }
                     foreach (var product in itemShop.Products)
                     {
                         var orderDetail = new OrderDetail

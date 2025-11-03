@@ -25,6 +25,7 @@ public class GiftInOrder
     public OrderRequest? Product { get; set; } = null;
     public string? PromotionName { get; set; } = null;
     public string? PromotionId { get; set; } = null;
+    public string? PromotionGiftId { get; set; } = null;
 }
 public class ItemShop
 {

@@ -22,4 +22,10 @@ public class ReviewController : ControllerBase
         var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         return Ok(await _reviewService.CreateReviewAsync(request, userId));
     }
+    [HttpGet("get-review-by-product")]
+    // [Authorize(Roles = RoleConstants.User)]
+    public async Task<IActionResult> GetReviewByProduct([FromQuery] string productId)
+    {
+        return Ok(await _reviewService.GetReviewByProductAsync(productId));
+    }
 }

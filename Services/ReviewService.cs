@@ -99,6 +99,7 @@ public class ReviewService : IReviewService
         {
             OrderId = request.OrderId,
             ProductId = request.ProductId,
+            VariantId = int.Parse(request.VariantId),
             UserId = userId,
             Content = request.Content,
             Rating = request.Rating,
@@ -112,5 +113,27 @@ public class ReviewService : IReviewService
             return new StatusResponse { Status = false, Message = "Đánh giá sản phẩm thất bại" };
         }
         return new StatusResponse { Status = true, Message = "Đánh giá sản phẩm thành công" };
+    }
+    public async Task<ListReviewResponseDto> GetReviewByProductAsync(string productId)
+    {
+        var reviews = await _reviewRepository.GetReviewByProductAsync(productId);
+        var reviewResponseDtos = reviews.Select(r => new ReviewResponseDto
+        {
+            Id = r.Id,
+            Content = r.Content,
+            ReplyContent = r.ReplyContent,
+            Rating = r.Rating ?? 0,
+            UrlImg = r.UrlImg.Split(',').ToList(),
+            UserId = r.UserId,
+            UserName = r.User.Name,
+            UserAvatar = r.User.Avatar,
+        }).ToList();
+        return new ListReviewResponseDto
+        {
+            Reviews = reviewResponseDtos,
+            ShopId = reviews.First().Product.ShopId,
+            ShopName = reviews.First().Product.Shop.Name,
+            ShopLogo = reviews.First().Product.Shop.LogoUrl,
+        };
     }
 }

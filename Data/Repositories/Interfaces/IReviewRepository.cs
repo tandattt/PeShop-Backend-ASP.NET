@@ -5,4 +5,5 @@ public interface IReviewRepository
 {
     Task<bool> HasReviewAsync(string orderId,string productId,string userId);
     Task<bool> CreateReviewAsync(Review review);
+    Task<List<Review>> GetReviewByProductAsync(string productId);
 }

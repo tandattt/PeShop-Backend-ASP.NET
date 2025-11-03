@@ -24,6 +24,8 @@ public partial class Promotion
 
     public int? TotalUsageLimit { get; set; }
 
+    public int? UsedCount { get; set; }
+
     public string? ShopId { get; set; }
 
     public virtual ICollection<PromotionGift> PromotionGifts { get; set; } = new List<PromotionGift>();

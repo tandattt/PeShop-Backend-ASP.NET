@@ -10,4 +10,6 @@ namespace PeShop.Dtos.Shared
         public string NewProviceId { get; set; } = string.Empty;
         public uint ProductCount { get; set; } = 0;
     }
+ 
+    
 }

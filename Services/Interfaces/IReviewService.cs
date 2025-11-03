@@ -6,4 +6,5 @@ public interface IReviewService
 {
     Task<bool> IsAllowReviewAsync(string orderId,string productId,string userId);
     Task<StatusResponse> CreateReviewAsync(CreateReviewRequest request,string userId);
+    Task<ListReviewResponseDto> GetReviewByProductAsync(string productId);
 }

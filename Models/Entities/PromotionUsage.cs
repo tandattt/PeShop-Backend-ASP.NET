@@ -12,19 +12,18 @@ public partial class PromotionUsage
 
     public string? UpdatedBy { get; set; }
 
-    public int? GiftUsedQuantity { get; set; }
-
-    public DateTime? UsedAt { get; set; }
 
     public string? OrderId { get; set; }
 
-    public string? PromotionRuleId { get; set; }
 
     public string? PromotionId { get; set; }
+
+    public string? PromotionGiftId { get; set; }
 
     public virtual Order? Order { get; set; }
 
     public virtual Promotion? Promotion { get; set; }
 
-    public virtual PromotionRule? PromotionRule { get; set; }
+
+    public virtual PromotionGift? PromotionGift { get; set; }
 }

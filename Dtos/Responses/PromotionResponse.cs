@@ -7,6 +7,7 @@ public class PromotionResponse
     public string PromotionName { get; set; } = string.Empty;
     public List<ProductInPromotion> Products { get; set; } = new List<ProductInPromotion>();
     public PromotionGiftDto? PromotionGifts { get; set; }
+    public List<PromotionGiftDto> PromotionGiftsList { get; set; } = new List<PromotionGiftDto>();
 }
 
 public class PromotionInOrderResponse : PromotionResponse

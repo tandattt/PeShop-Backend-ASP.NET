@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using PeShop.Data.Contexts;
 using PeShop.Dtos.Responses;
 using PeShop.Dtos.Requests;
+using Models.Enums;
 namespace PeShop.Data.Repositories;
 
 public class ProductRepository : IProductRepository
@@ -23,6 +24,7 @@ public class ProductRepository : IProductRepository
             .Include(p => p.Shop)
             .Skip(skip)
             .Take(take)
+            .Where(p => p.Status == ProductStatus.Active)
             .ToListAsync();
     }
     public async Task<Product?> GetProductByIdAsync(string productId)
@@ -35,7 +37,7 @@ public class ProductRepository : IProductRepository
                 .ThenInclude(v => v.VariantValues)
                     .ThenInclude(vv => vv.PropertyValue)
                         .ThenInclude(pv => pv.PropertyProduct)
-            .FirstOrDefaultAsync(p => p.Id == productId);
+            .FirstOrDefaultAsync(p => p.Id == productId && p.Status == ProductStatus.Active);
     }
 
     public async Task<Product?> GetProductBySlugAsync(string slug)
@@ -48,7 +50,7 @@ public class ProductRepository : IProductRepository
             .ThenInclude(v => v.VariantValues)
                     .ThenInclude(vv => vv.PropertyValue)
                         .ThenInclude(pv => pv.PropertyProduct)
-            .FirstOrDefaultAsync(p => p.Slug == slug);
+            .FirstOrDefaultAsync(p => p.Slug == slug && p.Status == ProductStatus.Active);
     }
 
     public async Task<ProductShippingDto?> GetProductForShippingByIdAsync(string productId)
@@ -56,7 +58,7 @@ public class ProductRepository : IProductRepository
         try
         {
             // First check if product exists
-            var productExists = await _context.Products.AnyAsync(p => p.Id == productId);
+            var productExists = await _context.Products.AnyAsync(p => p.Id == productId && p.Status == ProductStatus.Active);
             Console.WriteLine($"Product '{productId}' exists in database: {productExists}");
             
             if (!productExists)
@@ -65,7 +67,7 @@ public class ProductRepository : IProductRepository
             }
             
             var result = await _context.Products
-                .Where(p => p.Id == productId)
+                .Where(p => p.Id == productId && p.Status == ProductStatus.Active)
                 .Select(p => new ProductShippingDto
                 {
                     Price = p.Price,
@@ -107,6 +109,7 @@ public class ProductRepository : IProductRepository
         return await _context.Products
             .Include(p => p.Shop)
             .Where(p => p.Name != null && p.Name.ToLower().Contains(searchTerm))
+            .Where(p => p.Status == ProductStatus.Active)
             .OrderByDescending(p => p.BoughtCount)
             .Skip(skip)
             .Take(take)
@@ -124,35 +127,36 @@ public class ProductRepository : IProductRepository
         
         return await _context.Products
             .Where(p => p.Name != null && p.Name.ToLower().Contains(searchTerm))
+            .Where(p => p.Status == ProductStatus.Active)
             .CountAsync();
     }
     public async Task<List<Product>> GetListProductByAsync(GetProductRequest request)
     {
-        var query = _context.Products.Include(p => p.Shop).AsQueryable();
+        var query = _context.Products.Include(p => p.Shop).Where(p => p.Status == ProductStatus.Active).AsQueryable();
 
         // Filter by CategoryId if not null
         if (!string.IsNullOrEmpty(request.CategoryId))
         {
-            query = query.Where(p => p.CategoryId == request.CategoryId);
+            query = query.Where(p => p.CategoryId == request.CategoryId && p.Status == ProductStatus.Active);
         }
 
         // Filter by CategoryChildId if not null
         if (!string.IsNullOrEmpty(request.CategoryChildId))
         {
-            query = query.Where(p => p.CategoryChildId == request.CategoryChildId);
+            query = query.Where(p => p.CategoryChildId == request.CategoryChildId && p.Status == ProductStatus.Active);
         }
 
         // Filter by price range
-        query = query.Where(p => p.Price >= request.MinPrice);
+        query = query.Where(p => p.Price >= request.MinPrice && p.Status == ProductStatus.Active);
         if (request.MaxPrice.HasValue)
         {
-            query = query.Where(p => p.Price <= request.MaxPrice.Value);
+            query = query.Where(p => p.Price <= request.MaxPrice.Value && p.Status == ProductStatus.Active);
         }
 
         // Filter by review point if not null
         if (request.ReviewPoint.HasValue)
         {
-            query = query.Where(p => p.ReviewPoint >= request.ReviewPoint.Value);
+            query = query.Where(p => p.ReviewPoint >= request.ReviewPoint.Value && p.Status == ProductStatus.Active);
         }
 
         return await query
@@ -163,43 +167,43 @@ public class ProductRepository : IProductRepository
     }
     public async Task<int> GetCountProductByAsync(GetProductRequest request)
     {
-        var query = _context.Products.AsQueryable();
+        var query = _context.Products.Where(p => p.Status == ProductStatus.Active).AsQueryable();
 
         // Filter by CategoryId if not null
         if (!string.IsNullOrEmpty(request.CategoryId))
         {
-            query = query.Where(p => p.CategoryId == request.CategoryId);
+            query = query.Where(p => p.CategoryId == request.CategoryId && p.Status == ProductStatus.Active);
         }
 
         // Filter by CategoryChildId if not null
         if (!string.IsNullOrEmpty(request.CategoryChildId))
         {
-            query = query.Where(p => p.CategoryChildId == request.CategoryChildId);
+            query = query.Where(p => p.CategoryChildId == request.CategoryChildId && p.Status == ProductStatus.Active);
         }
 
         // Filter by price range
-        query = query.Where(p => p.Price >= request.MinPrice);
+        query = query.Where(p => p.Price >= request.MinPrice && p.Status == ProductStatus.Active    );
         if (request.MaxPrice.HasValue)
         {
-            query = query.Where(p => p.Price <= request.MaxPrice.Value);
+            query = query.Where(p => p.Price <= request.MaxPrice.Value && p.Status == ProductStatus.Active);
         }
 
         // Filter by review point if not null
         if (request.ReviewPoint.HasValue)
         {
-            query = query.Where(p => p.ReviewPoint >= request.ReviewPoint.Value);
+            query = query.Where(p => p.ReviewPoint >= request.ReviewPoint.Value && p.Status == ProductStatus.Active);
         }
 
         return await query.CountAsync();
     }
     public async Task<List<Product>> GetListProductByShopAsync(GetProductByShopRequest request)
     {
-        var query = _context.Products.Include(p => p.Shop).Where(p => p.ShopId == request.ShopId).AsQueryable();
+        var query = _context.Products.Include(p => p.Shop).Where(p => p.ShopId == request.ShopId && p.Status == ProductStatus.Active).AsQueryable();
         return await query.Skip((request.Page - 1) * request.PageSize).Take(request.PageSize).ToListAsync();
     }
     public async Task<int> GetCountProductByShopAsync(GetProductByShopRequest request)
     {
-        var query = _context.Products.Include(p => p.Shop).Where(p => p.ShopId == request.ShopId).AsQueryable();
+        var query = _context.Products.Include(p => p.Shop).Where(p => p.ShopId == request.ShopId && p.Status == ProductStatus.Active).AsQueryable();
         return await query.CountAsync();
     }
 
@@ -210,11 +214,11 @@ public class ProductRepository : IProductRepository
         {
             return new List<Product>();
         }
-        return await _context.Products.Include(p => p.Shop).Where(p => p.CategoryChildId == categoryChildId).ToListAsync();
+        return await _context.Products.Include(p => p.Shop).Where(p => p.CategoryChildId == categoryChildId && p.Status == ProductStatus.Active).ToListAsync();
     }
     public async Task<List<Product>> GetListProductByVectorAsync(List<string> productIds)
     {
-        return await _context.Products.Include(p => p.Shop).Where(p => productIds.Contains(p.Id)).AsNoTracking().ToListAsync();
+        return await _context.Products.Include(p => p.Shop).Where(p => productIds.Contains(p.Id) && p.Status == ProductStatus.Active    ).AsNoTracking().ToListAsync();
     }
 
     public async Task<bool> UpdateProductAsync(Product product)

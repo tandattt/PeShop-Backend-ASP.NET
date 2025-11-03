@@ -741,6 +741,8 @@ public partial class PeShopDbContext : DbContext
                 .HasColumnName("status");
             entity.Property(e => e.TotalUsageLimit)
                 .HasColumnName("total_usage_limit");
+            entity.Property(e => e.UsedCount)
+                .HasColumnName("used_count");
             entity.Property(e => e.ShopId)
                 .HasMaxLength(36)
                 .HasColumnName("shop_id");
@@ -841,6 +843,7 @@ public partial class PeShopDbContext : DbContext
             entity.HasOne(d => d.Product).WithMany()
                 .HasForeignKey(d => d.ProductId)
                 .HasConstraintName("FK_promotion_rule_product");
+            
         });
 
         modelBuilder.Entity<PromotionUsage>(entity =>
@@ -851,7 +854,7 @@ public partial class PeShopDbContext : DbContext
 
             entity.HasIndex(e => e.OrderId, "FK_promotion_usage_order");
             entity.HasIndex(e => e.PromotionId, "FK_promotion_usage_promotion");
-            entity.HasIndex(e => e.PromotionRuleId, "FK_promotion_usage_promotion_rule");
+            entity.HasIndex(e => e.PromotionGiftId, "FK1ufe7mtp4j8i1jutl5uvo9epn");
 
             entity.Property(e => e.CreatedAt)
                 .HasMaxLength(6)
@@ -860,8 +863,6 @@ public partial class PeShopDbContext : DbContext
                 .HasMaxLength(16)
                 .IsFixedLength()
                 .HasColumnName("created_by");
-            entity.Property(e => e.GiftUsedQuantity)
-                .HasColumnName("gift_used_quantity");
             entity.Property(e => e.Id)
                 .HasMaxLength(36)
                 .HasColumnName("id");
@@ -871,9 +872,9 @@ public partial class PeShopDbContext : DbContext
             entity.Property(e => e.PromotionId)
                 .HasMaxLength(36)
                 .HasColumnName("promotion_id");
-            entity.Property(e => e.PromotionRuleId)
+            entity.Property(e => e.PromotionGiftId)
                 .HasMaxLength(36)
-                .HasColumnName("promotion_rule_id");
+                .HasColumnName("promotion_gift_id");
             entity.Property(e => e.UpdatedAt)
                 .HasMaxLength(6)
                 .HasColumnName("updated_at");
@@ -881,9 +882,6 @@ public partial class PeShopDbContext : DbContext
                 .HasMaxLength(16)
                 .IsFixedLength()
                 .HasColumnName("updated_by");
-            entity.Property(e => e.UsedAt)
-                .HasMaxLength(6)
-                .HasColumnName("used_at");
 
             entity.HasOne(d => d.Order).WithMany(p => p.PromotionUsages)
                 .HasForeignKey(d => d.OrderId)
@@ -893,9 +891,9 @@ public partial class PeShopDbContext : DbContext
                 .HasForeignKey(d => d.PromotionId)
                 .HasConstraintName("FK_promotion_usage_promotion");
 
-            entity.HasOne(d => d.PromotionRule).WithMany(p => p.PromotionUsages)
-                .HasForeignKey(d => d.PromotionRuleId)
-                .HasConstraintName("FK_promotion_usage_promotion_rule");
+            entity.HasOne(d => d.PromotionGift).WithMany()
+                .HasForeignKey(d => d.PromotionGiftId)
+                .HasConstraintName("FK1ufe7mtp4j8i1jutl5uvo9epn");
         });
 
         modelBuilder.Entity<PropertyProduct>(entity =>

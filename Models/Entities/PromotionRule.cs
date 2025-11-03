@@ -20,7 +20,5 @@ public partial class PromotionRule
 
     public virtual Promotion? Promotion { get; set; }
 
-    public virtual ICollection<PromotionUsage> PromotionUsages { get; set; } = new List<PromotionUsage>();
-
     public virtual Product? Product { get; set; }
 }

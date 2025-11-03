@@ -23,4 +23,13 @@ public class ReviewRepository : IReviewRepository
         if (await _context.SaveChangesAsync() > 0) return true;
         else return false;
     }
+    public async Task<List<Review>> GetReviewByProductAsync(string productId)
+    {
+        return await _context.Reviews
+            .Include(x => x.User)
+            .Include(x => x.Product)
+            .ThenInclude(x => x.Shop)
+            .Where(x => x.ProductId == productId)
+            .ToListAsync();
+    }
 }
