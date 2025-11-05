@@ -18,6 +18,8 @@ namespace PeShop.Data.Repositories
         {
             return await _context.Users
                 .Include(u => u.Roles)
+                .Include(u => u.UserRanks)
+                    .ThenInclude(ur => ur.Rank)
                 .FirstOrDefaultAsync(u => u.Id == id);
         }
 

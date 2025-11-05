@@ -4,6 +4,8 @@ using PeShop.Exceptions;
 using PeShop.Models.Enums;
 using PeShop.Services.Interfaces;
 using PeShop.Dtos.Requests;
+using PeShop.Extensions;
+using PeShop.Dtos.Shared;
 
 namespace PeShop.Services;
 
@@ -34,6 +36,11 @@ public class UserService : IUserService
             Gender = user.Gender,
             Avatar = user.Avatar ?? string.Empty,
             CreatedAt = user.CreatedAt,
+            Rank = new RankDto
+            {
+                Id = user.UserRanks != null && user.UserRanks.Count > 0 ? user.UserRanks.FirstOrDefault()?.RankId ?? string.Empty : string.Empty,
+                Name = user.UserRanks != null && user.UserRanks.Count > 0 ? EnumExtensions.ToVietnameseString(user.UserRanks.FirstOrDefault()?.Rank?.RankLevel ?? RankLevel.Bronze) : string.Empty,
+            },
         };
     }
 

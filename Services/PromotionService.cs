@@ -23,7 +23,7 @@ public class PromotionService : IPromotionService
         foreach (var promotion in promotions)
         {
             if (promotion == null) continue;
-            var firstGift = promotion.PromotionGifts?.FirstOrDefault();
+            var firstGift = promotion.PromotionGifts?.Where(g => g.IsDeleted != true).FirstOrDefault();
             var promotionResponse = new PromotionResponse(){
                 PromotionId = promotion.Id,
                 PromotionName = promotion.Name ?? string.Empty,
@@ -139,9 +139,9 @@ public class PromotionService : IPromotionService
                             }
                         }
                     }
-                    
+
                     // Lấy tất cả gifts có product (đã được filter active ở repository)
-                    var gifts = promotion.PromotionGifts.Where(g => g.Product != null).ToList();
+                    var gifts = promotion.PromotionGifts.Where(g => g.IsDeleted != true && g.Product != null).ToList();
                     if (gifts.Any())
                     {
                         // Map tất cả gifts thành PromotionGiftDto

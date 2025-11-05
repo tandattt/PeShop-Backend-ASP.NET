@@ -1,3 +1,5 @@
+using Models.Enums;
+using PeShop.Constants;
 namespace PeShop.Dtos.Requests;
 public class GetProductRequest
 {
@@ -13,4 +15,12 @@ public class GetProductRequest
 public class GetProductByShopRequest :PaginationRequest
 {
     public string ShopId { get; set; } = string.Empty;
+}
+
+public class AGetProductRequest : GetProductRequest
+{
+    public ProductStatus? Status { get; set; } = null;
+    public string? SortOrder { get; set; } = SortOrderConstants.Newest; // "newest" or "oldest"
+    public DateTime? DateFrom { get; set; } = null; // Filter từ ngày
+    public DateTime? DateTo { get; set; } = null; // Filter đến ngày
 }

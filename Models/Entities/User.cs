@@ -42,4 +42,6 @@ public partial class User
     public virtual ICollection<UserAddress> UserAddresses { get; set; } = new List<UserAddress>();
 
     public virtual ICollection<Role> Roles { get; set; } = new List<Role>();
+
+    public virtual ICollection<UserRank> UserRanks { get; set; } = new List<UserRank>();
 }

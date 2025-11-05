@@ -100,6 +100,18 @@ namespace PeShop.Extensions
                 _ => type?.ToString() ?? string.Empty
             };
         }
+        public static string ToVietnameseString(this RankLevel level)
+        {
+            return level switch
+            {
+                RankLevel.Bronze => "Đồng",
+                RankLevel.Silver => "Bạc",
+                RankLevel.Gold => "Vàng",
+                RankLevel.Platinum => "Bạch kim",
+                RankLevel.Diamond => "Kim cương",
+                _ => level.ToString() ?? string.Empty
+            };
+        }
 
     }
 }

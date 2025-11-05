@@ -12,10 +12,12 @@ namespace PeShop.Services
     {
         private readonly ICartRepository _cartRepository;
         private readonly IVariantValueRepository _variantValueRepository;
-        public CartService(ICartRepository cartRepository, IVariantValueRepository variantValueRepository)
+        private readonly IVariantRepository _variantRepository;
+        public CartService(ICartRepository cartRepository, IVariantValueRepository variantValueRepository, IVariantRepository variantRepository)
         {
             _cartRepository = cartRepository;
             _variantValueRepository = variantValueRepository;
+            _variantRepository = variantRepository;
         }
         public async Task<List<CartResponse>> GetCartAsync(string userId)
         {
@@ -79,19 +81,28 @@ namespace PeShop.Services
         }
         public async Task<Dictionary<string, int>> AddCartAsync(CartRequest request, string userId)
         {
+            if (request.VariantId != null)
+            {
+                var variant = await _variantRepository.GetVariantByIdAsync(request.VariantId.Value.ToString());
+                if (variant == null || variant.Status != VariantStatus.Show)
+                {
+                    throw new BadRequestException("Biến thể sản phẩm không khả dụng");
+                }
+            }
+
             var existingCarts = await _cartRepository.GetCartAsync(userId) ?? new List<Cart>();
             Cart? existingCart=null;
-            if(request.VariantId != null){  
+            if(request.VariantId != null){
                  // thêm vào giỏ hàng có variant
                 Console.WriteLine("thêm vào giỏ hàng có variant");
-                existingCart = existingCarts.FirstOrDefault(c => 
+                existingCart = existingCarts.FirstOrDefault(c =>
                 c.ProductId == request.ProductId && c.VariantId == request.VariantId);
-                
+
             }
             else{
                // thêm vào giỏ hàng mà không có variant
                 Console.WriteLine("thêm vào giỏ hàng mà không có variant");
-                existingCart = existingCarts.FirstOrDefault(c => 
+                existingCart = existingCarts.FirstOrDefault(c =>
                 c.ProductId == request.ProductId);
             }
             

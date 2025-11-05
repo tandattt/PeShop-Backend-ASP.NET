@@ -83,6 +83,10 @@ public partial class PeShopDbContext : DbContext
 
     public virtual DbSet<Wallet> Wallets { get; set; }
 
+    public virtual DbSet<Rank> Ranks { get; set; }
+
+    public virtual DbSet<UserRank> UserRanks { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder
@@ -792,6 +796,8 @@ public partial class PeShopDbContext : DbContext
             entity.Property(e => e.ProductId)
                 .HasMaxLength(36)
                 .HasColumnName("product_id");
+            entity.Property(e => e.IsDeleted)
+                .HasColumnName("is_deleted");
 
             entity.HasOne(d => d.Promotion).WithMany(p => p.PromotionGifts)
                 .HasForeignKey(d => d.PromotionId)
@@ -1666,6 +1672,100 @@ public partial class PeShopDbContext : DbContext
                 .HasConstraintName("review_ibfk_3");
         });
 
+        modelBuilder.Entity<Rank>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+
+            entity.ToTable("ranks");
+
+            entity.Property(e => e.Id)
+                .HasMaxLength(36)
+                .HasColumnName("id");
+            entity.Property(e => e.MinPrice)
+                .HasPrecision(18, 3)
+                .HasColumnName("min_price");
+            entity.Property(e => e.MaxPrice)
+                .HasPrecision(18, 3)
+                .HasColumnName("max_price");
+            entity.Property(e => e.RankLevel)
+                .HasColumnType("tinyint unsigned")
+                .HasColumnName("rank_level");
+            entity.Property(e => e.IsActive)
+                .HasColumnType("tinyint(1)")
+                .HasColumnName("is_Active");
+            entity.Property(e => e.CreatedAt)
+                .HasColumnType("datetime")
+                .HasColumnName("created_at");
+            entity.Property(e => e.CreatedBy)
+                .HasMaxLength(36)
+                .HasColumnName("created_by");
+            entity.Property(e => e.UpdatedAt)
+                .HasColumnType("datetime")
+                .HasColumnName("updated_at");
+            entity.Property(e => e.UpdatedBy)
+                .HasMaxLength(36)
+                .HasColumnName("updated_by");
+        });
+
+        modelBuilder.Entity<UserRank>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+
+            entity.ToTable("user_rank");
+
+            entity.HasIndex(e => e.UserId, "FK_user_rank_user");
+
+            entity.HasIndex(e => e.RankId, "FK_user_rank_rank");
+
+            entity.Property(e => e.Id)
+                .HasMaxLength(36)
+                .HasColumnName("id");
+            entity.Property(e => e.UserId)
+                .HasMaxLength(36)
+                .HasColumnName("user_id");
+            entity.Property(e => e.RankId)
+                .HasMaxLength(36)
+                .HasColumnName("rank_id");
+            entity.Property(e => e.TotalSpent)
+                .HasPrecision(18, 2)
+                .HasDefaultValue(0.00m)
+                .HasColumnName("total_spent");
+            entity.Property(e => e.AchievedAt)
+                .HasColumnType("datetime")
+                .HasColumnName("achieved_at");
+            entity.Property(e => e.UpdatedAt)
+                .HasColumnType("datetime")
+                .HasDefaultValueSql("CURRENT_TIMESTAMP")
+                .HasColumnName("updated_at");
+            entity.Property(e => e.CreatedAt)
+                .HasColumnType("datetime")
+                .HasDefaultValueSql("CURRENT_TIMESTAMP")
+                .HasColumnName("created_at");
+            entity.Property(e => e.ExpiresAt)
+                .HasColumnType("datetime")
+                .HasColumnName("expires_at");
+            entity.Property(e => e.CreatedBy)
+                .HasMaxLength(100)
+                .HasColumnName("created_by");
+            entity.Property(e => e.UpdatedBy)
+                .HasMaxLength(100)
+                .HasColumnName("updated_by");
+
+            entity.HasOne(d => d.User)
+                .WithMany(p => p.UserRanks)
+                .HasForeignKey(d => d.UserId)
+                // .HasPrincipalKey(u => u.Id)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_user_rank_user");
+
+            entity.HasOne(d => d.Rank)
+                .WithMany(p => p.UserRanks)
+                .HasForeignKey(d => d.RankId)
+                // .HasPrincipalKey(r => r.Id)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_user_rank_rank");
+        });
+
         // Enum Mappings
         ConfigureEnumMappings(modelBuilder);
 
@@ -1746,6 +1846,11 @@ public partial class PeShopDbContext : DbContext
         // Variant enum mapping
         modelBuilder.Entity<Variant>()
             .Property(e => e.Status)
+            .HasConversion<int>();
+
+        // Rank enum mapping
+        modelBuilder.Entity<Rank>()
+            .Property(e => e.RankLevel)
             .HasConversion<int>();
 
         // modelBuilder.Entity<OrderVoucher>()

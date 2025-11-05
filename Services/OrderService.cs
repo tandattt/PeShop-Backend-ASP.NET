@@ -514,6 +514,10 @@ public class OrderService : IOrderService
                         {
                             throw new Exception("Biến thể không tồn tại");
                         }
+                        if (variantDb.Status != VariantStatus.Show)
+                        {
+                            throw new Exception("Biến thể sản phẩm không khả dụng");
+                        }
                         // Kiểm tra số lượng variant trước khi trừ
                         if (variantDb.Quantity == null || variantDb.Quantity < product.Quantity)
                         {

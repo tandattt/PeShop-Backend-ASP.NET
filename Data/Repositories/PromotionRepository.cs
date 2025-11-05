@@ -59,7 +59,7 @@ public class PromotionRepository : IPromotionRepository
                 Promotion = p,
                 // filter out inactive products in rules and gifts
                 Rules = p.PromotionRules.Where(r => r.Product != null && r.Product.Status == ProductStatus.Active).ToList(),
-                Gifts = p.PromotionGifts.Where(g => g.Product == null || g.Product.Status == ProductStatus.Active).ToList()
+                Gifts = p.PromotionGifts.Where(g => g.IsDeleted != true && (g.Product == null || g.Product.Status == ProductStatus.Active)).ToList()
             })
             .AsNoTracking()
             .ToListAsync();

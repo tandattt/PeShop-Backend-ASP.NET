@@ -1,5 +1,5 @@
 using PeShop.Models.Enums;
-
+using PeShop.Dtos.Shared;
 namespace PeShop.Dtos.Responses;
 
 public class UserInfoResponse
@@ -12,4 +12,5 @@ public class UserInfoResponse
     public string Avatar { get; set; } = string.Empty;
     public GenderUser? Gender { get; set; }
     public DateTime? CreatedAt { get; set; }
+    public RankDto Rank { get; set; } = new RankDto();
 }

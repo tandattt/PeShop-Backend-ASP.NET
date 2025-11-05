@@ -17,6 +17,7 @@ public partial class PromotionGift
     public string? PromotionId { get; set; }
 
     public string? ProductId { get; set; }
+    public bool? IsDeleted { get; set; }
 
     public virtual Promotion? Promotion { get; set; }
 
