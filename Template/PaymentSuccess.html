@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thanh Toán Thành Công</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            padding: 20px;
+            line-height: 1.6;
+        }
+        
+        .email-container {
+            max-width: 650px;
+            margin: 0 auto;
+            background: #ffffff;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            padding: 50px 30px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.15) 0%, transparent 70%);
+            animation: pulse 3s ease-in-out infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 0.5; }
+            50% { transform: scale(1.1); opacity: 0.8; }
+        }
+        
+        .header-content {
+            position: relative;
+            z-index: 1;
+        }
+        
+        .success-icon {
+            width: 100px;
+            height: 100px;
+            background: rgba(255, 255, 255, 0.25);
+            border-radius: 50%;
+            margin: 0 auto 25px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(10px);
+            border: 4px solid rgba(255, 255, 255, 0.4);
+            animation: scaleIn 0.6s ease-out;
+        }
+        
+        @keyframes scaleIn {
+            0% { transform: scale(0); opacity: 0; }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        
+        .success-icon-inner {
+            font-size: 60px;
+            color: #ffffff;
+            animation: checkmark 0.8s ease-out 0.3s both;
+        }
+        
+        @keyframes checkmark {
+            0% { transform: scale(0) rotate(45deg); opacity: 0; }
+            50% { transform: scale(1.2) rotate(45deg); }
+            100% { transform: scale(1) rotate(0deg); opacity: 1; }
+        }
+        
+        .header h1 {
+            color: #ffffff;
+            font-size: 32px;
+            font-weight: 700;
+            margin-bottom: 10px;
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+        }
+        
+        .header p {
+            color: rgba(255, 255, 255, 0.95);
+            font-size: 18px;
+            font-weight: 500;
+        }
+        
+        .content {
+            padding: 40px;
+        }
+        
+        .greeting {
+            font-size: 20px;
+            color: #333333;
+            margin-bottom: 25px;
+            font-weight: 600;
+        }
+        
+        .message {
+            font-size: 16px;
+            color: #666666;
+            margin-bottom: 35px;
+            line-height: 1.8;
+        }
+        
+        .order-info-card {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            border-radius: 15px;
+            padding: 25px;
+            margin: 25px 0;
+            border-left: 5px solid #11998e;
+        }
+        
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+        }
+        
+        .info-row:last-child {
+            border-bottom: none;
+        }
+        
+        .info-label {
+            font-size: 14px;
+            color: #666666;
+            font-weight: 500;
+        }
+        
+        .info-value {
+            font-size: 15px;
+            color: #333333;
+            font-weight: 600;
+            text-align: right;
+        }
+        
+        .order-id {
+            font-size: 18px;
+            color: #11998e;
+            font-weight: 700;
+            font-family: 'Courier New', monospace;
+            letter-spacing: 1px;
+        }
+        
+        .amount-total {
+            font-size: 28px;
+            color: #11998e;
+            font-weight: 700;
+        }
+        
+        .items-section {
+            margin: 30px 0;
+        }
+        
+        .section-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: #333333;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #11998e;
+        }
+        
+        .item-card {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 15px;
+            display: flex;
+            gap: 15px;
+            border: 1px solid #e9ecef;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        .item-image {
+            width: 80px;
+            height: 80px;
+            border-radius: 10px;
+            object-fit: cover;
+            border: 2px solid #e9ecef;
+            flex-shrink: 0;
+        }
+        
+        .item-details {
+            flex: 1;
+        }
+        
+        .item-name {
+            font-size: 16px;
+            font-weight: 600;
+            color: #333333;
+            margin-bottom: 8px;
+        }
+        
+        .item-variant {
+            font-size: 13px;
+            color: #666666;
+            margin-bottom: 8px;
+        }
+        
+        .item-price-quantity {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 10px;
+        }
+        
+        .item-quantity {
+            font-size: 14px;
+            color: #666666;
+            background: #e9ecef;
+            padding: 4px 12px;
+            border-radius: 20px;
+        }
+        
+        .item-price {
+            font-size: 16px;
+            font-weight: 700;
+            color: #11998e;
+        }
+        
+        .shipping-section {
+            background: #fff9e6;
+            border-left: 4px solid #ffc107;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 25px 0;
+        }
+        
+        .shipping-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #856404;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .shipping-info {
+            font-size: 14px;
+            color: #856404;
+            line-height: 1.8;
+        }
+        
+        .summary-section {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 15px;
+            padding: 25px;
+            margin: 30px 0;
+            color: #ffffff;
+        }
+        
+        .summary-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            font-size: 15px;
+        }
+        
+        .summary-label {
+            color: rgba(255, 255, 255, 0.9);
+        }
+        
+        .summary-value {
+            font-weight: 600;
+            color: #ffffff;
+        }
+        
+        .summary-total {
+            border-top: 2px solid rgba(255, 255, 255, 0.3);
+            margin-top: 15px;
+            padding-top: 15px;
+            font-size: 20px;
+            font-weight: 700;
+        }
+        
+        .cta-button {
+            display: inline-block;
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            color: #ffffff;
+            padding: 15px 40px;
+            border-radius: 30px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 16px;
+            margin: 25px 0;
+            text-align: center;
+            box-shadow: 0 4px 15px rgba(17, 153, 142, 0.3);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        .cta-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(17, 153, 142, 0.4);
+        }
+        
+        .divider {
+            height: 1px;
+            background: linear-gradient(90deg, transparent, #e9ecef, transparent);
+            margin: 30px 0;
+        }
+        
+        .footer {
+            background: #f8f9fa;
+            padding: 30px;
+            text-align: center;
+            border-top: 1px solid #e9ecef;
+        }
+        
+        .footer-text {
+            font-size: 14px;
+            color: #6c757d;
+            margin-bottom: 10px;
+            line-height: 1.8;
+        }
+        
+        .footer-link {
+            color: #11998e;
+            text-decoration: none;
+            font-weight: 600;
+        }
+        
+        .footer-link:hover {
+            text-decoration: underline;
+        }
+        
+        .thank-you {
+            text-align: center;
+            font-size: 18px;
+            color: #11998e;
+            font-weight: 600;
+            margin: 30px 0;
+            padding: 20px;
+            background: #f0fdf4;
+            border-radius: 10px;
+        }
+        
+        @media only screen and (max-width: 600px) {
+            .email-container {
+                margin: 10px;
+                border-radius: 15px;
+            }
+            
+            .header {
+                padding: 35px 20px;
+            }
+            
+            .header h1 {
+                font-size: 26px;
+            }
+            
+            .content {
+                padding: 25px 20px;
+            }
+            
+            .item-card {
+                flex-direction: column;
+            }
+            
+            .item-image {
+                width: 100%;
+                height: 200px;
+            }
+            
+            .info-row {
+                flex-direction: column;
+                gap: 5px;
+            }
+            
+            .info-value {
+                text-align: left;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="email-container">
+        <div class="header">
+            <div class="header-content">
+                <div class="success-icon">
+                    <div class="success-icon-inner">✓</div>
+                </div>
+                <h1>Thanh Toán Thành Công!</h1>
+                <p>Cảm ơn bạn đã mua sắm tại PeShop</p>
+            </div>
+        </div>
+        
+        <div class="content">
+            <div class="greeting">Xin chào {CustomerName}!</div>
+            <div class="message">
+                Đơn hàng của bạn đã được thanh toán thành công. Chúng tôi đang chuẩn bị và sẽ giao hàng đến bạn trong thời gian sớm nhất.
+            </div>
+            
+            <div class="order-info-card">
+                <!-- <div class="info-row">
+                    <span class="info-label">Mã đơn hàng:</span>
+                    <span class="info-value order-id">{OrderId}</span>
+                </div> -->
+                <div class="info-row">
+                    <span class="info-label">Ngày đặt hàng:</span>
+                    <span class="info-value">{OrderDate}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Phương thức thanh toán:</span>
+                    <span class="info-value">{PaymentMethod}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Tổng thanh toán:</span>
+                    <span class="info-value amount-total">{TotalAmount}</span>
+                </div>
+            </div>
+            
+            <div class="items-section">
+                <div class="section-title">📦 Chi tiết đơn hàng</div>
+                {Items}
+            </div>
+            
+            <div class="shipping-section">
+                <div class="shipping-title">
+                    🚚 Thông tin giao hàng
+                </div>
+                <div class="shipping-info">
+                    <strong>Người nhận:</strong> {RecipientName}<br>
+                    <strong>Số điện thoại:</strong> {RecipientPhone}<br>
+                    <strong>Địa chỉ:</strong> {ShippingAddress}
+                </div>
+            </div>
+            
+            <div class="summary-section">
+                <div class="summary-row">
+                    <span class="summary-label">Tạm tính:</span>
+                    <span class="summary-value">{SubTotal}</span>
+                </div>
+                <div class="summary-row">
+                    <span class="summary-label">Phí vận chuyển:</span>
+                    <span class="summary-value">{ShippingFee}</span>
+                </div>
+                <div class="summary-row">
+                    <span class="summary-label">Giảm giá:</span>
+                    <span class="summary-value">-{Discount}</span>
+                </div>
+                <div class="summary-row summary-total">
+                    <span>Tổng cộng:</span>
+                    <span>{TotalAmount}</span>
+                </div>
+            </div>
+            
+            <div class="thank-you">
+                Cảm ơn bạn đã tin tưởng và mua sắm tại PeShop! 🎉
+            </div>
+            
+            <div style="text-align: center;">
+                <a href="{OrderTrackingUrl}" class="cta-button">Theo dõi đơn hàng</a>
+            </div>
+            
+            <div class="divider"></div>
+            
+            <div style="font-size: 14px; color: #888888; line-height: 1.8; text-align: center;">
+                Nếu bạn có bất kỳ câu hỏi nào, vui lòng liên hệ với bộ phận hỗ trợ của chúng tôi.<br>
+                Email này được gửi tự động, vui lòng không trả lời.
+            </div>
+        </div>
+        
+        <div class="footer">
+            <div class="footer-text">
+                © 2024 PeShop. Tất cả quyền được bảo lưu.
+            </div>
+            <div class="footer-text">
+                <a href="#" class="footer-link">Trang chủ</a> | 
+                <a href="#" class="footer-link">Hỗ trợ</a> | 
+                <a href="#" class="footer-link">Chính sách bảo mật</a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
+

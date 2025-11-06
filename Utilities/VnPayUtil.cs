@@ -42,7 +42,7 @@ namespace PeShop.Utilities
             pay.AddRequestData("vnp_CurrCode", _vnPaySetting.CurrCode);
             pay.AddRequestData("vnp_IpAddr", pay.GetIpAddress(context));
             pay.AddRequestData("vnp_Locale", _vnPaySetting.Locale);
-            pay.AddRequestData("vnp_OrderInfo", model.OrderID+"_"+userId+"_"+model.ReadOrdIds);
+            pay.AddRequestData("vnp_OrderInfo", model.OrderID+"_"+userId+"_"+model.ReadOrdIds+"_"+model.RecipientName);
             pay.AddRequestData("vnp_OrderType", model.OrderType);
             pay.AddRequestData("vnp_ReturnUrl", urlCallBack);
             pay.AddRequestData("vnp_TxnRef", tick);

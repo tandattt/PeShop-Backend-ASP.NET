@@ -8,7 +8,7 @@ namespace PeShop.Dtos.Shared
         public decimal Amount { get; set; }
         public string OrderID { get; set; } = string.Empty;
         public string ReadOrdIds { get; set; } = string.Empty;
-        // public string Name { get; set; } = string.Empty;
+        public string RecipientName { get; set; } = string.Empty;
         // public string Phone { get; set; } = string.Empty;
         // public string Address { get; set; } = string.Empty;
         // public string VoucherCode { get; set; } = string.Empty;
@@ -24,5 +24,6 @@ namespace PeShop.Dtos.Shared
         public bool Success { get; set; }
         public string Token { get; set; } = string.Empty;
         public string VnPayResponseCode { get; set; } = string.Empty;
+        public decimal Amount { get; set; }
     }
 }

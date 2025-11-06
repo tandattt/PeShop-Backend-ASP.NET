@@ -11,7 +11,8 @@ using System.Linq;
 using PeShop.Models.Entities;
 using PeShop.Models.Enums;
 using Microsoft.IdentityModel.Tokens;
-
+using PeShop.Data.Repositories;
+using PeShop.Utilities;
 public class OrderService : IOrderService
 {
     private readonly IOrderHelper _orderHelper;
@@ -27,6 +28,7 @@ public class OrderService : IOrderService
     private readonly IPromotionService _promotionService;
     private readonly IPromotionRepository _promotionRepository;
     private readonly IReviewService _reviewService;
+    private readonly IUserRepository _userRepository;
     public OrderService(
         IOrderHelper orderHelper,
         IRedisUtil redisUtil,
@@ -40,7 +42,8 @@ public class OrderService : IOrderService
         IVariantRepository variantRepository,
         IPromotionService promotionService,
         IPromotionRepository promotionRepository,
-        IReviewService reviewService
+        IReviewService reviewService,
+        IUserRepository userRepository
         )
     {
         _orderHelper = orderHelper;
@@ -56,6 +59,7 @@ public class OrderService : IOrderService
         _promotionService = promotionService;
         _promotionRepository = promotionRepository;
         _reviewService = reviewService;
+        _userRepository = userRepository;
     }
     public async Task<CreateVirtualOrderResponse> CreateVirtualOrder(OrderVirtualRequest request, string userId)
     {
@@ -288,7 +292,23 @@ public class OrderService : IOrderService
         var result = await SaveOrderAsync(orders, userId, PaymentStatus.Unpaid, PaymentMethod.COD);
         if (result.Status)
         {
+            var user = await _userRepository.GetByIdAsync(userId);
+            if (user == null)
+            {
+                return new StatusResponse { Status = false, Message = "Người dùng không tồn tại" };
+            }
             BackgroundJob.Enqueue<IJobService>(service => service.DeleteOrderOnRedisAsync(orderId, userId, false));
+            var templatePath = Path.Combine(Directory.GetCurrentDirectory(), "Template", "PaymentSuccess.html");
+            string htmlBody;
+            if (File.Exists(templatePath))
+            {
+                htmlBody = await File.ReadAllTextAsync(templatePath);
+                htmlBody = htmlBody.Replace("{CustomerName}", orders.RecipientName);
+                // htmlBody = htmlBody.Replace("{OrderId}", orderId);
+                htmlBody = htmlBody.Replace("{OrderDate}", DateTime.UtcNow.ToString("dd/MM/yyyy"));
+                htmlBody = htmlBody.Replace("{PaymentMethod}", "COD");
+                htmlBody = htmlBody.Replace("{TotalAmount}", orders.AmountTotal.ToString("N0"));
+            BackgroundJob.Enqueue<IEmailUtil>(service => service.SendEmailAsync(user.Email, "Đơn hàng đã được tạo thành công",htmlBody , true));
         }
         return result;
     }

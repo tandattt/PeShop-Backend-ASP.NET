@@ -31,7 +31,7 @@ namespace PeShop.Services
             }
             var random = new Random();
             var cleanEmail = EmailUtil.CleanEmailAddress(request.Email);
-            string Otp = random.Next(0, 999999).ToString();
+            string Otp = random.Next(0, 999999).ToString("D6");
             try
             {
                 var resultRedis = await _redisUtil.SetAsync($"Email:{cleanEmail}", Otp, TimeSpan.FromMinutes(1));
@@ -39,7 +39,22 @@ namespace PeShop.Services
                 {
                     throw new BadRequestException("Lỗi khi lưu OTP vào Redis");
                 }
-                await _emailUtil.SendEmailAsync(cleanEmail, "Your OTP", $"Mã OTP của bạn là: {Otp}");
+                
+                // Load HTML template
+                var templatePath = Path.Combine(Directory.GetCurrentDirectory(), "Template", "Otp.html");
+                string htmlBody;
+                if (File.Exists(templatePath))
+                {
+                    htmlBody = await File.ReadAllTextAsync(templatePath);
+                    htmlBody = htmlBody.Replace("{Otp}", Otp);
+                }
+                else
+                {
+                    // Fallback to plain text if template not found
+                    htmlBody = $"Mã OTP của bạn là: {Otp}";
+                }
+                
+                await _emailUtil.SendEmailAsync(cleanEmail, "Mã OTP - PeShop", htmlBody, true);
             }
             catch (Exception ex)
             {

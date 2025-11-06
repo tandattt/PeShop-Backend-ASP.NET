@@ -9,6 +9,7 @@ using System.Text.Json;
 using PeShop.Data.Repositories.Interfaces;
 using System.Diagnostics;
 using Hangfire;
+using PeShop.Data.Repositories;
 public class PaymentService : IPaymentService
 {
     private readonly IVnPayUtil _vnPayUtil;
@@ -16,13 +17,15 @@ public class PaymentService : IPaymentService
     private readonly AppSetting _appSetting;
     private readonly IOrderService _orderService;
     private readonly ITransactionRepository _transactionRepository;
-    public PaymentService(IVnPayUtil vnPayUtil, IRedisUtil redisUtil, AppSetting appSetting, IOrderService orderService, ITransactionRepository transactionRepository)
+    private readonly IUserRepository _userRepository;
+    public PaymentService(IVnPayUtil vnPayUtil, IRedisUtil redisUtil, AppSetting appSetting, IOrderService orderService, ITransactionRepository transactionRepository, IUserRepository userRepository)
     {
         _vnPayUtil = vnPayUtil;
         _redisUtil = redisUtil;
         _appSetting = appSetting;
         _orderService = orderService;
         _transactionRepository = transactionRepository;
+        _userRepository = userRepository;
     }
     public async Task<string> CreatePaymentUrlAsync(string orderId, HttpContext context, string userId)
     {
@@ -75,7 +78,7 @@ public class PaymentService : IPaymentService
         Console.WriteLine($"[ProcessCallbackAsync] Response.OrderDescription: {response.OrderDescription}");
         var orderId = response.OrderDescription.Split("_")[0];
         var userId = response.OrderDescription.Split("_")[1];
-
+        var recipientName = response.OrderDescription.Split("_")[3];
         var readOrdIds = response.OrderDescription.Split("_")[2];
 
         Console.WriteLine($"[ProcessCallbackAsync] Parsed - userId: {userId}, orderId: {orderId}, readOrdIds: {readOrdIds}");
@@ -114,7 +117,20 @@ public class PaymentService : IPaymentService
                     }
                     // Xóa đơn hàng sau khi thanh toán thành công
                     BackgroundJob.Enqueue<IJobService>(service => service.DeleteOrderOnRedisAsync(orderId, userId, true));
+                    var user = await _userRepository.GetByIdAsync(userId);
 
+                    var templatePath = Path.Combine(Directory.GetCurrentDirectory(), "Template", "PaymentSuccess.html");
+                    string htmlBody;
+                    if (File.Exists(templatePath))
+                    {
+                        htmlBody = await File.ReadAllTextAsync(templatePath);
+                        htmlBody = htmlBody.Replace("{CustomerName}", recipientName);
+                        // htmlBody = htmlBody.Replace("{OrderId}", orderId);
+                        htmlBody = htmlBody.Replace("{OrderDate}", DateTime.UtcNow.ToString("dd/MM/yyyy"));
+                        htmlBody = htmlBody.Replace("{PaymentMethod}", "VNPay");
+                        htmlBody = htmlBody.Replace("{TotalAmount}", response.Amount.ToString("N0")+" VNĐ");
+                        BackgroundJob.Enqueue<IEmailUtil>(service => service.SendEmailAsync(user.Email, "Đơn hàng đã được tạo thành công", htmlBody, true));
+                    }
                     var successUrl = _appSetting.BaseUrlFrontend + "/Payment/success?orderId=" + orderId;
                     Console.WriteLine($"[ProcessCallbackAsync] Transaction thành công, redirect URL: {successUrl}");
                     return await Task.FromResult(successUrl);
@@ -140,7 +156,7 @@ public class PaymentService : IPaymentService
         else
         {
             var orderResponse = await _orderService.UpdatePaymentStatusInOrderAsync(orderId, userId, PaymentStatus.Failed);
-             // Xóa đơn hàng sau khi thanh toán thất bại
+            // Xóa đơn hàng sau khi thanh toán thất bại
             BackgroundJob.Enqueue<IJobService>(service => service.DeleteOrderOnRedisAsync(orderId, userId, true));
             Debug.WriteLine("[ProcessCallbackAsync] ===== VNPAY CALLBACK THẤT BẠI =====");
             Debug.WriteLine($"[ProcessCallbackAsync] Response không thành công, throwing exception...");
