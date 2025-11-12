@@ -19,4 +19,5 @@ public interface IProductRepository
     Task<List<Product>> GetListProductByCategoryChildIdAsync(string? categoryChildId);
     Task<List<Product>> GetListProductByVectorAsync(List<string> productIds);
     Task<bool> UpdateProductAsync(Product product);
+
 }

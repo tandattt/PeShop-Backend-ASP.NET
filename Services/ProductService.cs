@@ -103,8 +103,9 @@ public class ProductService : IProductService
     {
         // Validate pagination parameters
         if (request.Page < 1) request.Page = 1;
+        if(request.Page >10)  return new PaginationResponse<ProductDto>{};
         if (request.PageSize < 1) request.PageSize = 20;
-        if (request.PageSize > 100) request.PageSize = 100;
+        if (request.PageSize > 40) request.PageSize = 40;
         
         // Check if any filter is applied
         bool hasFilters = !string.IsNullOrEmpty(request.CategoryId) || 
@@ -115,7 +116,6 @@ public class ProductService : IProductService
 
         List<Product> products;
         int totalCount;
-
         if (hasFilters)
         {
             // Get filtered products
@@ -128,7 +128,7 @@ public class ProductService : IProductService
             products = await _productRepository.GetListProductAsync(request.Page, request.PageSize);
             totalCount = await _productRepository.GetCountProductAsync();
         }
-
+        if (totalCount > request.PageSize * 10) totalCount = request.PageSize * 10;
         var productDtos = products.Select(p => new ProductDto
         {
             Id = p.Id,
@@ -244,4 +244,5 @@ public class ProductService : IProductService
         var result = await _apiHelper.PostAsync<RecomemtProductDto>($"{_appSetting.BaseApiFlask}/similar/{product_id}", request);
         return result ?? new RecomemtProductDto { Products = new List<ProductDto>() };
     }
+    
 }

@@ -34,6 +34,10 @@ public partial class Order
     public string? RecipientName { get; set; }
     public string? RecipientPhone { get; set; }
 
+    public decimal? SystemVoucherDiscount { get; set; }
+    public decimal? ShopVoucherDiscount { get; set; }
+    public string? OrderCode { get; set; }
+
     public string? ShopId { get; set; }
 
     public string? UserId { get; set; }

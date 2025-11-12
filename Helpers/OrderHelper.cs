@@ -69,7 +69,7 @@ public class OrderHelper : IOrderHelper
         foreach (var shopGroup in shopGroups)
         {
             decimal shopTotal = 0;
-            
+            var orderCode = (1000000 + new Random().Next(1000000));
             foreach (var product in shopGroup.Value)
             {
                 productDto productDto = await GetProductPriceAsync(product);
@@ -87,6 +87,8 @@ public class OrderHelper : IOrderHelper
                 ShopName = shop?.Name ?? "Unknown Shop",
                 ShopLogoUrl = shop?.LogoUrl,
                 Products = shopGroup.Value,
+                
+                OrderCode = orderCode.ToString(),
                 PriceOriginal = shopTotal
             });
         }

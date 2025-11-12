@@ -204,16 +204,16 @@ public class OrderService : IOrderService
                         {
                             foreach (var gift in promotion.PromotionGiftsList)
                             {
-                                itemShop.Gifts.Add(new GiftInOrder 
-                                { 
-                                    Product = gift.Product != null ? new OrderRequest 
-                                    { 
-                                        ProductId = gift.Product.Id, 
-                                        Quantity = (uint)gift.GiftQuantity, 
-                                        PriceOriginal = 0, 
-                                        ShopId = itemShop.ShopId 
-                                    } : null, 
-                                    PromotionName = promotion.PromotionName, 
+                                itemShop.Gifts.Add(new GiftInOrder
+                                {
+                                    Product = gift.Product != null ? new OrderRequest
+                                    {
+                                        ProductId = gift.Product.Id,
+                                        Quantity = (uint)gift.GiftQuantity,
+                                        PriceOriginal = 0,
+                                        ShopId = itemShop.ShopId
+                                    } : null,
+                                    PromotionName = promotion.PromotionName,
                                     PromotionId = promotion.PromotionId,
                                     PromotionGiftId = gift.Id
                                 });
@@ -222,16 +222,16 @@ public class OrderService : IOrderService
                         // Backward compatibility với PromotionGifts (single gift)
                         else if (promotion.PromotionGifts != null)
                         {
-                            itemShop.Gifts.Add(new GiftInOrder 
-                            { 
-                                Product = promotion.PromotionGifts.Product != null ? new OrderRequest 
-                                { 
-                                    ProductId = promotion.PromotionGifts.Product.Id, 
-                                    Quantity = (uint)promotion.PromotionGifts.GiftQuantity, 
-                                    PriceOriginal = 0, 
-                                    ShopId = itemShop.ShopId 
-                                } : null, 
-                                PromotionName = promotion.PromotionName, 
+                            itemShop.Gifts.Add(new GiftInOrder
+                            {
+                                Product = promotion.PromotionGifts.Product != null ? new OrderRequest
+                                {
+                                    ProductId = promotion.PromotionGifts.Product.Id,
+                                    Quantity = (uint)promotion.PromotionGifts.GiftQuantity,
+                                    PriceOriginal = 0,
+                                    ShopId = itemShop.ShopId
+                                } : null,
+                                PromotionName = promotion.PromotionName,
                                 PromotionId = promotion.PromotionId,
                                 PromotionGiftId = promotion.PromotionGifts.Id
                             });
@@ -308,7 +308,8 @@ public class OrderService : IOrderService
                 htmlBody = htmlBody.Replace("{OrderDate}", DateTime.UtcNow.ToString("dd/MM/yyyy"));
                 htmlBody = htmlBody.Replace("{PaymentMethod}", "COD");
                 htmlBody = htmlBody.Replace("{TotalAmount}", orders.AmountTotal.ToString("N0"));
-            BackgroundJob.Enqueue<IEmailUtil>(service => service.SendEmailAsync(user.Email, "Đơn hàng đã được tạo thành công",htmlBody , true));
+                BackgroundJob.Enqueue<IEmailUtil>(service => service.SendEmailAsync(user.Email, "Đơn hàng đã được tạo thành công", htmlBody, true));
+            }
         }
         return result;
     }
@@ -330,7 +331,10 @@ public class OrderService : IOrderService
                         CreatedBy = userId,
                         UpdatedAt = DateTime.UtcNow,
                         UpdatedBy = userId,
-                        DiscountPrice = orders.VoucherSystemValue,
+                        DiscountPrice = orders.VoucherSystemValue + itemShop.VoucherValue,
+                        SystemVoucherDiscount = orders.VoucherSystemValue,
+                        ShopVoucherDiscount = itemShop.VoucherValue,
+                        OrderCode = itemShop.OrderCode,
                         ShippingFee = itemShop.FeeShipping,
                         DeliveryAddress = orders.UserFullNewAddress,
                         DeliveryStatus = DeliveryStatus.NotDelivered,
@@ -400,15 +404,15 @@ public class OrderService : IOrderService
                         var orderVoucher = new OrderVoucher
                         {
                             OrderId = orderDB.Id,
-                            VoucherId = itemShop.VoucherId,
+                            VoucherShopId = itemShop.VoucherId,
                             CreatedAt = DateTime.UtcNow,
                             CreatedBy = userId,
                             UpdatedAt = DateTime.UtcNow,
                             UpdatedBy = userId,
-                            VoucherPrice = itemShop.VoucherValue,
-                            VoucherName = itemShop.VoucherName,
-                            Type = OrderVoucherType.Shop,
+                            VoucherSystemId = orders.VoucherSystemId,
                         };
+                        
+                       
                         // Console.WriteLine($"[DEBUG] Creating OrderVoucher for OrderId: {orderDB.Id}, VoucherId: {itemShop.VoucherId}");
                         var orderVoucherDB = await _orderRepository.CreateOrderVoucherAsync(orderVoucher);
                         if (orderVoucherDB == null)
@@ -426,18 +430,18 @@ public class OrderService : IOrderService
                             .Where(g => g.PromotionId != null)
                             .GroupBy(g => g.PromotionId!)
                             .ToList();
-                        
+
                         foreach (var promotionGroup in giftsByPromotion)
                         {
                             var promotionId = promotionGroup.Key;
-                            
+
                             // Kiểm tra giới hạn sử dụng promotion (chỉ check 1 lần cho mỗi promotion)
                             var promotion = await _promotionRepository.GetPromotionByIdAsync(promotionId);
                             if (promotion != null && promotion.TotalUsageLimit.HasValue && promotion.TotalUsageLimit == promotion.UsedCount)
                             {
                                 throw new Exception("Promotion đã đạt giới hạn sử dụng");
                             }
-                            
+
                             // Tăng used_count 1 lần cho promotion này
                             if (promotion != null)
                             {
@@ -445,7 +449,7 @@ public class OrderService : IOrderService
                                 promotion.UpdatedAt = DateTime.UtcNow;
                                 await _promotionRepository.UpdatePromotionAsync(promotion);
                             }
-                            
+
                             // Tạo PromotionUsage cho tất cả gifts trong promotion này (nhưng không tăng used_count nữa)
                             foreach (var gift in promotionGroup)
                             {
@@ -466,26 +470,26 @@ public class OrderService : IOrderService
                         }
                     }
                     // foreach (var product in itemShop.Products)
-                            // {
-                            //     Id = Guid.NewGuid().ToString(),
-                            //     OrderId = orderDB.Id,
-                            //     ProductId = gift.Product?.ProductId,
-                            //     OriginalPrice = gift.Product?.PriceOriginal ?? 0,
-                            //     Quantity = gift.Product?.Quantity ?? 0,
-                            //     VariantId = gift.Product?.VariantId,
-                            //     Note = gift.Product?.Note,
-                            //     CreatedAt = DateTime.UtcNow,
-                            //     CreatedBy = userId,
-                            //     UpdatedAt = DateTime.UtcNow,
-                            //     UpdatedBy = userId
-                            // };
-                            // var orderDetailDB = await _orderDetailRepository.CreateOrderDetailAsync(orderDetail);
-                            // if (orderDetailDB == null)
-                            // {
-                            //     throw new Exception("Lỗi khi tạo đơn hàng");
-                            // }
-                            // Console.WriteLine($"[DEBUG] Creating OrderDetail for ProductId: {gift.Product?.ProductId}");
-                        // }
+                    // {
+                    //     Id = Guid.NewGuid().ToString(),
+                    //     OrderId = orderDB.Id,
+                    //     ProductId = gift.Product?.ProductId,
+                    //     OriginalPrice = gift.Product?.PriceOriginal ?? 0,
+                    //     Quantity = gift.Product?.Quantity ?? 0,
+                    //     VariantId = gift.Product?.VariantId,
+                    //     Note = gift.Product?.Note,
+                    //     CreatedAt = DateTime.UtcNow,
+                    //     CreatedBy = userId,
+                    //     UpdatedAt = DateTime.UtcNow,
+                    //     UpdatedBy = userId
+                    // };
+                    // var orderDetailDB = await _orderDetailRepository.CreateOrderDetailAsync(orderDetail);
+                    // if (orderDetailDB == null)
+                    // {
+                    //     throw new Exception("Lỗi khi tạo đơn hàng");
+                    // }
+                    // Console.WriteLine($"[DEBUG] Creating OrderDetail for ProductId: {gift.Product?.ProductId}");
+                    // }
                     // }
                     foreach (var product in itemShop.Products)
                     {
@@ -574,28 +578,26 @@ public class OrderService : IOrderService
                 // Tạo OrderVoucherSystem cho TẤT CẢ các Orders (vì VoucherSystem áp dụng cho toàn bộ đơn hàng)
                 if (orders.VoucherSystemId != null)
                 {
-                    foreach (var orderId in createdOrderIds)
-                    {
-                        // Console.WriteLine($"[DEBUG] Creating OrderVoucherSystem for OrderId: {orderId}, VoucherSystemId: {orders.VoucherSystemId}");
-                        var orderVoucherSystem = new OrderVoucher
-                        {
-                            OrderId = orderId,
-                            VoucherId = orders.VoucherSystemId,
-                            CreatedAt = DateTime.UtcNow,
-                            CreatedBy = userId,
-                            UpdatedAt = DateTime.UtcNow,
-                            UpdatedBy = userId,
-                            VoucherPrice = orders.VoucherSystemValue,
-                            VoucherName = orders.VoucherSystemName,
-                            Type = OrderVoucherType.System,
-                        };
-                        var orderVoucherSystemDB = await _orderRepository.CreateOrderVoucherAsync(orderVoucherSystem);
-                        if (orderVoucherSystemDB == null)
-                        {
-                            throw new Exception("Lỗi khi tạo OrderVoucherSystem");
-                        }
-                        // Console.WriteLine($"[DEBUG] OrderVoucherSystem created successfully with ID: {orderVoucherSystemDB.Id}");
-                    }
+                    // foreach (var orderId in createdOrderIds)
+                    // {
+                    //     var orderVoucherSystem = new OrderVoucher
+                    //     {
+                    //         OrderId = orderId,
+                    //         VoucherId = orders.VoucherSystemId,
+                    //         CreatedAt = DateTime.UtcNow,
+                    //         CreatedBy = userId,
+                    //         UpdatedAt = DateTime.UtcNow,
+                    //         UpdatedBy = userId,
+                    //         VoucherPrice = orders.VoucherSystemValue,
+                    //         VoucherName = orders.VoucherSystemName,
+                    //         Type = OrderVoucherType.System,
+                    //     };
+                    //  var orderVoucherSystemDB = await _orderRepository.CreateOrderVoucherAsync(orderVoucherSystem);
+                    //     if (orderVoucherSystemDB == null)
+                    //     {
+                    //         throw new Exception("Lỗi khi tạo OrderVoucherSystem");
+                    //     }
+                    
                     // }
 
                     // // Xử lý UserVoucherSystem sau khi tạo tất cả orders

@@ -62,4 +62,8 @@ public class ShopRepository : IShopRepository
     {
         return await _context.Shops.FirstOrDefaultAsync(s => s.Id == shopId);
     }
+    public async Task<Shop?> GetShopByUserIdAsync(string userId)
+    {
+        return await _context.Shops.FirstOrDefaultAsync(s => s.UserId == userId);
+    }
 }

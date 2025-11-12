@@ -31,6 +31,7 @@ public class ItemShop
 {
     public string ShopId { get; set; } = string.Empty;
     public string ShopName { get; set; } = string.Empty;
+    public string OrderCode { get; set; } = string.Empty;
     public string? ShopLogoUrl { get; set; }
     
     public string? ShippingId { get; set; } = null;

@@ -358,6 +358,15 @@ public partial class PeShopDbContext : DbContext
             entity.Property(e => e.RecipientPhone)
                 .HasMaxLength(20)
                 .HasColumnName("recipient_phone");
+            entity.Property(e => e.SystemVoucherDiscount)
+                .HasPrecision(18, 3)
+                .HasColumnName("system_voucher_discount");
+            entity.Property(e => e.ShopVoucherDiscount)
+                .HasPrecision(18, 3)
+                .HasColumnName("shop_voucher_discount");
+            entity.Property(e => e.OrderCode)
+                .HasMaxLength(255)
+                .HasColumnName("order_code");
             entity.Property(e => e.DeliveryStatus)
             .HasColumnName("delivery_status");
             entity.Property(e => e.DiscountPrice)
@@ -462,6 +471,8 @@ public partial class PeShopDbContext : DbContext
             entity.ToTable("order_voucher");
 
             entity.HasIndex(e => e.OrderId, "fk_order_id");
+            entity.HasIndex(e => e.VoucherShopId, "FK_order_voucher_voucher_shop");
+            entity.HasIndex(e => e.VoucherSystemId, "FK_order_voucher_voucher_system");
 
             entity.Property(e => e.Id)
                 .ValueGeneratedOnAdd()
@@ -478,25 +489,27 @@ public partial class PeShopDbContext : DbContext
             entity.Property(e => e.UpdatedBy)
                 .HasMaxLength(36)
                 .HasColumnName("updated_by");
-            entity.Property(e => e.Type)
-                // .HasConversion<int>()
-                .HasColumnName("type");
-            entity.Property(e => e.VoucherPrice)
-                .HasPrecision(10, 2)
-                .HasColumnName("voucher_price");
-            entity.Property(e => e.VoucherName)
-                .HasMaxLength(255)
-                .HasColumnName("voucher_name");
             entity.Property(e => e.OrderId)
                 .HasMaxLength(36)
                 .HasColumnName("order_id");
-            entity.Property(e => e.VoucherId)
+            entity.Property(e => e.VoucherShopId)
                 .HasMaxLength(36)
-                .HasColumnName("voucher_id");
+                .HasColumnName("voucher_shop_id");
+            entity.Property(e => e.VoucherSystemId)
+                .HasMaxLength(36)
+                .HasColumnName("voucher_system_id");
 
             entity.HasOne(d => d.Order).WithMany(p => p.OrderVouchers)
                 .HasForeignKey(d => d.OrderId)
                 .HasConstraintName("fk_order_id");
+
+            entity.HasOne(d => d.VoucherShop).WithMany()
+                .HasForeignKey(d => d.VoucherShopId)
+                .HasConstraintName("FK_order_voucher_voucher_shop");
+
+            entity.HasOne(d => d.VoucherSystem).WithMany()
+                .HasForeignKey(d => d.VoucherSystemId)
+                .HasConstraintName("FK_order_voucher_voucher_system");
         });
 
         modelBuilder.Entity<Payout>(entity =>
@@ -1485,7 +1498,6 @@ public partial class PeShopDbContext : DbContext
                 .HasMaxLength(16)
                 .HasColumnName("created_by");
             entity.Property(e => e.DiscountValue)
-                .HasPrecision(18, 3)
                 .HasColumnName("discount_value");
             entity.Property(e => e.EndTime)
                 .HasMaxLength(6)
@@ -1494,15 +1506,14 @@ public partial class PeShopDbContext : DbContext
                 .HasConversion<int>()
                 .HasColumnName("status");
             entity.Property(e => e.MaxdiscountAmount)
-                .HasPrecision(18, 3)
                 .HasColumnName("maxdiscount_amount");
             entity.Property(e => e.MinimumOrderValue)
-                .HasPrecision(18, 3)
                 .HasColumnName("minimum_order_value");
             entity.Property(e => e.Name)
                 .HasMaxLength(255)
                 .HasColumnName("name");
             entity.Property(e => e.Quantity).HasColumnName("quantity");
+            entity.Property(e => e.QuantityUsed).HasColumnName("quantity_used");
             entity.Property(e => e.LimitForUser).HasColumnName("limit_for_user");
             entity.Property(e => e.ShopId)
                 .HasMaxLength(36)
@@ -1542,7 +1553,6 @@ public partial class PeShopDbContext : DbContext
                 .HasMaxLength(16)
                 .HasColumnName("created_by");
             entity.Property(e => e.DiscountValue)
-                .HasPrecision(18, 3)
                 .HasColumnName("discount_value");
             entity.Property(e => e.EndTime)
                 .HasMaxLength(6)
@@ -1551,15 +1561,14 @@ public partial class PeShopDbContext : DbContext
                 .HasConversion<int>()
                 .HasColumnName("status");
             entity.Property(e => e.MaxdiscountAmount)
-                .HasPrecision(18, 3)
                 .HasColumnName("maxdiscount_amount");
             entity.Property(e => e.MiniumOrderValue)
-                .HasPrecision(18, 3)
                 .HasColumnName("minium_order_value");
             entity.Property(e => e.Name)
                 .HasMaxLength(255)
                 .HasColumnName("name");
             entity.Property(e => e.Quantity).HasColumnName("quantity");
+            entity.Property(e => e.QuantityUsed).HasColumnName("quantity_used");
             entity.Property(e => e.LimitForUser).HasColumnName("limit_for_user");
             entity.Property(e => e.StartTime)
                 .HasMaxLength(6)

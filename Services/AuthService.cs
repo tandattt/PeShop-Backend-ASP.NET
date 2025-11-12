@@ -19,12 +19,14 @@ namespace PeShop.Services
         private readonly IJwtHelper _jwtHelper;
         private readonly IRoleRepository _roleRepository;
         private readonly IRedisUtil _redisUtil;
-        public AuthService(IUserRepository userRepository, IJwtHelper jwtHelper, IRoleRepository roleRepository, IRedisUtil redisUtil)
+        private readonly IShopRepository _shopRepository;
+        public AuthService(IUserRepository userRepository, IJwtHelper jwtHelper, IRoleRepository roleRepository, IRedisUtil redisUtil, IShopRepository shopRepository)
         {
             _userRepository = userRepository;
             _jwtHelper = jwtHelper;
             _roleRepository = roleRepository;
             _redisUtil = redisUtil;
+            _shopRepository = shopRepository;
         }
 
         public async Task<LoginResponse?> LoginAsync(LoginRequest request)
@@ -42,18 +44,21 @@ namespace PeShop.Services
             }
 
             var userRoles = await _userRepository.GetUserRolesAsync(user.Id);
-
-            var accessPayload = new JwtPayloadDto
+            var shop = await _shopRepository.GetShopByUserIdAsync(user.Id);
+            Console.WriteLine("shop?.Id: " + shop?.Id);
+            var accessPayload = new JwtPayloadDto 
             {
                 Sub = user.Id,
+                ShopId = shop != null ? shop.Id : "",
                 Authorities = userRoles,
                 TokenType = "access",
-                TimeLive = 24
+                TimeLive = 24,
             };
 
             var refreshPayload = new JwtPayloadDto
             {
                 Sub = user.Id,
+                ShopId = shop != null ? shop.Id : "",
                 TokenType = "refresh",
                 TimeLive = 48
             };

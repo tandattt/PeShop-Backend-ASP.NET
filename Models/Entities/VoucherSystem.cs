@@ -18,20 +18,20 @@ public partial class VoucherSystem
 
     public string? Code { get; set; }
 
-    public decimal? DiscountValue { get; set; }
+    public uint? DiscountValue { get; set; }
 
     public DateTime? EndTime { get; set; }
 
     public VoucherStatus? Status { get; set; }
 
-    public decimal? MaxdiscountAmount { get; set; }
+    public uint? MaxdiscountAmount { get; set; }
 
-    public decimal? MiniumOrderValue { get; set; }
+    public uint? MiniumOrderValue { get; set; }
 
     public string? Name { get; set; }
 
     public uint? Quantity { get; set; }
-
+    public uint? QuantityUsed { get; set; }
     public uint? LimitForUser { get; set; }
 
     public DateTime? StartTime { get; set; }

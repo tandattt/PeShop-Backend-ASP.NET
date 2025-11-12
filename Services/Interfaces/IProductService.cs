@@ -11,5 +11,6 @@ public interface IProductService
     // Pagination method
     Task<RecomemtProductDto> GetRecomemtProductsAsync(string product_id);
     Task<PaginationResponse<ProductDto>> GetProductsAsync(GetProductRequest request);
+   
 
 }

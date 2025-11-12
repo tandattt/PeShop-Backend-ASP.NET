@@ -27,7 +27,7 @@ public class ProductController : ControllerBase
     }
 
     [HttpGet("get-products")]
-    [Authorize(Roles = RoleConstants.User)]
+    // [Authorize(Roles = RoleConstants.User)]
     public async Task<IActionResult> GetProducts([FromQuery] GetProductRequest request)
     {
         var result = await _productService.GetProductsAsync(request);

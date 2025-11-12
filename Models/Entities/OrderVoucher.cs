@@ -17,15 +17,19 @@ public partial class OrderVoucher
 
     public string? UpdatedBy { get; set; }
 
-    public OrderVoucherType? Type { get; set; }
+    // public OrderVoucherType? Type { get; set; }
 
-    public decimal VoucherPrice { get; set; }
+    // public decimal VoucherPrice { get; set; }
 
-    public string? VoucherName { get; set; }
+    // public string? VoucherName { get; set; }
 
     public string? OrderId { get; set; }
+    public string? VoucherShopId { get; set; }
+    public string? VoucherSystemId { get; set; }
 
-    public string? VoucherId { get; set; }
+    // public string? VoucherId { get; set; }
+    public virtual VoucherShop? VoucherShop { get; set; }
+    public virtual VoucherSystem? VoucherSystem { get; set; }
 
     public virtual Order? Order { get; set; }
 }

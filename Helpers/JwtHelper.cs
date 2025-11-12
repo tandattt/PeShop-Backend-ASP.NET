@@ -35,6 +35,7 @@ namespace PeShop.Helpers
             {
                 new Claim(JwtRegisteredClaimNames.Sub, payloadDto.Sub),
                 new Claim("token_type", payloadDto.TokenType ?? "access"),
+                new Claim("shop_id", payloadDto.ShopId ?? ""),
                 new Claim(JwtRegisteredClaimNames.Iat, DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString(), ClaimValueTypes.Integer64)
             };
 
