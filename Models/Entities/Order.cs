@@ -38,6 +38,8 @@ public partial class Order
     public decimal? ShopVoucherDiscount { get; set; }
     public string? OrderCode { get; set; }
 
+    public string? Note { get; set; }
+
     public string? ShopId { get; set; }
 
     public string? UserId { get; set; }

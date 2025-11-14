@@ -15,10 +15,6 @@ public partial class OrderDetail
 
     public string? UpdatedBy { get; set; }
 
-
-
-    public string? Note { get; set; }
-
     public decimal? OriginalPrice { get; set; }
 
     public uint? Quantity { get; set; }

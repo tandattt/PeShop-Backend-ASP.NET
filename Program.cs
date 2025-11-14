@@ -40,7 +40,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 builder.Services.AddApplicationServices(builder.Configuration.GetConnectionString("DefaultConnection"), builder.Configuration, builder.Environment);
 
 var app = builder.Build();
-
+app.UseRateLimiter();
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
@@ -63,6 +63,6 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 
-app.MapControllers();
+app.MapControllers().RequireRateLimiting("ip-policy");
 
 app.Run();

@@ -4,6 +4,8 @@ using PeShop.Constants;
 using PeShop.Services.Interfaces;
 using System.Security.Claims;
 using PeShop.Dtos.Requests;
+using PeShop.Dtos.Responses;
+using PeShop.Dtos.Shared;
 namespace PeShop.Controllers;
 
 [ApiController]
@@ -20,10 +22,10 @@ public class ProductController : ControllerBase
 
     [HttpGet("get-product-detail")]
     [Authorize(Roles = RoleConstants.User)]
-    public async Task<IActionResult> GetProductDetail(string? productId, string? slug)
+    public async Task< ActionResult<ProductDetailResponse>> GetProductDetail(string? productId, string? slug)
     {
         var result = await _productService.GetProductDetailAsync(productId, slug);
-        return Ok(result);
+        return Ok(result); 
     }
 
     [HttpGet("get-products")]
@@ -36,7 +38,7 @@ public class ProductController : ControllerBase
 
     [HttpGet("get-products-by-shop")]
     [Authorize(Roles = RoleConstants.User)]
-    public async Task<IActionResult> GetProductsByShop([FromQuery] GetProductByShopRequest request)
+    public async Task<ActionResult<PaginationResponse<ProductDto>>> GetProductsByShop([FromQuery] GetProductByShopRequest request)
     {
         var result = await _productService.GetProductsByShopAsync(request);
         return Ok(result);
@@ -49,6 +51,5 @@ public class ProductController : ControllerBase
         var result = await _productService.GetRecomemtProductsAsync(product_id);
         return Ok(result);
     }
-
 
 }

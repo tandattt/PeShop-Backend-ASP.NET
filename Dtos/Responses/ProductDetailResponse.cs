@@ -13,6 +13,7 @@ public class ProductDetailResponse
     public uint ViewCount { get; set; }
     public string ShopId { get; set; } = string.Empty;
     public string ShopName { get; set; } = string.Empty;
+    public string ShopLogo { get; set; } = string.Empty;
     public decimal Price { get; set; }
     public string ProductId { get; set; } = string.Empty;
     public string ProductName { get; set; } = string.Empty;

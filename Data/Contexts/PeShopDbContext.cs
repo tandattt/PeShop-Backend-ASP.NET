@@ -87,6 +87,10 @@ public partial class PeShopDbContext : DbContext
 
     public virtual DbSet<UserRank> UserRanks { get; set; }
 
+    public virtual DbSet<UserViewProduct> UserViewProducts { get; set; }
+
+    public virtual DbSet<UserViewShop> UserViewShops { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder
@@ -367,6 +371,9 @@ public partial class PeShopDbContext : DbContext
             entity.Property(e => e.OrderCode)
                 .HasMaxLength(255)
                 .HasColumnName("order_code");
+            entity.Property(e => e.Note)
+                .HasMaxLength(300)
+                .HasColumnName("note");
             entity.Property(e => e.DeliveryStatus)
             .HasColumnName("delivery_status");
             entity.Property(e => e.DiscountPrice)
@@ -429,9 +436,6 @@ public partial class PeShopDbContext : DbContext
                 .HasMaxLength(16)
                 .IsFixedLength()
                 .HasColumnName("created_by");
-            entity.Property(e => e.Note)
-                .HasMaxLength(300)
-                .HasColumnName("note");
             entity.Property(e => e.OrderId)
                 .HasMaxLength(36)
                 .HasColumnName("order_id");
@@ -1773,6 +1777,88 @@ public partial class PeShopDbContext : DbContext
                 // .HasPrincipalKey(r => r.Id)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_user_rank_rank");
+        });
+
+        modelBuilder.Entity<UserViewProduct>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+
+            entity.ToTable("user_view_product");
+
+            entity.HasIndex(e => e.UserId, "FK_user_view_product_user");
+
+            entity.HasIndex(e => e.ProductId, "FK_user_view_product_product");
+
+            entity.Property(e => e.Id)
+                .ValueGeneratedOnAdd()
+                .HasColumnName("id");
+            entity.Property(e => e.UserId)
+                .HasMaxLength(36)
+                .HasColumnName("user_id");
+            entity.Property(e => e.ProductId)
+                .HasMaxLength(36)
+                .HasColumnName("product_id");
+            entity.Property(e => e.CreatedAt)
+                .HasColumnType("datetime")
+                .HasColumnName("created_at");
+            entity.Property(e => e.UpdatedAt)
+                .HasColumnType("datetime")
+                .HasColumnName("updated_at");
+            entity.Property(e => e.CreatedBy)
+                .HasMaxLength(36)
+                .HasColumnName("created_by");
+            entity.Property(e => e.UpdatedBy)
+                .HasMaxLength(36)
+                .HasColumnName("updated_by");
+
+            entity.HasOne(d => d.User).WithMany()
+                .HasForeignKey(d => d.UserId)
+                .HasConstraintName("FK_user_view_product_user");
+
+            entity.HasOne(d => d.Product).WithMany()
+                .HasForeignKey(d => d.ProductId)
+                .HasConstraintName("FK_user_view_product_product");
+        });
+
+        modelBuilder.Entity<UserViewShop>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+
+            entity.ToTable("user_view_shop");
+
+            entity.HasIndex(e => e.UserId, "FK_user_view_shop_user");
+
+            entity.HasIndex(e => e.ShopId, "FK_user_view_shop_shop");
+
+            entity.Property(e => e.Id)
+                .ValueGeneratedOnAdd()
+                .HasColumnName("id");
+            entity.Property(e => e.UserId)
+                .HasMaxLength(36)
+                .HasColumnName("user_id");
+            entity.Property(e => e.ShopId)
+                .HasMaxLength(36)
+                .HasColumnName("shop_id");
+            entity.Property(e => e.CreatedAt)
+                .HasColumnType("datetime")
+                .HasColumnName("created_at");
+            entity.Property(e => e.UpdatedAt)
+                .HasColumnType("datetime")
+                .HasColumnName("updated_at");
+            entity.Property(e => e.CreatedBy)
+                .HasMaxLength(36)
+                .HasColumnName("created_by");
+            entity.Property(e => e.UpdatedBy)
+                .HasMaxLength(36)
+                .HasColumnName("updated_by");
+
+            entity.HasOne(d => d.User).WithMany()
+                .HasForeignKey(d => d.UserId)
+                .HasConstraintName("FK_user_view_shop_user");
+
+            entity.HasOne(d => d.Shop).WithMany()
+                .HasForeignKey(d => d.ShopId)
+                .HasConstraintName("FK_user_view_shop_shop");
         });
 
         // Enum Mappings

@@ -6,16 +6,21 @@ using PeShop.Services.Interfaces;
 using PeShop.Dtos.Requests;
 using PeShop.Extensions;
 using PeShop.Dtos.Shared;
-
+using PeShop.Data.Repositories.Interfaces;
+using System.Linq;
+using Hangfire;
 namespace PeShop.Services;
 
 public class UserService : IUserService
 {
     private readonly IUserRepository _userRepository;
-
-    public UserService(IUserRepository userRepository)
+    private readonly IProductRepository _productRepository;
+    private readonly IShopRepository _shopRepository;
+    public UserService(IUserRepository userRepository, IProductRepository productRepository, IShopRepository shopRepository)
     {
         _userRepository = userRepository;
+        _productRepository = productRepository;
+        _shopRepository = shopRepository;
     }
 
     public async Task<UserInfoResponse?> GetUserInfoAsync(string userId)
@@ -64,5 +69,40 @@ public class UserService : IUserService
         }
 
         return result;
+    }
+
+    public async Task<bool> ViewProductAsync(string product_id, string userId)
+    {
+        var product = await _productRepository.GetProductByIdAsync(product_id);
+        if (product == null)
+        {
+            throw new BadRequestException("Product không tồn tại");
+        }
+        var userViewProducts = await _userRepository.GetUserViewProductByDayAsync(product.Id, userId, DateOnly.FromDateTime(DateTime.UtcNow));
+        if (userViewProducts != null && userViewProducts.Count() > 5)
+        {
+            return true;
+        }
+        else{
+            BackgroundJob.Enqueue(() => _userRepository.ViewProductAsync(product.Id, userId));
+            return true;
+        }
+    }
+    public async Task<bool> ViewShopAsync(string shop_id, string userId)
+    {
+        var shop = await _shopRepository.GetShopByIdAsync(shop_id);
+        if (shop == null)
+        {
+            throw new BadRequestException("Shop không tồn tại");
+        }
+        var userViewShops = await _userRepository.CheckUserViewShopByDayAsync(shop.Id, userId, DateOnly.FromDateTime(DateTime.UtcNow));
+        if (userViewShops)
+        {
+            return true;
+        }
+        else{
+            BackgroundJob.Enqueue(() => _userRepository.CreateUserViewShopAsync(shop.Id, userId));
+            return true;
+        }
     }
 }

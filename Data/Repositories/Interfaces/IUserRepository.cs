@@ -17,5 +17,9 @@ namespace PeShop.Data.Repositories
         Task<List<string>> GetUserRolesAsync(string userId);
         Task<string?> GetUserShopIdAsync(string userId);
         Task<bool> UpdateUserInfoAsync(string userId, string? name, string? phone, GenderUser? gender, string? avatar);
+        Task<bool> ViewProductAsync(string product_id, string userId);
+        Task<List<UserViewProduct>> GetUserViewProductByDayAsync(string product_id, string userId,DateOnly? dateOnly);
+        Task<bool> CreateUserViewShopAsync(string shop_id, string userId);
+        Task<bool> CheckUserViewShopByDayAsync(string shop_id, string userId,DateOnly? dateOnly);
     }
 }

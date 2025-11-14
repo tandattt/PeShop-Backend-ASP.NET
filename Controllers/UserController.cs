@@ -67,5 +67,21 @@ public class UserController : ControllerBase
             return BadRequest(ex.Message);
         }
     }
+    [HttpPost("view-product")]
+    [Authorize(Roles = RoleConstants.User)]
+    public async Task<IActionResult> ViewProduct([FromBody] UserViewProductRequest request)
+    {
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(userId))
+        {
+            return Unauthorized("Token không hợp lệ");
+        }
+        var result = await _userService.ViewProductAsync(request.ProductId, userId);
+        if (result)
+        {
+            return Ok("Xem sản phẩm thành công");
+        }
+        return BadRequest("Xem sản phẩm thất bại");
+    }
 }
 

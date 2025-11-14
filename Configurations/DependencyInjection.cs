@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.Hosting;
 using PeShop.Extensions;
 using PeShop.Configurations;
 using PeShop.Helpers;
+using PeShop.Middleware;
 
 namespace PeShop.Configurations
 {
@@ -108,7 +109,8 @@ namespace PeShop.Configurations
                         .AllowAnyHeader()
                         .AllowCredentials()); // Cho phép cookie/token
             });
-
+            // Rate Limiting
+            services.AddRateLimiterPolicy();
 
             return services;
         }

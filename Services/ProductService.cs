@@ -55,6 +55,7 @@ public class ProductService : IProductService
             ViewCount = product.ViewCount ?? 0,
             ShopId = product.Shop?.Id ?? string.Empty,
             ShopName = product.Shop?.Name ?? string.Empty,
+            ShopLogo = product.Shop?.LogoUrl ?? string.Empty,
             Price = product.Price ?? 0,
             ProductId = product.Id,
             ProductName = product.Name ?? string.Empty,

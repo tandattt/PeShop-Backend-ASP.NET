@@ -12,12 +12,14 @@ public class ReviewService : IReviewService
 {
     private readonly IReviewRepository _reviewRepository;
     private readonly IOrderRepository _orderRepository;
+    private readonly IProductRepository _productRepository;
     private readonly AppSetting _appSetting;
     private readonly IApiHelper _apiHelper;
-    public ReviewService(IReviewRepository reviewRepository, IOrderRepository orderRepository, IApiHelper apiHelper, AppSetting appSetting)
+    public ReviewService(IReviewRepository reviewRepository, IOrderRepository orderRepository, IProductRepository productRepository, IApiHelper apiHelper, AppSetting appSetting)
     {
         _reviewRepository = reviewRepository;
         _orderRepository = orderRepository;
+        _productRepository = productRepository;
         _apiHelper = apiHelper;
         _appSetting = appSetting;
     }
@@ -120,20 +122,49 @@ public class ReviewService : IReviewService
         var reviewResponseDtos = reviews.Select(r => new ReviewResponseDto
         {
             Id = r.Id,
-            Content = r.Content,
-            ReplyContent = r.ReplyContent,
+            Content = r.Content ?? string.Empty,
+            ReplyContent = r.ReplyContent ?? string.Empty,
             Rating = r.Rating ?? 0,
-            UrlImg = r.UrlImg.Split(',').ToList(),
-            UserId = r.UserId,
-            UserName = r.User.Name,
-            UserAvatar = r.User.Avatar,
+            UrlImg = !string.IsNullOrEmpty(r.UrlImg) ? r.UrlImg.Split(',').ToList() : new List<string>(),
+            UserId = r.UserId ?? string.Empty,
+            UserName = r.User?.Name ?? string.Empty,
+            UserAvatar = r.User?.Avatar ?? string.Empty,
         }).ToList();
+
+        // Get shop information from product if reviews exist, otherwise get from product directly
+        string shopId = string.Empty;
+        string shopName = string.Empty;
+        string shopLogo = string.Empty;
+
+        if (reviews.Any())
+        {
+            var firstReview = reviews.First();
+            if (firstReview.Product != null)
+            {
+                shopId = firstReview.Product.ShopId ?? string.Empty;
+                shopName = firstReview.Product.Shop?.Name ?? string.Empty;
+                shopLogo = firstReview.Product.Shop?.LogoUrl ?? string.Empty;
+            }
+        }
+        
+        // If no reviews or shop info not found in reviews, get shop info from product
+        if (string.IsNullOrEmpty(shopId))
+        {
+            var product = await _productRepository.GetProductByIdAsync(productId);
+            if (product != null)
+            {
+                shopId = product.ShopId ?? string.Empty;
+                shopName = product.Shop?.Name ?? string.Empty;
+                shopLogo = product.Shop?.LogoUrl ?? string.Empty;
+            }
+        }
+
         return new ListReviewResponseDto
         {
             Reviews = reviewResponseDtos,
-            ShopId = reviews.First().Product.ShopId,
-            ShopName = reviews.First().Product.Shop.Name,
-            ShopLogo = reviews.First().Product.Shop.LogoUrl,
+            ShopId = shopId,
+            ShopName = shopName,
+            ShopLogo = shopLogo,
         };
     }
 }

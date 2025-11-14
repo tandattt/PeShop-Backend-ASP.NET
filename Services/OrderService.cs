@@ -501,7 +501,6 @@ public class OrderService : IOrderService
                             OriginalPrice = product.PriceOriginal,
                             Quantity = product.Quantity,
                             VariantId = product.VariantId,
-                            Note = product.Note,
                             CreatedAt = DateTime.UtcNow,
                             CreatedBy = userId,
                             UpdatedAt = DateTime.UtcNow,

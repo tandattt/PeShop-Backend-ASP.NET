@@ -41,7 +41,7 @@ namespace PeShop.Data.Repositories
         {
             return await _context.Users
                 .Include(u => u.Roles)
-                .FirstOrDefaultAsync(u => u.Email == emailOrUsername || 
+                .FirstOrDefaultAsync(u => u.Email == emailOrUsername ||
                                         u.Username == emailOrUsername);
         }
 
@@ -94,7 +94,7 @@ namespace PeShop.Data.Repositories
         {
             var shop = await _context.Shops
                 .FirstOrDefaultAsync(s => s.UserId == userId);
-            
+
             return shop?.Id;
         }
 
@@ -108,10 +108,10 @@ namespace PeShop.Data.Repositories
 
             if (!string.IsNullOrEmpty(name))
                 user.Name = name;
-            
+
             if (!string.IsNullOrEmpty(phone))
                 user.Phone = phone;
-            
+
             if (gender.HasValue)
                 user.Gender = gender.Value;
 
@@ -119,10 +119,52 @@ namespace PeShop.Data.Repositories
                 user.Avatar = avatar;
 
             user.UpdatedAt = DateTime.UtcNow;
-            
+
             await _context.SaveChangesAsync();
             return true;
         }
-        
+        public async Task<bool> ViewProductAsync(string product_id, string userId)
+        {
+            var userViewProduct = new UserViewProduct
+            {
+                ProductId = product_id,
+                UserId = userId,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow,
+            };
+            _context.UserViewProducts.Add(userViewProduct);
+            if (await _context.SaveChangesAsync() > 0) return true;
+            else return false;
+        }
+
+        public async Task<List<UserViewProduct>> GetUserViewProductByDayAsync(string product_id, string userId, DateOnly? dateOnly)
+        {
+            var startDate = dateOnly?.ToDateTime(TimeOnly.MinValue);
+            var endDate = dateOnly?.ToDateTime(TimeOnly.MaxValue);
+            return await _context.UserViewProducts
+                .Where(v => v.ProductId == product_id && v.UserId == userId && v.CreatedAt >= startDate && v.CreatedAt <= endDate)
+                .ToListAsync();
+        }
+        public async Task<bool> CreateUserViewShopAsync(string shop_id, string userId)
+        {
+            var userViewShop = new UserViewShop
+            {
+                ShopId = shop_id,
+                UserId = userId,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow,
+            };
+            _context.UserViewShops.Add(userViewShop);
+            if (await _context.SaveChangesAsync() > 0) return true;
+            else return false;
+        }
+        public async Task<bool> CheckUserViewShopByDayAsync(string shop_id, string userId, DateOnly? dateOnly)
+        {
+            var startDate = dateOnly?.ToDateTime(TimeOnly.MinValue);
+            var endDate = dateOnly?.ToDateTime(TimeOnly.MaxValue);
+            return await _context.UserViewShops
+                .AnyAsync(v => v.ShopId == shop_id && v.UserId == userId && v.CreatedAt >= startDate && v.CreatedAt <= endDate);
+                
+        }
     }
 }
