@@ -91,6 +91,8 @@ public partial class PeShopDbContext : DbContext
 
     public virtual DbSet<UserViewShop> UserViewShops { get; set; }
 
+    public virtual DbSet<Message> Messages { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder
@@ -1861,6 +1863,44 @@ public partial class PeShopDbContext : DbContext
                 .HasConstraintName("FK_user_view_shop_shop");
         });
 
+        modelBuilder.Entity<Message>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+
+            entity.ToTable("messages");
+
+            entity.HasIndex(e => e.UserId, "FK_messages_user");
+
+            entity.HasIndex(e => e.ShopId, "FK_messages_shop");
+
+            entity.Property(e => e.Id)
+                .ValueGeneratedOnAdd()
+                .HasColumnName("id");
+            entity.Property(e => e.UserId)
+                .HasMaxLength(36)
+                .HasColumnName("user_id");
+            entity.Property(e => e.ShopId)
+                .HasMaxLength(36)
+                .HasColumnName("shop_id");
+            entity.Property(e => e.Content)
+                .HasColumnType("text")
+                .HasColumnName("content");
+            entity.Property(e => e.SenderType)
+                .HasColumnName("sender_type");
+            entity.Property(e => e.CreatedAt)
+                .HasColumnType("datetime")
+                .HasColumnName("created_at")
+                .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+            entity.HasOne(d => d.User).WithMany()
+                .HasForeignKey(d => d.UserId)
+                .HasConstraintName("FK_messages_user");
+
+            entity.HasOne(d => d.Shop).WithMany()
+                .HasForeignKey(d => d.ShopId)
+                .HasConstraintName("FK_messages_shop");
+        });
+
         // Enum Mappings
         ConfigureEnumMappings(modelBuilder);
 
@@ -1946,6 +1986,11 @@ public partial class PeShopDbContext : DbContext
         // Rank enum mapping
         modelBuilder.Entity<Rank>()
             .Property(e => e.RankLevel)
+            .HasConversion<int>();
+
+        // Message enum mapping
+        modelBuilder.Entity<Message>()
+            .Property(e => e.SenderType)
             .HasConversion<int>();
 
         // modelBuilder.Entity<OrderVoucher>()
