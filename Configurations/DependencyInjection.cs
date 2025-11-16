@@ -28,7 +28,8 @@ namespace PeShop.Configurations
                 options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString), mySqlOptions =>
                 {
                     // Disable retry strategy to allow manual transactions
-                    mySqlOptions.CommandTimeout(60);
+                    mySqlOptions.CommandTimeout(30);
+                    mySqlOptions.EnableRetryOnFailure(5, TimeSpan.FromSeconds(10), null);
                 });
                 options.EnableSensitiveDataLogging(environment.IsDevelopment());
                 options.EnableDetailedErrors(environment.IsDevelopment());
@@ -111,7 +112,7 @@ namespace PeShop.Configurations
             });
             // Rate Limiting
             services.AddRateLimiterPolicy();
-
+            services.AddRateLimiterPolicyEndpoint();
             return services;
         }
     }

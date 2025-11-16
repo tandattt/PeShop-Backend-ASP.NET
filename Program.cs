@@ -4,7 +4,8 @@ using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using System.IdentityModel.Tokens.Jwt;
 using PeShop.Filters;
-using Hangfire;
+using Hangfire; 
+using PeShop.Constants;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -63,6 +64,6 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 
-app.MapControllers().RequireRateLimiting("ip-policy");
+app.MapControllers();
 
 app.Run();

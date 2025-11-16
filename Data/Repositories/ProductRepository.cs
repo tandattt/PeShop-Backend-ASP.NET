@@ -25,6 +25,7 @@ public class ProductRepository : IProductRepository
             .Skip(skip)
             .Take(take)
             .Where(p => p.Status == ProductStatus.Active)
+            .AsNoTracking()
             .ToListAsync();
     }
     public async Task<Product?> GetProductByIdAsync(string productId)
@@ -163,6 +164,7 @@ public class ProductRepository : IProductRepository
             .OrderByDescending(p => p.score)
             .Skip((request.Page - 1) * request.PageSize)
             .Take(request.PageSize)
+            .AsNoTracking()
             .ToListAsync();
     }
     public async Task<int> GetCountProductByAsync(GetProductRequest request)
@@ -199,7 +201,7 @@ public class ProductRepository : IProductRepository
     public async Task<List<Product>> GetListProductByShopAsync(GetProductByShopRequest request)
     {
         var query = _context.Products.Include(p => p.Shop).Where(p => p.ShopId == request.ShopId && p.Status == ProductStatus.Active).AsQueryable();
-        return await query.Skip((request.Page - 1) * request.PageSize).Take(request.PageSize).ToListAsync();
+        return await query.Skip((request.Page - 1) * request.PageSize).Take(request.PageSize).AsNoTracking().ToListAsync();
     }
     public async Task<int> GetCountProductByShopAsync(GetProductByShopRequest request)
     {

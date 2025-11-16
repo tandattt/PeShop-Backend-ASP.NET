@@ -26,21 +26,24 @@ public class ProductService : IProductService
     public async Task<ProductDetailResponse> GetProductDetailAsync(string? productId, string? slug)
     {
         Product? product = null;
-        if(productId != null){
+        if (productId != null)
+        {
             product = await _productRepository.GetProductByIdAsync(productId);
         }
-        else if(slug != null){
+        else if (slug != null)
+        {
             product = await _productRepository.GetProductBySlugAsync(slug);
         }
-        else{
+        else
+        {
             throw new Exception("Product not found");
         }
-        
+
         if (product == null)
         {
             throw new Exception("Product not found");
         }
-        
+
         var imageProducts = await _imageProductRepository.GetListImageProductByProductIdAsync(product.Id);
         return new ProductDetailResponse
         {
@@ -104,15 +107,15 @@ public class ProductService : IProductService
     {
         // Validate pagination parameters
         if (request.Page < 1) request.Page = 1;
-        if(request.Page >10)  return new PaginationResponse<ProductDto>{};
+        if (request.Page > 10) return new PaginationResponse<ProductDto> { };
         if (request.PageSize < 1) request.PageSize = 20;
         if (request.PageSize > 40) request.PageSize = 40;
-        
+
         // Check if any filter is applied
-        bool hasFilters = !string.IsNullOrEmpty(request.CategoryId) || 
-                         !string.IsNullOrEmpty(request.CategoryChildId) || 
-                         request.MinPrice > 0 || 
-                         request.MaxPrice.HasValue || 
+        bool hasFilters = !string.IsNullOrEmpty(request.CategoryId) ||
+                         !string.IsNullOrEmpty(request.CategoryChildId) ||
+                         request.MinPrice > 0 ||
+                         request.MaxPrice.HasValue ||
                          request.ReviewPoint.HasValue;
 
         List<Product> products;
@@ -125,8 +128,8 @@ public class ProductService : IProductService
         }
         else
         {
-            // Get random products
             products = await _productRepository.GetListProductAsync(request.Page, request.PageSize);
+
             totalCount = await _productRepository.GetCountProductAsync();
         }
         if (totalCount > request.PageSize * 10) totalCount = request.PageSize * 10;
@@ -145,9 +148,13 @@ public class ProductService : IProductService
             ShopName = p.Shop?.Name ?? string.Empty,
             HasPromotion = null
         }).ToList();
+
+        var productIds = productDtos.Select(p => p.Id).ToList();
+        var promotionsDict = await _promotionRepository.HasPromotionsForProductsAsync(productIds);
+
         foreach (var productDto in productDtos)
         {
-            productDto.HasPromotion = await _promotionRepository.HasPromotionAsync(productDto.Id);
+            productDto.HasPromotion = promotionsDict.GetValueOrDefault(productDto.Id, false);
         }
         // Calculate pagination info
         var totalPages = (int)Math.Ceiling((double)totalCount / request.PageSize);
@@ -241,9 +248,9 @@ public class ProductService : IProductService
         {
             Products = productDtos
         };
-        
+
         var result = await _apiHelper.PostAsync<RecomemtProductDto>($"{_appSetting.BaseApiFlask}/similar/{product_id}", request);
         return result ?? new RecomemtProductDto { Products = new List<ProductDto>() };
     }
-    
+
 }

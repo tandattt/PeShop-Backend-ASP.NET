@@ -38,10 +38,13 @@ public class AProductService : IAProductService
             HasPromotion = null
         }).ToList();
         
-        // Check promotion cho mỗi product
+        // Batch query tất cả promotions một lần thay vì N queries
+        var productIds = productDtos.Select(p => p.Id).ToList();
+        var promotionsDict = await _promotionRepository.HasPromotionsForProductsAsync(productIds);
+        
         foreach (var productDto in productDtos)
         {
-            productDto.HasPromotion = await _promotionRepository.HasPromotionAsync(productDto.Id);
+            productDto.HasPromotion = promotionsDict.GetValueOrDefault(productDto.Id, false);
         }
         
         // Calculate pagination info

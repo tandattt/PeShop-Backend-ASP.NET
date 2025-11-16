@@ -9,6 +9,7 @@ namespace PeShop.Dtos.Shared
         public string Logo { get; set; } = string.Empty;
         public string NewProviceId { get; set; } = string.Empty;
         public uint ProductCount { get; set; } = 0;
+        public uint FollowersCount { get; set; } = 0;
     }
  
     

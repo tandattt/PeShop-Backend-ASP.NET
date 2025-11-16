@@ -64,4 +64,30 @@ public static class RateLimitMiddleware
 
         return services;
     }
+    public static IServiceCollection AddRateLimiterPolicyEndpoint(this IServiceCollection services)
+{
+    services.AddRateLimiter(options =>
+    {
+        options.AddPolicy(PolicyConstants.IpPolicyEndpoint, context =>
+        {
+            var ip = context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+            // Lấy path của endpoint (ví dụ: /api/product, /api/user)
+            var path = context.Request.Path.Value?.ToLowerInvariant() ?? "";
+            
+            // Partition key = IP + Path để mỗi endpoint có rate limit riêng
+            var partitionKey = $"{ip}:{path}";
+
+            return RateLimitPartition.GetFixedWindowLimiter(
+                partitionKey: partitionKey,
+                factory: _ => new FixedWindowRateLimiterOptions
+                {
+                    PermitLimit = 50,                 // giới hạn 50 request
+                    Window = TimeSpan.FromMinutes(1), // mỗi 1 phút (thay vì 1 giây)
+                    QueueLimit = 0
+                });
+        });
+    });
+
+    return services;
+}
 }

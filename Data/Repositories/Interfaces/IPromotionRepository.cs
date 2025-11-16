@@ -6,6 +6,7 @@ public interface IPromotionRepository
     Task<List<Product?>> GetProductInPromotionAsync(string productId, string shopId);
     Task<List<Promotion?>> GetPromotionByProductAsync(string productId);
     Task<bool> HasPromotionAsync(string productId);
+    Task<Dictionary<string, bool>> HasPromotionsForProductsAsync(List<string> productIds);
     Task<List<Promotion?>> GetPromotionsByShopAsync(string shopId);
     Task<Promotion?> GetPromotionByIdAsync(string promotionId);
     Task<bool> UpdatePromotionAsync(Promotion promotion);

@@ -47,6 +47,45 @@ public class PromotionRepository : IPromotionRepository
                         && r.Product != null && r.Product.Status == ProductStatus.Active
                         && r.Promotion != null && r.Promotion.Status == PromotionStatus.Active);
     }
+    public async Task<Dictionary<string, bool>> HasPromotionsForProductsAsync(List<string> productIds)
+    {
+        if (productIds == null || !productIds.Any())
+        {
+            return new Dictionary<string, bool>();
+        }
+
+        // Filter out null/empty productIds
+        var validProductIds = productIds.Where(id => !string.IsNullOrEmpty(id)).ToList();
+        if (!validProductIds.Any())
+        {
+            return new Dictionary<string, bool>();
+        }
+
+        var productsWithPromotions = await _context.PromotionRules
+            .Include(r => r.Product)
+            .Include(r => r.Promotion)
+            .Where(r => r.ProductId != null 
+                        && validProductIds.Contains(r.ProductId)
+                        && r.Product != null && r.Product.Status == ProductStatus.Active
+                        && r.Promotion != null && r.Promotion.Status == PromotionStatus.Active)
+            .Select(r => r.ProductId!)
+            .Distinct()
+            .ToListAsync();
+
+        // Tạo dictionary với tất cả productIds, mặc định false
+        var result = validProductIds.ToDictionary(id => id, id => false);
+        
+        // Set true cho các products có promotion
+        foreach (var productId in productsWithPromotions)
+        {
+            if (!string.IsNullOrEmpty(productId) && result.ContainsKey(productId))
+            {
+                result[productId] = true;
+            }
+        }
+
+        return result;
+    }
     public async Task<List<Promotion?>> GetPromotionsByShopAsync(string shopId)
     {
         var promotions = await _context.Promotions

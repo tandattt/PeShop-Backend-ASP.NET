@@ -103,23 +103,34 @@ public class SearchService : ISearchService
         var products = await _productRepository.SearchProductsAsync(keyword, skip, pageSize);
         
         var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
+        var productDtos = products.Select(p => new ProductDto
+        {
+            Id = p.Id,
+            Name = p.Name ?? string.Empty,
+            Image = p.ImgMain ?? string.Empty,
+            Price = p.Price ?? 0,
+            BoughtCount = p.BoughtCount ?? 0,
+            AddressShop = p.Shop?.NewProviceId ?? string.Empty,
+            Slug = p.Slug ?? string.Empty,
+            ReviewCount = p.ReviewCount ?? 0,
+            ReviewPoint = p.ReviewPoint ?? 0,
+            ShopId = p.Shop?.Id ?? string.Empty,
+            ShopName = p.Shop?.Name ?? string.Empty,
+            HasPromotion = null
+        }).ToList();
+        
+        // Batch query tất cả promotions một lần thay vì N queries
+        var productIds = productDtos.Select(p => p.Id).ToList();
+        var promotionsDict = await _promotionRepository.HasPromotionsForProductsAsync(productIds);
+        
+        foreach (var productDto in productDtos)
+        {
+            productDto.HasPromotion = promotionsDict.GetValueOrDefault(productDto.Id, false);
+        }
+        
         var searchResponse = new SearchResponse
         {
-            Products = products.Select(p => new ProductDto
-            {
-                Id = p.Id,
-                Name = p.Name ?? string.Empty,
-                Image = p.ImgMain ?? string.Empty,
-                Price = p.Price ?? 0,
-                BoughtCount = p.BoughtCount ?? 0,
-                AddressShop = p.Shop?.NewProviceId ?? string.Empty,
-                Slug = p.Slug ?? string.Empty,
-                ReviewCount = p.ReviewCount ?? 0,
-                ReviewPoint = p.ReviewPoint ?? 0,
-                ShopId = p.Shop?.Id ?? string.Empty,
-                ShopName = p.Shop?.Name ?? string.Empty,
-                HasPromotion = null
-            }).ToList(),
+            Products = productDtos,
             SearchType = "product",
             TotalCount = totalCount,
             Page = page,
@@ -128,10 +139,6 @@ public class SearchService : ISearchService
             HasNextPage = page < totalPages,
             HasPreviousPage = page > 1
         };
-        foreach (var productDto in searchResponse.Products)
-        {
-            productDto.HasPromotion = await _promotionRepository.HasPromotionAsync(productDto.Id);
-        }
         return searchResponse;
     }
 

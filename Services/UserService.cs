@@ -78,15 +78,9 @@ public class UserService : IUserService
         {
             throw new BadRequestException("Product không tồn tại");
         }
-        var userViewProducts = await _userRepository.GetUserViewProductByDayAsync(product.Id, userId, DateOnly.FromDateTime(DateTime.UtcNow));
-        if (userViewProducts != null && userViewProducts.Count() > 5)
-        {
-            return true;
-        }
-        else{
-            BackgroundJob.Enqueue(() => _userRepository.ViewProductAsync(product.Id, userId));
-            return true;
-        }
+        BackgroundJob.Enqueue(() => _userRepository.ViewProductAsync(product.Id, userId));
+        return true;
+
     }
     public async Task<bool> ViewShopAsync(string shop_id, string userId)
     {
@@ -100,7 +94,8 @@ public class UserService : IUserService
         {
             return true;
         }
-        else{
+        else
+        {
             BackgroundJob.Enqueue(() => _userRepository.CreateUserViewShopAsync(shop.Id, userId));
             return true;
         }
