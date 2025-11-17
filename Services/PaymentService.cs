@@ -29,7 +29,7 @@ public class PaymentService : IPaymentService
     }
     public async Task<string> CreatePaymentUrlAsync(string orderId, HttpContext context, string userId)
     {
-        var isProcessing = await _redisUtil.GetAsync($"order_payment_processing_{userId}_{orderId}");
+        var isProcessing = await _redisUtil.GetAsync($"order_payment_processing_{userId}");
         if (isProcessing != null)
         {
             return isProcessing;
@@ -57,7 +57,7 @@ public class PaymentService : IPaymentService
             OrderType = "other",
             ReadOrdIds = readOrdIds,
         }, context, userId);
-        await _redisUtil.SetAsync($"order_payment_processing_{userId}_{orderId}", paymentUrl, TimeSpan.FromMinutes(15));
+        await _redisUtil.SetAsync($"order_payment_processing_{userId}", paymentUrl, TimeSpan.FromMinutes(15));
         BackgroundJob.Schedule<IJobService>(service => service.UpdatePaymentStatusFailedInOrderAsync(orderId, userId), TimeSpan.FromMinutes(15));
         return paymentUrl;
     }
@@ -67,10 +67,10 @@ public class PaymentService : IPaymentService
         Console.WriteLine($"[ProcessCallbackAsync] QueryString: {context.Request.QueryString}");
         Console.WriteLine($"[ProcessCallbackAsync] Query Parameters Count: {context.Request.Query.Count}");
 
-        foreach (var queryParam in context.Request.Query)
-        {
-            Console.WriteLine($"[ProcessCallbackAsync] Query Param - {queryParam.Key}: {queryParam.Value}");
-        }
+        // foreach (var queryParam in context.Request.Query)
+        // {
+        //     Console.WriteLine($"[ProcessCallbackAsync] Query Param - {queryParam.Key}: {queryParam.Value}");
+        // }
 
         Console.WriteLine("[ProcessCallbackAsync] Đang gọi _vnPayUtil.ProcessCallbackAsync...");
         var response = await _vnPayUtil.ProcessCallbackAsync(context.Request.Query);
@@ -133,7 +133,7 @@ public class PaymentService : IPaymentService
                     }
                     var successUrl = _appSetting.BaseUrlFrontend + "/Payment/success?orderId=" + orderId;
                     Console.WriteLine($"[ProcessCallbackAsync] Transaction thành công, redirect URL: {successUrl}");
-                    return await Task.FromResult(successUrl);
+                    return successUrl;
                 });
 
                 Console.WriteLine("[ProcessCallbackAsync] Transaction hoàn thành thành công");

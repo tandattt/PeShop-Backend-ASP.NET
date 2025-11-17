@@ -19,7 +19,7 @@ public class FeeShippingController : ControllerBase
 
     [HttpPost("get-fee-shipping")]
     [Authorize(Roles = RoleConstants.User)]
-    public async Task<IActionResult> GetFeeShipping([FromBody] ListFeeShippingRequest request)
+    public async Task<ActionResult<List<FeeShippingResponse>>> GetFeeShipping([FromBody] ListFeeShippingRequest request)
     {
         var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "";
         var result = await _feeShippingService.FeeShippingAsync(request, userId);
@@ -28,7 +28,7 @@ public class FeeShippingController : ControllerBase
 
     [HttpPost("apply-list-fee-shipping")]
     [Authorize(Roles = RoleConstants.User)]
-    public async Task<IActionResult> ApplyListFeeShipping([FromBody] ApplyListFeeShippingRequest request)
+    public async Task<ActionResult<StatusResponse>> ApplyListFeeShipping([FromBody] ApplyListFeeShippingRequest request)
     {
         var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "";
         var result = await _feeShippingService.ApplyFeeShippingAsync(request, userId);

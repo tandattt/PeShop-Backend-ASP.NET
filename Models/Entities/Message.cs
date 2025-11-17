@@ -11,6 +11,7 @@ public partial class Message
     public string? ShopId { get; set; }
 
     public string Content { get; set; } = null!;
+    public bool Seen { get; set; } = false;
 
     public SenderType SenderType { get; set; }
 

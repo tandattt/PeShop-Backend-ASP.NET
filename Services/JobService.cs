@@ -9,6 +9,7 @@ using PeShop.Dtos.Job;
 using PeShop.Setting;
 using PeShop.Data.Repositories.Interfaces;
 using PeShop.Models.Entities;
+using System.Text.Json;
 namespace PeShop.Services;
 
 public class JobService : IJobService
@@ -42,6 +43,7 @@ public class JobService : IJobService
         if (order.StatusPayment == PaymentStatus.Processing)
         {
             order.StatusPayment = PaymentStatus.Failed;
+            Console.WriteLine("order: " + JsonSerializer.Serialize(order));
             await _orderRepository.UpdatePaymentStatusInOrderAsync(order);
         }
     }
@@ -114,7 +116,7 @@ public class JobService : IJobService
         await _redisUtil.DeleteAsync($"promotion_in_order_{userId}_{orderId}");
         if (isBank)
         {
-            await _redisUtil.DeleteAsync($"order_payment_processing_{userId}_{orderId}");
+            await _redisUtil.DeleteAsync($"order_payment_processing_{userId}");
         }
     }
     public async Task SetJobAsync(JobDto dto)

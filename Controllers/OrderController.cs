@@ -21,7 +21,7 @@ public class OrderController : ControllerBase
     }
     [HttpPost("create-virtual-order")]
     [Authorize(Roles = RoleConstants.User)]
-    public async Task<IActionResult> CreateVirtualOrder([FromBody] OrderVirtualRequest request)
+    public async Task<ActionResult<CreateVirtualOrderResponse>> CreateVirtualOrder([FromBody] OrderVirtualRequest request)
     {
         var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         return Ok(await _orderService.CreateVirtualOrder(request,userId));
@@ -33,16 +33,25 @@ public class OrderController : ControllerBase
         var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         return Ok(await _orderService.UpdateVirtualOrder(request, userId));
     }
+
+    [HttpDelete("delete-virtual-order")]
+    [Authorize(Roles = RoleConstants.User)]
+    public async Task<ActionResult<StatusResponse>> DeleteVirtualOrder([FromQuery] string orderId)
+    {
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        return Ok(await _orderService.DeleteVirtualOrder(orderId, userId));
+    }
+
     [HttpGet("Calclulate-order-total")]
     [Authorize(Roles = RoleConstants.User)]
-    public async Task<IActionResult> CalclulateOrderTotal([FromQuery] string orderId)
+    public async Task<ActionResult<CreateVirtualOrderResponse>> CalclulateOrderTotal([FromQuery] string orderId)
     {
         var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         return Ok(await _orderService.CalclulateOrderTotal(orderId,userId));
     }
     [HttpPost("create-order")]
     [Authorize(Roles = RoleConstants.User)]
-    public async Task<IActionResult> CreateOrder([FromBody] CreateOrderRequest request)
+    public async Task<ActionResult<StatusResponse>> CreateOrder([FromBody] CreateOrderRequest request)
     {
         var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if(request.PaymentMethod == PaymentMethod.COD){

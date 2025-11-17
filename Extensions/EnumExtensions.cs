@@ -113,5 +113,14 @@ namespace PeShop.Extensions
             };
         }
 
+        public static string ToVietnameseString(this SenderType type)
+        {
+            return type switch
+            {
+                SenderType.User => "user",
+                SenderType.Shop => "shop",
+                _ => type.ToString()
+            };
+        }
     }
 }

@@ -4,7 +4,7 @@ using PeShop.Constants;
 using PeShop.Dtos.Requests;
 using PeShop.Services.Interfaces;
 using System.Security.Claims;
-
+using System.Text.Json;
 namespace PeShop.Controllers;
 
 [ApiController]
@@ -35,6 +35,7 @@ public class UserController : ControllerBase
         try
         {
             var userInfo = await _userService.GetUserInfoAsync(userId);
+            Console.WriteLine("userInfo: " + JsonSerializer.Serialize(userInfo));
             return Ok(userInfo);
         }
         catch (Exception ex)

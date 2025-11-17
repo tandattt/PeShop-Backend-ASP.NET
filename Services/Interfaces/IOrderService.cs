@@ -7,6 +7,7 @@ public interface IOrderService
 {
     Task<CreateVirtualOrderResponse> CreateVirtualOrder(OrderVirtualRequest request, string userId);
     Task<CreateVirtualOrderResponse> UpdateVirtualOrder(UpdateVirtualOrderRequest request, string userId);
+    Task<StatusResponse> DeleteVirtualOrder(string orderId, string userId);
     Task<CreateVirtualOrderResponse> CalclulateOrderTotal(string orderId, string userId);
     Task<StatusResponse> CreateOrderCODAsync(string orderId, string userId);
     Task<StatusResponse<List<string>>> SaveOrderAsync(OrderVirtualDto orders, string userId, PaymentStatus paymentStatus, PaymentMethod paymentMethod);

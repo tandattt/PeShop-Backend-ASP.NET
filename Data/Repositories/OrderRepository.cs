@@ -3,6 +3,7 @@ using PeShop.Data.Repositories.Interfaces;
 using PeShop.Models.Entities;
 using PeShop.Data.Contexts;
 using Microsoft.EntityFrameworkCore;
+using System.Text.Json;
 public class OrderRepository : IOrderRepository
 {
     private readonly PeShopDbContext _context;
@@ -53,8 +54,13 @@ public class OrderRepository : IOrderRepository
     }
     public async Task<bool> UpdatePaymentStatusInOrderAsync(Order order)
     {
+        Console.WriteLine("order: " + JsonSerializer.Serialize(order));
         _context.Orders.Update(order);
-        await _context.SaveChangesAsync();
-        return true;
+        var result = await _context.SaveChangesAsync();
+        if (result > 0)
+        {
+            return true;
+        }
+        return false;
     }
 }

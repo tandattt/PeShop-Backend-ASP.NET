@@ -8,11 +8,11 @@ public class CreateVirtualOrderResponse : StatusResponse
     public OrderVirtualDto? Order { get; set; } = null;
 }
 public class OrderResponse{
+    public string OrderCode { get; set; } = string.Empty;
     public string OrderId { get; set; } = string.Empty;
     public decimal FinalPrice { get; set; } = 0;
     public PaymentMethod PaymentMethod { get; set; }
     public PaymentStatus PaymentStatus { get; set; }
-    public OrderPaymentProcessing? PaymentProcessing{ get; set; } = null;
     public OrderStatus OrderStatus { get; set; }
     public string ShopId { get; set; } = string.Empty;
     public string ShopName { get; set; } = string.Empty;
@@ -31,10 +31,7 @@ public class OrderItemResponse{
     public bool IsAllowReview { get; set; } = false;
 }
 
-public class OrderPaymentProcessing{
-    public Double Time { get; set; }
-    public string PaymentLink { get; set; } = string.Empty;
-}
+
 
 public class OrderDetailResponse: OrderResponse{
 

@@ -29,6 +29,7 @@ public class OrderService : IOrderService
     private readonly IPromotionRepository _promotionRepository;
     private readonly IReviewService _reviewService;
     private readonly IUserRepository _userRepository;
+    private readonly IJobService _jobService;
     public OrderService(
         IOrderHelper orderHelper,
         IRedisUtil redisUtil,
@@ -43,7 +44,8 @@ public class OrderService : IOrderService
         IPromotionService promotionService,
         IPromotionRepository promotionRepository,
         IReviewService reviewService,
-        IUserRepository userRepository
+        IUserRepository userRepository,
+        IJobService jobService
         )
     {
         _orderHelper = orderHelper;
@@ -60,6 +62,7 @@ public class OrderService : IOrderService
         _promotionRepository = promotionRepository;
         _reviewService = reviewService;
         _userRepository = userRepository;
+        _jobService = jobService;
     }
     public async Task<CreateVirtualOrderResponse> CreateVirtualOrder(OrderVirtualRequest request, string userId)
     {
@@ -171,6 +174,16 @@ public class OrderService : IOrderService
                 Message = $"Lỗi khi cập nhật đơn hàng: {ex.Message}"
             };
         }
+    }
+    public async Task<StatusResponse> DeleteVirtualOrder(string orderId, string userId)
+    {
+        var order = await _redisUtil.GetAsync<OrderVirtualDto>($"order_{userId}_{orderId}");
+        if (order == null)
+        {
+            return new StatusResponse { Status = false, Message = "Đơn hàng không tồn tại" };
+        }
+        await _jobService.DeleteOrderOnRedisAsync(orderId, userId, false);
+        return new StatusResponse { Status = true, Message = "Đơn hàng đã được xóa thành công" };
     }
     public async Task<CreateVirtualOrderResponse> CalclulateOrderTotal(string orderId, string userId)
     {
@@ -672,9 +685,16 @@ public class OrderService : IOrderService
         {
             return new StatusResponse { Status = false, Message = "Đơn hàng không tồn tại" };
         }
-        await _orderRepository.UpdatePaymentStatusInOrderAsync(order);
-
-        return new StatusResponse { Status = true, Message = "Đơn hàng đã được cập nhật trạng thái thành công" };
+        order.StatusPayment = paymentStatus;
+        order.UpdatedAt = DateTime.UtcNow;
+        order.UpdatedBy = userId;
+        var result = await _orderRepository.UpdatePaymentStatusInOrderAsync(order);
+        if (!result)
+        {
+            return new StatusResponse { Status = false, Message = "Lỗi khi cập nhật trạng thái thanh toán" };
+        }
+        return new StatusResponse { Status = true, Message = "Đơn hàng đã được cập nhật trạng thái thanh toán thành công" };
+        
     }
 
     public async Task<OrderDetailResponse> GetOrderDetailAsync(string orderId, string userId)
@@ -712,18 +732,7 @@ public class OrderService : IOrderService
                 Quantity = (int)(y.Quantity ?? 0)
             }).ToList()
         };
-        if (orderDetailResponse.PaymentMethod == PaymentMethod.VNPay && orderDetailResponse.PaymentStatus == PaymentStatus.Processing)
-        {
-            var paymentLink = await _redisUtil.GetAsyncWithTtl($"order_payment_processing_{userId}_{orderDetailResponse.OrderId}");
-            if (paymentLink.Key != null)
-            {
-                orderDetailResponse.PaymentProcessing = new OrderPaymentProcessing
-                {
-                    Time = paymentLink.Value.Value.TotalSeconds,
-                    PaymentLink = paymentLink.Key ?? string.Empty,
-                };
-            }
-        }
+       
         return orderDetailResponse;
 
     }
@@ -737,6 +746,7 @@ public class OrderService : IOrderService
         var orderResponses = order
             .Select(x => new OrderResponse
             {
+                OrderCode = x.OrderCode ?? string.Empty,
                 OrderId = x.Id,
                 ShopId = x.ShopId,
                 ShopName = x.Shop?.Name ?? string.Empty,
@@ -761,22 +771,10 @@ public class OrderService : IOrderService
                 })
                     .ToList()
             }).ToList();
-        var orderPaymentProcessing = orderResponses.Where(x => x.PaymentMethod == PaymentMethod.VNPay && x.PaymentStatus == PaymentStatus.Processing).ToList();
+        
         foreach (var item in orderResponses)
         {
-            if (item.PaymentMethod == PaymentMethod.VNPay && item.PaymentStatus == PaymentStatus.Processing)
-            {
-                var paymentLink = await _redisUtil.GetAsyncWithTtl($"order_payment_processing_{userId}_{item.OrderId}");
-                if (paymentLink.Key != null)
-                {
-                    item.PaymentProcessing = new OrderPaymentProcessing
-                    {
-                        Time = paymentLink.Value.Value.TotalSeconds,
-                        PaymentLink = paymentLink.Key ?? string.Empty,
-                    };
-                }
-            }
-
+            
             foreach (var orderItem in item.Items)
             {
                 orderItem.IsAllowReview = await _reviewService.IsAllowReviewAsync(item.OrderId, orderItem.ProductId, userId);

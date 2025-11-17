@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authorization;
 using PeShop.Constants;
 using PeShop.Dtos.Requests;
 using System.Security.Claims;
+using PeShop.Dtos.Responses;
 namespace PeShop.Controllers;
 
 [ApiController]
@@ -27,7 +28,7 @@ public class VoucherController : ControllerBase
 
     [HttpGet("check-eligibility")]
     [Authorize(Roles = RoleConstants.User)]
-    public async Task<IActionResult> CheckVoucherEligibility([FromQuery] string orderId)
+    public async Task<ActionResult<CheckVoucherEligibilityResponse>> CheckVoucherEligibility([FromQuery] string orderId)
     {
         string userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "";
         if (string.IsNullOrEmpty(userId))
@@ -45,7 +46,7 @@ public class VoucherController : ControllerBase
 
     [HttpPost("apply-voucher-system")]
     [Authorize(Roles = RoleConstants.User)]
-    public async Task<IActionResult> ApplyVoucherSystem([FromBody] ApplyVoucherSystemRequest request)
+    public async Task<ActionResult<StatusResponse>> ApplyVoucherSystem([FromBody] ApplyVoucherSystemRequest request)
     {
         string userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "";
         if (string.IsNullOrEmpty(userId))
@@ -57,7 +58,7 @@ public class VoucherController : ControllerBase
 
     [HttpPost("apply-voucher-shop")]
     [Authorize(Roles = RoleConstants.User)]
-    public async Task<IActionResult> ApplyVoucherShop([FromBody] ApplyVoucherShopRequest request)
+    public async Task<ActionResult<StatusResponse>> ApplyVoucherShop([FromBody] ApplyVoucherShopRequest request)
     {
         string userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "";
         if (string.IsNullOrEmpty(userId))

@@ -26,8 +26,8 @@ namespace PeShop.Utilities
             var pay = new VnPayLibrary();
             string scheme = context.Request.Scheme;
             string host = context.Request.Host.Value;
-            string returnUrlPath = _vnPaySetting.PaymentBackReturnUrl;
-            var urlCallBack = $"{scheme}://{host}{returnUrlPath}";
+            
+            var urlCallBack = _vnPaySetting.PaymentBackReturnUrl;
 
             if (model.Amount <= 0)
             {

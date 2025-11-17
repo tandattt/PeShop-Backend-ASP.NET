@@ -29,7 +29,6 @@ namespace PeShop.Configurations
                 {
                     // Disable retry strategy to allow manual transactions
                     mySqlOptions.CommandTimeout(30);
-                    mySqlOptions.EnableRetryOnFailure(5, TimeSpan.FromSeconds(10), null);
                 });
                 options.EnableSensitiveDataLogging(environment.IsDevelopment());
                 options.EnableDetailedErrors(environment.IsDevelopment());
@@ -105,7 +104,7 @@ namespace PeShop.Configurations
             {
                 options.AddPolicy("AllowAll",
                     policy => policy
-                        .WithOrigins("http://localhost:3000") // domain FE của bạn
+                        .WithOrigins("http://localhost:3000","http://169.254.47.240:5500") // domain FE của bạn
                         .AllowAnyMethod()
                         .AllowAnyHeader()
                         .AllowCredentials()); // Cho phép cookie/token

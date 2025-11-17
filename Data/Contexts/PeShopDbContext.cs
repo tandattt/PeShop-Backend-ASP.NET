@@ -1887,6 +1887,8 @@ public partial class PeShopDbContext : DbContext
                 .HasColumnName("content");
             entity.Property(e => e.SenderType)
                 .HasColumnName("sender_type");
+            entity.Property(e => e.Seen)
+                .HasColumnName("seen");
             entity.Property(e => e.CreatedAt)
                 .HasColumnType("datetime")
                 .HasColumnName("created_at")

@@ -9,6 +9,8 @@ using PeShop.Dtos.Shared;
 using PeShop.Data.Repositories.Interfaces;
 using System.Linq;
 using Hangfire;
+using PeShop.Interfaces;
+using System.Text.Json;
 namespace PeShop.Services;
 
 public class UserService : IUserService
@@ -16,11 +18,13 @@ public class UserService : IUserService
     private readonly IUserRepository _userRepository;
     private readonly IProductRepository _productRepository;
     private readonly IShopRepository _shopRepository;
-    public UserService(IUserRepository userRepository, IProductRepository productRepository, IShopRepository shopRepository)
+    private readonly IRedisUtil _redisUtil;
+    public UserService(IUserRepository userRepository, IProductRepository productRepository, IShopRepository shopRepository, IRedisUtil redisUtil)
     {
         _userRepository = userRepository;
         _productRepository = productRepository;
         _shopRepository = shopRepository;
+        _redisUtil = redisUtil;
     }
 
     public async Task<UserInfoResponse?> GetUserInfoAsync(string userId)
@@ -31,7 +35,7 @@ public class UserService : IUserService
             throw new NotFoundException("User không tồn tại");
         }
 
-        return new UserInfoResponse
+        var userInfoResponse = new UserInfoResponse
         {
             Id = user.Id,
             Username = user.Username ?? string.Empty,
@@ -46,7 +50,22 @@ public class UserService : IUserService
                 Id = user.UserRanks != null && user.UserRanks.Count > 0 ? user.UserRanks.FirstOrDefault()?.RankId ?? string.Empty : string.Empty,
                 Name = user.UserRanks != null && user.UserRanks.Count > 0 ? EnumExtensions.ToVietnameseString(user.UserRanks.FirstOrDefault()?.Rank?.RankLevel ?? RankLevel.Bronze) : string.Empty,
             },
+            OrderPaymentProcessing = new OrderPaymentProcessing
+            {
+                Time = 0,
+                PaymentLink = string.Empty,
+            },
         };
+        Console.WriteLine("userInfoResponse: " + JsonSerializer.Serialize(userInfoResponse));
+        var orderPaymentProcessing = await _redisUtil.GetAsync<OrderPaymentProcessing>($"order_payment_processing_{user.Id}");
+        Console.WriteLine("orderPaymentProcessing: " + JsonSerializer.Serialize(orderPaymentProcessing));
+        if (orderPaymentProcessing != null)
+        {
+            
+            userInfoResponse.OrderPaymentProcessing = orderPaymentProcessing;
+        }
+        Console.WriteLine("userInfoResponse: " + JsonSerializer.Serialize(userInfoResponse));
+        return userInfoResponse;
     }
 
     public async Task<UserInfoResponse?> GetUserByEmailAsync(string email)

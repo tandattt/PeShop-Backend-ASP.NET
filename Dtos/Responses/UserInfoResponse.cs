@@ -13,4 +13,9 @@ public class UserInfoResponse
     public GenderUser? Gender { get; set; }
     public DateTime? CreatedAt { get; set; }
     public RankDto Rank { get; set; } = new RankDto();
+    public OrderPaymentProcessing OrderPaymentProcessing { get; set; } = new OrderPaymentProcessing();
+}
+public class OrderPaymentProcessing{
+    public Double Time { get; set; }
+    public string PaymentLink { get; set; } = string.Empty;
 }

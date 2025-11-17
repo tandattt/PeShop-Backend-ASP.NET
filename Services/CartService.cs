@@ -109,6 +109,7 @@ namespace PeShop.Services
             if (existingCart != null)
             {
                 existingCart.Quantity = (existingCart.Quantity ?? 0) + request.Quantity;
+                existingCart.Price = request.Price * existingCart.Quantity;
                 existingCart.UpdatedAt = DateTime.UtcNow;
                 
                 await _cartRepository.UpdateCartAsync(existingCart);
@@ -121,7 +122,7 @@ namespace PeShop.Services
                     ProductId = request.ProductId,
                     VariantId = request.VariantId ?? null,
                     Quantity = request.Quantity,
-                    Price = request.Price,
+                    Price = request.Price * request.Quantity,
                     UserId = userId,
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow
@@ -156,6 +157,7 @@ namespace PeShop.Services
             }
 
             cart.Quantity = quantity;
+            cart.Price = cart.Price * quantity;
             cart.UpdatedAt = DateTime.UtcNow;
 
             var updatedCart = await _cartRepository.UpdateCartAsync(cart);
