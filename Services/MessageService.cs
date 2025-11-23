@@ -95,30 +95,80 @@ namespace PeShop.Services
             if (userId != null)
             {
                 var conversations = await _messageRepository.GetConversationsShopAsync(userId);
-                return conversations.Select(c => new ConversationResponse
-                {
-                    ShopId = c.ShopId!,
-                    UserId = c.UserId!,
-                    LastMessage = c.Content,
-                    Seen = c.Seen,
-                    CreatedAt = c.CreatedAt ?? DateTime.UtcNow,
-                })
-            .DistinctBy(m => m.UserId).ToList();
+                return conversations
+                    .Where(c => c.Shop != null && c.User != null)
+                    .Select(c => new ConversationResponse
+                    {
+                        ShopId = c.ShopId ?? string.Empty,
+                        ShopName = c.Shop?.Name ?? string.Empty,
+                        ShopAvatar = c.Shop?.LogoUrl ?? string.Empty,
+                        UserId = c.UserId ?? string.Empty,
+                        UserName = c.User?.Name ?? string.Empty,
+                        UserAvatar = c.User?.Avatar ?? string.Empty,
+                        LastMessage = c.Content ?? string.Empty,
+                        Seen = c.Seen,
+                        CreatedAt = c.CreatedAt ?? DateTime.UtcNow,
+                    })
+                .DistinctBy(m => m.UserId).ToList();
             }
             else if (shopId != null)
             {
                 var conversations = await _messageRepository.GetConversationsUserAsync(shopId);
-                return conversations.Select(c => new ConversationResponse
-                {
-                    UserId = c.UserId!,
-                    ShopId = c.ShopId!,
-                    LastMessage = c.Content,
-                    Seen = c.Seen,
-                    CreatedAt = c.CreatedAt ?? DateTime.UtcNow,
-                })
-            .DistinctBy(m => m.ShopId).ToList();
+                return conversations
+                    .Where(c => c.Shop != null && c.User != null)
+                    .Select(c => new ConversationResponse
+                    {
+                        UserId = c.UserId ?? string.Empty,
+                        UserName = c.User?.Name ?? string.Empty,
+                        UserAvatar = c.User?.Avatar ?? string.Empty,
+                        ShopId = c.ShopId ?? string.Empty,
+                        ShopName = c.Shop?.Name ?? string.Empty,
+                        ShopAvatar = c.Shop?.LogoUrl ?? string.Empty,
+                        LastMessage = c.Content ?? string.Empty,
+                        Seen = c.Seen,
+                        CreatedAt = c.CreatedAt ?? DateTime.UtcNow,
+                    })
+                .DistinctBy(m => m.ShopId).ToList();
             }
             return new List<ConversationResponse>();
         }
+        public async Task<PaginationResponse<MessageResponse>> GetMessagesAsync(GetMessageRequest request)
+        {
+            var targetType = request.Type == SenderType.User ? SenderType.Shop : SenderType.User;
+            var messages = await _messageRepository.GetMessagesAsync(request);
+            var totalCount = await _messageRepository.GetMessagesCountAsync(request.UserId, request.ShopId);
+            var it = messages.Where(m => m.SenderType == targetType).Select(m => new MessageDetailResponse
+            {
+                Id = m.Id.ToString(),
+                Content = m.Content,
+                CreatedAt = m.CreatedAt ?? DateTime.UtcNow,
+            }).ToList();
+            var my = messages.Where(m => m.SenderType != targetType).Select(m => new MessageDetailResponse
+            {
+                Id = m.Id.ToString(),
+                Content = m.Content,
+                CreatedAt = m.CreatedAt ?? DateTime.UtcNow,
+            }).ToList();
+            var messageResponses = new MessageResponse
+            {
+                It = it,
+                My = my,
+            };
+            await _messageRepository.UpdateMessageSeenAsync(request.UserId, request.ShopId, request.Type);
+            var totalPages = (int)Math.Ceiling((double)totalCount / request.PageSize);
+            return new PaginationResponse<MessageResponse>
+            {
+                Data = new List<MessageResponse> { messageResponses },
+                CurrentPage = request.Page,
+                PageSize = request.PageSize,
+                TotalCount = totalCount,
+                TotalPages = totalPages,
+                HasNextPage = request.Page < totalPages,
+                HasPreviousPage = request.Page > 1,
+                NextPage = request.Page < totalPages ? request.Page + 1 : request.Page,
+                PreviousPage = request.Page > 1 ? request.Page - 1 : request.Page
+            };
+        }
     }
+
 }

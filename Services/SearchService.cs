@@ -9,6 +9,7 @@ using PeShop.Dtos.API;
 using PeShop.Dtos.Shared;
 using PeShop.Data.Repositories.Interfaces;
 using PeShop.Constants;
+using System.Net.Http;
 public class SearchService : ISearchService
 {
     private readonly IApiHelper _apiHelper;
@@ -48,33 +49,131 @@ public class SearchService : ISearchService
 
     public async Task<SearchResponse> GetSearchAsync(string keyword, int page = 1, int pageSize = 20)
     {
-        var url = $"{_appSetting.BaseApiFlask}/predict";
-        var result = await _apiHelper.PostAsync<JsonElement>(url, new { text = keyword });
-        Console.WriteLine(result.GetProperty("prediction"));
-        if (result.GetProperty("prediction").GetString() == ResultClassifyConstants.Product)
+        // Kiểm tra keyword
+        if (string.IsNullOrWhiteSpace(keyword))
         {
-            // Tìm kiếm sản phẩm
-            return await GetProductSearchAsync(keyword, page, pageSize);
+            throw new ArgumentException("No keyword provided");
         }
-        else if(result.GetProperty("prediction").GetString() == ResultClassifyConstants.Shop)
+
+        // Validate page và pageSize
+        if (page < 1) page = 1;
+        if (pageSize < 1) pageSize = 20;
+        if (pageSize > 100) pageSize = 100;
+
+        // Gọi API Flask với multipart/form-data
+        var url = $"{_appSetting.BaseApiFlask}/search_by_name";
+        
+        using var formContent = new MultipartFormDataContent();
+        formContent.Add(new StringContent(keyword), "keyword");
+        formContent.Add(new StringContent(page.ToString()), "page");
+        formContent.Add(new StringContent(pageSize.ToString()), "page_size");
+        
+        try
         {
-            // Tìm kiếm shop
-            var shopResult = await GetShopSearchAsync(keyword, page, pageSize);
+            var result = await _apiHelper.PostMultipartFormAsync<JsonElement>(url, formContent);
+            
+            // Kiểm tra error response
+            if (result.TryGetProperty("error", out var errorProperty))
+            {
+                var errorMessage = errorProperty.GetString() ?? "Unknown error";
+                throw new Exception(errorMessage);
+            }
+
+            // Parse response với format mới
+            if (!result.TryGetProperty("Data", out var dataProperty))
+            {
+                throw new Exception("Invalid response format: missing Data property");
+            }
+
+            var data = dataProperty.EnumerateArray().Select(item => new SearchVectorDto
+            {
+                Id = item.TryGetProperty("id", out var idProp) ? idProp.GetString() ?? string.Empty : string.Empty,
+                SimilarityScore = item.TryGetProperty("similarity_score", out var scoreProp) ? scoreProp.GetDouble() : 0.0,
+                Rank = item.TryGetProperty("rank", out var rankProp) ? rankProp.GetInt32() : 0
+            }).ToList();
+
+            var totalCount = result.TryGetProperty("TotalCount", out var totalCountProp) 
+                ? totalCountProp.GetInt32() 
+                : data.Count;
+
+            // Lấy thông tin products từ database dựa trên IDs
+            var productIds = data.Select(d => d.Id).ToList();
+            if (productIds.Count == 0)
+            {
+                return new SearchResponse
+                {
+                    Products = new List<ProductDto>(),
+                    SearchType = "product",
+                    TotalCount = 0,
+                    Page = page,
+                    PageSize = pageSize,
+                    TotalPages = 0,
+                    HasNextPage = false,
+                    HasPreviousPage = false
+                };
+            }
+
+            var products = await _productRepository.GetListProductByVectorAsync(productIds);
+            
+            // Tạo dictionary để map product với similarity score và rank
+            var productDict = products.ToDictionary(p => p.Id, p => p);
+            var similarityDict = data.ToDictionary(d => d.Id, d => d.SimilarityScore);
+            var rankDict = data.ToDictionary(d => d.Id, d => d.Rank);
+
+            var productDtos = productIds
+                .Where(id => productDict.ContainsKey(id))
+                .Select(id => 
+                {
+                    var product = productDict[id];
+                    return new ProductDto
+                    {
+                        Id = product.Id,
+                        Name = product.Name ?? string.Empty,
+                        Image = product.ImgMain ?? string.Empty,
+                        Price = product.Price ?? 0,
+                        BoughtCount = product.BoughtCount ?? 0,
+                        AddressShop = product.Shop?.NewProviceId ?? string.Empty,
+                        Slug = product.Slug ?? string.Empty,
+                        ReviewCount = product.ReviewCount ?? 0,
+                        ReviewPoint = product.ReviewPoint ?? 0,
+                        ShopId = product.Shop?.Id ?? string.Empty,
+                        ShopName = product.Shop?.Name ?? string.Empty,
+                        HasPromotion = null
+                    };
+                }).ToList();
+
+            // Batch query promotions
+            var promotionProductIds = productDtos.Select(p => p.Id).ToList();
+            var promotionsDict = await _promotionRepository.HasPromotionsForProductsAsync(promotionProductIds);
+            
+            foreach (var productDto in productDtos)
+            {
+                productDto.HasPromotion = promotionsDict.GetValueOrDefault(productDto.Id, false);
+            }
+
+            var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
+            
             return new SearchResponse
             {
-                Shops = shopResult.Shops,
-                SearchType = "shop",
-                TotalCount = shopResult.TotalCount,
-                Page = shopResult.Page,
-                PageSize = shopResult.PageSize,
-                TotalPages = shopResult.TotalPages,
-                HasNextPage = shopResult.HasNextPage,
-                HasPreviousPage = shopResult.HasPreviousPage
+                Products = productDtos,
+                SearchType = "product",
+                TotalCount = totalCount,
+                Page = page,
+                PageSize = pageSize,
+                TotalPages = totalPages,
+                HasNextPage = page < totalPages,
+                HasPreviousPage = page > 1
             };
         }
-        
-        // Mặc định tìm kiếm sản phẩm nếu không phân loại được
-        return await GetProductSearchAsync(keyword, page, pageSize);
+        catch (Exception ex)
+        {
+            // Nếu là error từ API (có thể là "No keyword provided")
+            if (ex.Message.Contains("No keyword provided") || ex.Message.Contains("error"))
+            {
+                throw new ArgumentException(ex.Message);
+            }
+            throw;
+        }
     }
 
     private async Task<SearchResponse> GetProductSearchAsync(string keyword, int page, int pageSize)

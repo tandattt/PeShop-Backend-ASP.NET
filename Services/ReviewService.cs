@@ -6,6 +6,7 @@ using PeShop.Dtos.Responses;
 using PeShop.Dtos.Requests;
 using PeShop.Interfaces;
 using PeShop.Setting;
+using Hangfire;
 namespace PeShop.Services;
 
 public class ReviewService : IReviewService
@@ -25,30 +26,64 @@ public class ReviewService : IReviewService
     }
     public async Task<bool> IsAllowReviewAsync(string orderId, string productId, string userId)
     {
-        // Check if user already reviewed this product in this order
-        // If already reviewed -> return false (not allow to review)
-        // If not reviewed -> return true (allow to review)
-
-
-
-        // Check if order is delivered
         var order = await _orderRepository.GetOrderByIdAsync(orderId, userId);
         if (order == null)
         {
             return false;
         }
+
+        // Kiểm tra order status phải là PickedUp (3)
         if (order.StatusOrder != OrderStatus.PickedUp)
         {
             return false;
         }
+        // Kiểm tra chưa có review
         var hasReview = await _reviewRepository.HasReviewAsync(order.Id, productId, userId);
-        if (!hasReview)
-        {
-            return true;
-        }
-        return false;
+        return !hasReview; // Return true nếu chưa có review
     }
-    public async Task<StatusResponse> CreateReviewAsync(CreateReviewRequest request,string userId)
+    public async Task<Dictionary<(string OrderId, string ProductId), bool>> GetAllowReviewStatusBatchAsync(List<(string OrderId, string ProductId)> items, string userId)
+    {
+        var result = new Dictionary<(string OrderId, string ProductId), bool>();
+        
+        if (items == null || !items.Any())
+        {
+            return result;
+        }
+
+        // Lấy tất cả orderIds duy nhất
+        var orderIds = items.Select(x => x.OrderId).Distinct().ToList();
+        
+        // Lấy tất cả orders cùng lúc
+        var orders = await _orderRepository.GetOrdersByIdsAsync(orderIds, userId);
+        var ordersDict = orders.ToDictionary(o => o.Id, o => o);
+        
+        // Lấy tất cả existing reviews cùng lúc
+        var existingReviews = await _reviewRepository.GetExistingReviewsBatchAsync(items, userId);
+        
+        // Check từng item
+        foreach (var item in items)
+        {
+            if (!ordersDict.TryGetValue(item.OrderId, out var order))
+            {
+                result[item] = false;
+                continue;
+            }
+
+            // Kiểm tra order status phải là PickedUp (3)
+            if (order.StatusOrder != OrderStatus.PickedUp)
+            {
+                result[item] = false;
+                continue;
+            }
+
+            // Kiểm tra chưa có review
+            var hasReview = existingReviews.Contains((item.OrderId, item.ProductId));
+            result[item] = !hasReview;
+        }
+
+        return result;
+    }
+    public async Task<StatusResponse> CreateReviewAsync(CreateReviewRequest request, string userId)
     {
         var isAllowReview = await IsAllowReviewAsync(request.OrderId, request.ProductId, userId);
         List<string> images = new List<string>();
@@ -62,20 +97,20 @@ public class ReviewService : IReviewService
                 {
                     uploadUrl += "?subPath=" + _appSetting.FolderImagesReview;
                 }
-                
+
                 Console.WriteLine($"Uploading image to: {uploadUrl}");
                 Console.WriteLine($"Image name: {image.FileName}, Size: {image.Length} bytes");
-                
+
                 var imageUrl = await _apiHelper.PostFileAsync<string>(
-                    uploadUrl, 
-                    image, 
+                    uploadUrl,
+                    image,
                     null, // Không cần form data, chỉ cần file
                     new Dictionary<string, string>
                     {
                         { "API-KEY", _appSetting.ApiKeySystem }
                     });
-                
-                
+
+
                 if (!string.IsNullOrEmpty(imageUrl))
                 {
                     images.Add(imageUrl);
@@ -85,7 +120,7 @@ public class ReviewService : IReviewService
                 {
                     Console.WriteLine($"Upload returned empty URL for image: {image.FileName}");
                 }
-                
+
             }
             catch (Exception ex)
             {
@@ -114,6 +149,7 @@ public class ReviewService : IReviewService
         {
             return new StatusResponse { Status = false, Message = "Đánh giá sản phẩm thất bại" };
         }
+        BackgroundJob.Enqueue<IJobService>(x => x.UpdateReviewInProductAsync(request.ProductId, request.Rating));
         return new StatusResponse { Status = true, Message = "Đánh giá sản phẩm thành công" };
     }
     public async Task<ListReviewResponseDto> GetReviewByProductAsync(string productId)
@@ -146,7 +182,7 @@ public class ReviewService : IReviewService
                 shopLogo = firstReview.Product.Shop?.LogoUrl ?? string.Empty;
             }
         }
-        
+
         // If no reviews or shop info not found in reviews, get shop info from product
         if (string.IsNullOrEmpty(shopId))
         {

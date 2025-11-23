@@ -10,6 +10,10 @@ using PeShop.Setting;
 using PeShop.Data.Repositories.Interfaces;
 using PeShop.Models.Entities;
 using System.Text.Json;
+using Models.Enums;
+using PeShop.Dtos.API;
+using PeShop.GlobalVariables;
+using PeShop.Exceptions;
 namespace PeShop.Services;
 
 public class JobService : IJobService
@@ -22,7 +26,10 @@ public class JobService : IJobService
     private readonly AppSetting _appSetting;
     private readonly IApiHelper _apiHelper;
     private readonly IOrderRepository _orderRepository;
-    public JobService(IVoucherService voucherService, IRedisUtil redisUtil, AppSetting appSetting, IApiHelper apiHelper, IOrderRepository orderRepository, IUserRankRepository userRankRepository, IRankService rankService)
+    private readonly IProductRepository _productRepository;
+    private readonly ITransactionRepository _transactionRepository;
+    private readonly IBackgroundJobClient _backgroundJobClient;
+    public JobService(IVoucherService voucherService, IRedisUtil redisUtil, AppSetting appSetting, IApiHelper apiHelper, IOrderRepository orderRepository, IUserRankRepository userRankRepository, IRankService rankService, IProductRepository productRepository, ITransactionRepository transactionRepository, IBackgroundJobClient backgroundJobClient)
     {
         _voucherService = voucherService;
         _redisUtil = redisUtil;
@@ -31,6 +38,9 @@ public class JobService : IJobService
         _appSetting = appSetting;
         _apiHelper = apiHelper;
         _orderRepository = orderRepository;
+        _productRepository = productRepository;
+        _transactionRepository = transactionRepository;
+        _backgroundJobClient = backgroundJobClient;
     }
     public async Task UpdatePaymentStatusFailedInOrderAsync(string orderId, string userId)
     {
@@ -119,14 +129,47 @@ public class JobService : IJobService
             await _redisUtil.DeleteAsync($"order_payment_processing_{userId}");
         }
     }
-    public async Task SetJobAsync(JobDto dto)
+    public Task SetJobAsync(JobDto dto)
     {
 
         var runTime = new DateTimeOffset(dto.RunTime, TimeSpan.FromHours(7));
-        BackgroundJob.Schedule<JobService>(
-         s => s.RunJobAsync(dto),
-         runTime
-        );
+        var delay = runTime - DateTimeOffset.Now;
+        
+        if (!string.IsNullOrEmpty(dto.Id))
+        {
+            // Tự đặt ID cho job (ví dụ: voucher_123123)
+            var hangfireJobId = _backgroundJobClient.Create(
+                () => RunJobAsync(dto),
+                new Hangfire.States.ScheduledState(delay)
+            );
+            
+        }
+        else
+        {
+            // Để Hangfire tự tạo ID
+            BackgroundJob.Schedule<JobService>(
+                s => s.RunJobAsync(dto),
+                runTime
+            );
+        }
+        
+        return Task.CompletedTask;
+    }
+    
+    public Task DeleteJobAsync(string jobId)
+    {
+        
+        if (!string.IsNullOrEmpty(jobId))
+        {
+            // Xóa job bằng Hangfire job ID
+            BackgroundJob.Delete(jobId);
+        }
+        else
+        {
+            throw new BadRequestException("Job ID is required");            
+        }
+        
+        return Task.CompletedTask;
     }
 
     public async Task RunJobAsync(JobDto dto)
@@ -185,5 +228,67 @@ public class JobService : IJobService
             userRank.UpdatedAt = DateTime.UtcNow;
             await _userRankRepository.UpdateUserRankAsync(userRank);
         }
+    }
+    public async Task UpdateReviewInProductAsync(string productId, float rating)
+    {
+        var product = await _productRepository.GetProductByIdAsync(productId);
+        if (product == null)
+        {
+            return;
+        }
+        product.ReviewCount++;
+        product.ReviewPoint = (product.ReviewPoint * product.ReviewCount + rating) / product.ReviewCount;
+        product.UpdatedAt = DateTime.UtcNow;
+        await _productRepository.UpdateProductAsync(product);
+    }
+    public async Task ApproveProductJobAsync()
+    {
+        var key = KeyConstants.ApproveProduct;
+        // var products = await _productRepository.GetProductsByStatusAsync(ProductStatus.Pending);
+        var productInRedis = await _redisUtil.GetAsync<ApproveProductDto>(key);
+        if (productInRedis == null || productInRedis.Products.Count == 0)
+        {
+            return;
+        }
+        HandleProduct.IsRunningHandleProduct = true;
+        var productDtos = productInRedis.Products.  Select(p => new ProductApi
+        {
+            Id = p.Id,
+            Name = p.Name ?? string.Empty,
+            ImageUrl = p.ImageUrl ?? string.Empty
+        }).ToList();
+        await _transactionRepository.ExecuteInTransactionAsync(async () =>
+        {
+            var response = await _apiHelper.PostAsync<ApproveProductResponse>($"{_appSetting.BaseApiFlask}/approve_products", new ApproveProductDto { Products = productDtos });
+            // await _apiHelper.PostAsync<dynamic>($"{_appSetting.BaseApiFlask}/add_to_vector", new ApproveProductDto { Products = productDtos });
+            // Console.WriteLine("Response: " + JsonSerializer.Serialize(response));
+            if (response?.Results != null)
+            {
+                // Console.WriteLine("Response: " + JsonSerializer.Serialize(response));
+                foreach (var result in response.Results)
+                {
+                    if (result.IsApprove == true)
+                    {
+                        // Console.WriteLine("Approve product: " + result.Id);
+                        await _productRepository.UpdateProductStatusAsync(result.Id, ProductStatus.Active, null);
+                    }
+                    else if (result.IsApprove == false)
+                    {
+                        // Console.WriteLine("Lock product: " + result.Id);
+                        await _productRepository.UpdateProductStatusAsync(result.Id, ProductStatus.Locked, result.Reason);
+                    }
+                    else
+                    {
+                        await _productRepository.UpdateProductStatusAsync(result.Id, ProductStatus.Unspecified, null);
+                    }
+                }
+            }
+        });
+        HandleProduct.IsRunningHandleProduct = false;
+    }
+    public async Task ReloadCacheFlaskAsync()
+    {
+        var response = await _apiHelper.GetAsync<dynamic>($"{_appSetting.BaseApiFlask}/reload_cache");
+        Console.WriteLine(response);
     }
 }

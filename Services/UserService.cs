@@ -57,13 +57,35 @@ public class UserService : IUserService
             },
         };
         Console.WriteLine("userInfoResponse: " + JsonSerializer.Serialize(userInfoResponse));
-        var orderPaymentProcessing = await _redisUtil.GetAsync<OrderPaymentProcessing>($"order_payment_processing_{user.Id}");
-        Console.WriteLine("orderPaymentProcessing: " + JsonSerializer.Serialize(orderPaymentProcessing));
-        if (orderPaymentProcessing != null)
+
+        // Lấy thông tin payment processing từ Redis kèm TTL
+        var orderPaymentProcessingWithTtl = await _redisUtil.GetAsyncWithTtl($"order_payment_processing_{user.Id}");
+        Console.WriteLine("orderPaymentProcessing value: " + orderPaymentProcessingWithTtl.Key);
+        Console.WriteLine("orderPaymentProcessing TTL: " + orderPaymentProcessingWithTtl.Value?.TotalSeconds);
+
+        if (orderPaymentProcessingWithTtl.Key != null)
         {
-            
-            userInfoResponse.OrderPaymentProcessing = orderPaymentProcessing;
+            try
+            {
+                var orderPaymentProcessing = JsonSerializer.Deserialize<OrderPaymentProcessing>(orderPaymentProcessingWithTtl.Key);
+                if (orderPaymentProcessing != null)
+                {
+                    // Cập nhật thời gian còn lại từ TTL của Redis
+                    if (orderPaymentProcessingWithTtl.Value.HasValue)
+                    {
+                        orderPaymentProcessing.Time = orderPaymentProcessingWithTtl.Value.Value.TotalSeconds;
+                    }
+                    userInfoResponse.OrderPaymentProcessing = orderPaymentProcessing;
+                }
+            }
+            catch (JsonException ex)
+            {
+                Console.WriteLine($"Error deserializing OrderPaymentProcessing: {ex.Message}");
+                // Nếu lỗi deserialize, xóa key cũ để tránh lỗi tiếp theo
+                await _redisUtil.DeleteAsync($"order_payment_processing_{user.Id}");
+            }
         }
+
         Console.WriteLine("userInfoResponse: " + JsonSerializer.Serialize(userInfoResponse));
         return userInfoResponse;
     }

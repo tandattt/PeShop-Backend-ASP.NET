@@ -13,6 +13,7 @@ using PeShop.Models.Enums;
 using Microsoft.IdentityModel.Tokens;
 using PeShop.Data.Repositories;
 using PeShop.Utilities;
+using Microsoft.AspNetCore.Hosting;
 public class OrderService : IOrderService
 {
     private readonly IOrderHelper _orderHelper;
@@ -30,6 +31,7 @@ public class OrderService : IOrderService
     private readonly IReviewService _reviewService;
     private readonly IUserRepository _userRepository;
     private readonly IJobService _jobService;
+    private readonly IWebHostEnvironment _webHostEnvironment;
     public OrderService(
         IOrderHelper orderHelper,
         IRedisUtil redisUtil,
@@ -45,7 +47,8 @@ public class OrderService : IOrderService
         IPromotionRepository promotionRepository,
         IReviewService reviewService,
         IUserRepository userRepository,
-        IJobService jobService
+        IJobService jobService,
+        IWebHostEnvironment webHostEnvironment
         )
     {
         _orderHelper = orderHelper;
@@ -63,6 +66,7 @@ public class OrderService : IOrderService
         _reviewService = reviewService;
         _userRepository = userRepository;
         _jobService = jobService;
+        _webHostEnvironment = webHostEnvironment;
     }
     public async Task<CreateVirtualOrderResponse> CreateVirtualOrder(OrderVirtualRequest request, string userId)
     {
@@ -311,17 +315,31 @@ public class OrderService : IOrderService
                 return new StatusResponse { Status = false, Message = "Người dùng không tồn tại" };
             }
             BackgroundJob.Enqueue<IJobService>(service => service.DeleteOrderOnRedisAsync(orderId, userId, false));
-            var templatePath = Path.Combine(Directory.GetCurrentDirectory(), "Template", "PaymentSuccess.html");
+            var templatePath = Path.Combine(_webHostEnvironment.ContentRootPath, "Template", "PaymentSuccess.html");
+            Console.WriteLine($"[OrderService] ContentRootPath: {_webHostEnvironment.ContentRootPath}");
+            Console.WriteLine($"[OrderService] TemplatePath: {templatePath}");
+            Console.WriteLine($"[OrderService] File exists: {File.Exists(templatePath)}");
             string htmlBody;
             if (File.Exists(templatePath))
             {
                 htmlBody = await File.ReadAllTextAsync(templatePath);
                 htmlBody = htmlBody.Replace("{CustomerName}", orders.RecipientName);
-                // htmlBody = htmlBody.Replace("{OrderId}", orderId);
+                htmlBody = htmlBody.Replace("{RecipientName}", orders.RecipientName);
+                htmlBody = htmlBody.Replace("{RecipientPhone}", orders.RecipientPhone ?? "");
+                htmlBody = htmlBody.Replace("{ShippingAddress}", orders.UserFullNewAddress);
                 htmlBody = htmlBody.Replace("{OrderDate}", DateTime.UtcNow.ToString("dd/MM/yyyy"));
                 htmlBody = htmlBody.Replace("{PaymentMethod}", "COD");
-                htmlBody = htmlBody.Replace("{TotalAmount}", orders.AmountTotal.ToString("N0"));
+                htmlBody = htmlBody.Replace("{TotalAmount}", orders.AmountTotal.ToString("N0") + " VNĐ");
+                htmlBody = htmlBody.Replace("{SubTotal}", orders.OrderTotal.ToString("N0") + " VNĐ");
+                htmlBody = htmlBody.Replace("{ShippingFee}", orders.FeeShippingTotal.ToString("N0") + " VNĐ");
+                htmlBody = htmlBody.Replace("{Discount}", orders.DiscountTotal.ToString("N0") + " VNĐ");
+                htmlBody = htmlBody.Replace("{Items}", ""); // Tạm thời để trống vì cần thông tin sản phẩm chi tiết
+                htmlBody = htmlBody.Replace("{OrderTrackingUrl}", "#"); // URL tracking sẽ được thêm sau khi có BaseUrlFrontend
                 BackgroundJob.Enqueue<IEmailUtil>(service => service.SendEmailAsync(user.Email, "Đơn hàng đã được tạo thành công", htmlBody, true));
+            }
+            else
+            {
+                Console.WriteLine($"[OrderService] Template file not found at: {templatePath}");
             }
         }
         return result;
@@ -334,6 +352,40 @@ public class OrderService : IOrderService
             {
                 List<string> createdOrderIds = new List<string>(); // Lưu tất cả OrderIds đã tạo
 
+                // BƯỚC 1: Kiểm tra và trừ số lượng variant TRƯỚC khi tạo order
+                foreach (var itemShop in orders.ItemShops)
+                {
+                    foreach (var product in itemShop.Products)
+                    {
+                        if (product.VariantId == null)
+                        {
+                            throw new Exception("VariantId không được để trống");
+                        }
+                        
+                        // Kiểm tra variant tồn tại và status
+                        var variantDb = await _variantRepository.GetVariantByIdAsync(product.VariantId.Value.ToString());
+                        if (variantDb == null)
+                        {
+                            throw new Exception("Biến thể không tồn tại");
+                        }
+                        if (variantDb.Status != VariantStatus.Show)
+                        {
+                            throw new Exception("Biến thể sản phẩm không khả dụng");
+                        }
+                        
+                        // Atomic update - chỉ trừ quantity nếu đủ số lượng
+                        var success = await _variantRepository.DecreaseVariantQuantityAsync(
+                            product.VariantId.Value, 
+                            product.Quantity);
+                        
+                        if (!success)
+                        {
+                            throw new Exception($"Số lượng sản phẩm không đủ");
+                        }
+                    }
+                }
+
+                // BƯỚC 2: Sau khi đã xác nhận đủ số lượng, mới tạo order
                 foreach (var itemShop in orders.ItemShops)
                 {
                     decimal platformFeeTotal = 0;
@@ -533,34 +585,7 @@ public class OrderService : IOrderService
                             throw new Exception("Phí platform không tồn tại");
                         }
                         platformFeeTotal += product.PriceOriginal * (platformFee / 100m) * product.Quantity;
-                        // var productDb = await _productRepository.GetProductByIdAsync(product.ProductId);
-                        // if (productDb == null)
-                        // {
-                        //     throw new Exception("Sản phẩm không tồn tại");
-                        // }
-                        // productDb.BoughtCount = productDb.BoughtCount + product.Quantity;
-                        // await _productRepository.UpdateProductAsync(productDb);
-                        // if (product.VariantId == null)
-                        // {
-                        //     throw new Exception("VariantId không được để trống");
-                        // }
-
-                        var variantDb = await _variantRepository.GetVariantByIdAsync(product.VariantId.Value.ToString());
-                        if (variantDb == null)
-                        {
-                            throw new Exception("Biến thể không tồn tại");
-                        }
-                        if (variantDb.Status != VariantStatus.Show)
-                        {
-                            throw new Exception("Biến thể sản phẩm không khả dụng");
-                        }
-                        // Kiểm tra số lượng variant trước khi trừ
-                        if (variantDb.Quantity == null || variantDb.Quantity < product.Quantity)
-                        {
-                            throw new Exception($"Số lượng sản phẩm không đủ");
-                        }
-                        variantDb.Quantity = variantDb.Quantity - product.Quantity;
-                        await _variantRepository.UpdateVariantAsync(variantDb);
+                        // Số lượng đã được kiểm tra và trừ ở bước 1, không cần kiểm tra lại
                     }
 
                     // Tạo Payout cho shop này
@@ -720,6 +745,7 @@ public class OrderService : IOrderService
             ShippingFee = order.ShippingFee ?? 0,
             OriginalPrice = order.OriginalPrice ?? 0,
             OrderStatus = order.StatusOrder ?? OrderStatus.Pending,
+            OrderCode = order.OrderCode ?? string.Empty,
             Items = order.OrderDetails
             .Select(y => new OrderItemResponse
             {
@@ -732,7 +758,18 @@ public class OrderService : IOrderService
                 Quantity = (int)(y.Quantity ?? 0)
             }).ToList()
         };
-       
+        
+        // Batch check review status để tránh N+1 query
+        var reviewItems = orderDetailResponse.Items
+            .Select(item => (orderId, item.ProductId))
+            .ToList();
+        var reviewStatuses = await _reviewService.GetAllowReviewStatusBatchAsync(reviewItems, userId);
+        
+        foreach (var item in orderDetailResponse.Items)
+        {
+            item.IsAllowReview = reviewStatuses.GetValueOrDefault((orderId, item.ProductId), false);
+        }
+        
         return orderDetailResponse;
 
     }
@@ -766,18 +803,23 @@ public class OrderService : IOrderService
                     VariantId = y.VariantId.ToString(),
                     VariantValues = y.Variant?.VariantValues?.Select(z => new PropertyValueForCartDto { Value = z.PropertyValue?.Value ?? string.Empty, ImgUrl = z.PropertyValue?.ImgUrl ?? string.Empty, Level = z.PropertyValue?.Level ?? 0 }).ToList() ?? new List<PropertyValueForCartDto>(),
                     Price = y.OriginalPrice ?? 0,
-                    Quantity = (int)(y.Quantity ?? 0),
+                    Quantity = (int)(y.Quantity ?? 0)
 
                 })
                     .ToList()
             }).ToList();
         
+        // Batch check review status để tránh N+1 query
+        var reviewItems = orderResponses
+            .SelectMany(order => order.Items.Select(item => (order.OrderId, item.ProductId)))
+            .ToList();
+        var reviewStatuses = await _reviewService.GetAllowReviewStatusBatchAsync(reviewItems, userId);
+        
         foreach (var item in orderResponses)
         {
-            
             foreach (var orderItem in item.Items)
             {
-                orderItem.IsAllowReview = await _reviewService.IsAllowReviewAsync(item.OrderId, orderItem.ProductId, userId);
+                orderItem.IsAllowReview = reviewStatuses.GetValueOrDefault((item.OrderId, orderItem.ProductId), false);
             }
         }
 

@@ -46,6 +46,7 @@ public partial class Product
     public float? score { get; set; }
 
     public uint? Classify { get; set; }
+    public string? Reason { get; set; }
 
     public string? CategoryChildId { get; set; }
 

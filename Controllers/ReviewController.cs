@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authorization;
 using PeShop.Constants;
 using System.Security.Claims;
 using PeShop.Dtos.Requests;
+using PeShop.Dtos.Responses;
 namespace PeShop.Controllers;
 
 [ApiController]
@@ -17,7 +18,7 @@ public class ReviewController : ControllerBase
     }
     [HttpPost("create-review")]
     [Authorize(Roles = RoleConstants.User)]
-    public async Task<IActionResult> CreateReview([FromForm] CreateReviewRequest request)
+    public async Task<ActionResult<StatusResponse>> CreateReview([FromForm] CreateReviewRequest request)
     {
         var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         return Ok(await _reviewService.CreateReviewAsync(request, userId));

@@ -32,7 +32,7 @@ namespace PeShop.Controllers
             else if (request.Type == SenderType.Shop)
             {
 
-                var shopId = User.FindFirst(ClaimTypes.Role)?.Value;
+                var shopId = User.FindFirst("shop_id")?.Value;
                 if (string.IsNullOrEmpty(shopId))
                 {
                     return BadRequest("Shop not found");
@@ -74,10 +74,9 @@ namespace PeShop.Controllers
 
         [HttpGet("chat")]
         [Authorize(Roles = RoleConstants.User + "," + RoleConstants.Shop)]
-        public async Task<IActionResult> GetChat([FromQuery] string userId, [FromQuery] string shopId)
+        public async Task<IActionResult> GetChat([FromQuery] GetMessageRequest request)
         {
-            // return Ok(await _messageService.GetChatAsync(userId, shopId));
-            return Ok(new { message = "Hello" });
+            return Ok(await _messageService.GetMessagesAsync(request));
         }
     }
 }

@@ -670,6 +670,9 @@ public partial class PeShopDbContext : DbContext
                 .HasColumnName("score");
             entity.Property(e => e.Classify)
             .HasColumnName("classify");
+            entity.Property(e => e.Reason)
+                .HasMaxLength(255)
+                .HasColumnName("reason");
             entity.Property(e => e.UpdatedAt)
                 .HasMaxLength(6)
                 .HasColumnName("updated_at");

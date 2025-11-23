@@ -28,6 +28,16 @@ public class OrderRepository : IOrderRepository
     {
         return await _context.Orders.FirstOrDefaultAsync(o => o.Id == orderId && o.UserId == userId);
     }
+    public async Task<List<Order>> GetOrdersByIdsAsync(List<string> orderIds, string userId)
+    {
+        if (orderIds == null || !orderIds.Any())
+        {
+            return new List<Order>();
+        }
+        return await _context.Orders
+            .Where(o => orderIds.Contains(o.Id) && o.UserId == userId)
+            .ToListAsync();
+    }
     public async Task<Order?> GetOrderDetailAsync(string orderId, string userId)
     {
         return await _context.Orders

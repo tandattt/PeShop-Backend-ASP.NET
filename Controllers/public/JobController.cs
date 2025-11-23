@@ -63,5 +63,20 @@ namespace PeShop.Controllers
             await _jobService.SetJobAsync(dto);
             return Ok(new { message = "Job set successfully" });
         }
+        
+        [HttpDelete("delete-job/{jobId}")]
+        public async Task<IActionResult> DeleteJobAsync(string jobId)
+        {
+            if (!Request.Headers.TryGetValue("API-KEY", out var authHeader))
+            {
+                throw new UnauthorizedException("Missing Authorization header");
+            }
+            if (authHeader != _appSetting.ApiKeySystem)
+            {
+                throw new ForBidenException("Invalid API key");
+            }
+            await _jobService.DeleteJobAsync(jobId);
+            return Ok(new { message = "Job deleted successfully" });
+        }
     }
 }

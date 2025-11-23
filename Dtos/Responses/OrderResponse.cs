@@ -39,7 +39,6 @@ public class OrderDetailResponse: OrderResponse{
     public decimal DiscountPrice { get; set; } = 0;
     public decimal ShippingFee { get; set; } = 0;
     public decimal OriginalPrice { get; set; } = 0;
-    
     public string RecipientName { get; set; } = string.Empty;
     public string RecipientPhone { get; set; } = string.Empty;
     public string RecipientAddress { get; set; } = string.Empty;

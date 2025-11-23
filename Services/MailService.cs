@@ -6,6 +6,7 @@ using PeShop.Dtos.Responses;
 using PeShop.Exceptions;
 using PeShop.Extensions;
 using PeShop.Data.Repositories;
+using Microsoft.AspNetCore.Hosting;
 namespace PeShop.Services
 {
     public class MailService : IMailService
@@ -13,11 +14,13 @@ namespace PeShop.Services
         private readonly IRedisUtil _redisUtil;
         private readonly IEmailUtil _emailUtil;
         private readonly IUserRepository _userRepository;
-        public MailService(IRedisUtil redisUtil, IEmailUtil emailUtil, IUserRepository userRepository)
+        private readonly IWebHostEnvironment _webHostEnvironment;
+        public MailService(IRedisUtil redisUtil, IEmailUtil emailUtil, IUserRepository userRepository, IWebHostEnvironment webHostEnvironment)
         {
             _redisUtil = redisUtil;
             _emailUtil = emailUtil;
             _userRepository = userRepository;
+            _webHostEnvironment = webHostEnvironment;
         }
         public async Task<StatusResponse> SendOtp(MailRequest request, bool isResend = false)
         {
@@ -41,7 +44,11 @@ namespace PeShop.Services
                 }
                 
                 // Load HTML template
-                var templatePath = Path.Combine(Directory.GetCurrentDirectory(), "Template", "Otp.html");
+                var templatePath = Path.Combine(_webHostEnvironment.ContentRootPath, "Template", "Otp.html");
+                Console.WriteLine($"[MailService] ContentRootPath: {_webHostEnvironment.ContentRootPath}");
+                Console.WriteLine($"[MailService] TemplatePath: {templatePath}");
+                Console.WriteLine($"[MailService] File exists: {File.Exists(templatePath)}");
+                
                 string htmlBody;
                 if (File.Exists(templatePath))
                 {
@@ -51,6 +58,7 @@ namespace PeShop.Services
                 else
                 {
                     // Fallback to plain text if template not found
+                    Console.WriteLine($"[MailService] Template file not found at: {templatePath}");
                     htmlBody = $"Mã OTP của bạn là: {Otp}";
                 }
                 

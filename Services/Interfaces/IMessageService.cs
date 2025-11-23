@@ -6,5 +6,6 @@ namespace PeShop.Services.Interfaces
     {
         Task<StatusResponse> SendMessageAsync(SendMessageRequest request);
         Task<List<ConversationResponse>> GetConversationsAsync(string? userId, string? shopId);
+        Task<PaginationResponse<MessageResponse>> GetMessagesAsync(GetMessageRequest request);
     }
 }

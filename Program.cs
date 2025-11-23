@@ -39,7 +39,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             NameClaimType = JwtRegisteredClaimNames.Sub,
             ClockSkew = TimeSpan.Zero
         };
-        
+
         options.Events = new JwtBearerEvents
         {
             OnMessageReceived = context =>
@@ -48,6 +48,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 var accessToken = context.Request.Query["access_token"];
 
                 var path = context.HttpContext.Request.Path;
+                // Path đã được UsePathBase strip prefix rồi, chỉ cần check /hubs/notification
                 if (!string.IsNullOrEmpty(accessToken) &&
                     path.StartsWithSegments("/hubs/notification"))
                 {
@@ -62,12 +63,19 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 builder.Services.AddApplicationServices(builder.Configuration.GetConnectionString("DefaultConnection"), builder.Configuration, builder.Environment);
 
 var app = builder.Build();
+
+if (app.Environment.IsProduction())
+{
+    app.UsePathBase("/dotnet-peshop");
+}
+
 app.UseRateLimiter();
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
     app.UseHangfireDashboard("/hangfire");
 }
+
 // 🔹 Đăng ký job định kỳ
 using (var scope = app.Services.CreateScope())
 {
@@ -78,15 +86,13 @@ using (var scope = app.Services.CreateScope())
 app.UseSwagger();
 app.UseSwaggerUI();
 
-
 app.UseHttpsRedirection();
 app.UseCors("AllowAll");
 app.UseAuthentication();
 app.UseAuthorization();
 
-
 app.MapControllers();
-// Map hub tại endpoint này
+
 app.MapHub<NotificationHub>("/hubs/notification");
 
 app.Run();

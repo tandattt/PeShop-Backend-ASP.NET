@@ -3,6 +3,8 @@ namespace PeShop.Dtos.Job;
 
 public class JobDto
 {
+    
+    public string? Id { get; set; }
     [Required(ErrorMessage = "ApiName is required")]
     public string ApiName { get; set; }
     [Required(ErrorMessage = "JsonData is required")]

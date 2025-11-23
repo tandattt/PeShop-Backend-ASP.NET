@@ -1,7 +1,10 @@
 services:
   dotnet:
     container_name: dotnet-peshop
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: peshop:latest
     ports:
       - "5000:5000"
     restart: unless-stopped

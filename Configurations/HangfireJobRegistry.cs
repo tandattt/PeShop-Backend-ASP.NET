@@ -19,6 +19,14 @@ namespace PeShop.Configurations
                 "sort-products",
                 service => service.SortProductsAsync(),
                 Cron.Daily);
+            recurringJobManager.AddOrUpdate<IJobService>(
+                "check-products",
+                service => service.ApproveProductJobAsync(),
+                "*/30 * * * *");
+            recurringJobManager.AddOrUpdate<IJobService>(
+                "reload-cache-flask",
+                service => service.ReloadCacheFlaskAsync(),
+                "*/35 * * * *");
         }
     }
 }

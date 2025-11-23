@@ -1,6 +1,7 @@
 using PeShop.Models.Entities;
 using PeShop.Dtos.Responses;
 using PeShop.Dtos.Requests;
+using Models.Enums;
 namespace PeShop.Data.Repositories.Interfaces;
 
 public interface IProductRepository
@@ -19,5 +20,6 @@ public interface IProductRepository
     Task<List<Product>> GetListProductByCategoryChildIdAsync(string? categoryChildId);
     Task<List<Product>> GetListProductByVectorAsync(List<string> productIds);
     Task<bool> UpdateProductAsync(Product product);
-
+    Task<List<Product>> GetProductsByStatusAsync(ProductStatus status);
+    Task<bool> UpdateProductStatusAsync(string productId, ProductStatus status, string? reason);
 }

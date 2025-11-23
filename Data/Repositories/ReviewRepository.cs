@@ -32,4 +32,30 @@ public class ReviewRepository : IReviewRepository
             .Where(x => x.ProductId == productId)
             .ToListAsync();
     }
+    public async Task<HashSet<(string OrderId, string ProductId)>> GetExistingReviewsBatchAsync(List<(string OrderId, string ProductId)> items, string userId)
+    {
+        if (items == null || !items.Any())
+        {
+            return new HashSet<(string OrderId, string ProductId)>();
+        }
+
+        var orderIds = items.Select(x => x.OrderId).Where(id => !string.IsNullOrEmpty(id)).Distinct().ToList();
+        var productIds = items.Select(x => x.ProductId).Where(id => !string.IsNullOrEmpty(id)).Distinct().ToList();
+
+        if (!orderIds.Any() || !productIds.Any())
+        {
+            return new HashSet<(string OrderId, string ProductId)>();
+        }
+
+        var existingReviews = await _context.Reviews
+            .Where(x => x.UserId == userId 
+                && x.OrderId != null
+                && x.ProductId != null
+                && orderIds.Contains(x.OrderId) 
+                && productIds.Contains(x.ProductId))
+            .Select(x => new { OrderId = x.OrderId!, ProductId = x.ProductId! })
+            .ToListAsync();
+
+        return existingReviews.Select(x => (x.OrderId, x.ProductId)).ToHashSet();
+    }
 }

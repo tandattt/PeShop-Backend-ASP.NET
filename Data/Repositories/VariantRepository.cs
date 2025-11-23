@@ -45,4 +45,17 @@ public class VariantRepository : IVariantRepository
         if (await _context.SaveChangesAsync() > 0) return true;
         else return false;
     }
+    
+    public async Task<bool> DecreaseVariantQuantityAsync(int variantId, uint quantity)
+    {
+        var affected = await _context.Database.ExecuteSqlInterpolatedAsync($@"
+            UPDATE Variants
+            SET Quantity = Quantity - {quantity}
+            WHERE Id = {variantId}
+              AND Status = {(int)VariantStatus.Show}
+              AND Quantity >= {quantity};
+        ");
+        
+        return affected > 0;
+    }
 }

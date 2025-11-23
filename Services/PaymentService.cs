@@ -10,6 +10,8 @@ using PeShop.Data.Repositories.Interfaces;
 using System.Diagnostics;
 using Hangfire;
 using PeShop.Data.Repositories;
+using PeShop.Dtos.Responses;
+using Microsoft.AspNetCore.Hosting;
 public class PaymentService : IPaymentService
 {
     private readonly IVnPayUtil _vnPayUtil;
@@ -18,7 +20,8 @@ public class PaymentService : IPaymentService
     private readonly IOrderService _orderService;
     private readonly ITransactionRepository _transactionRepository;
     private readonly IUserRepository _userRepository;
-    public PaymentService(IVnPayUtil vnPayUtil, IRedisUtil redisUtil, AppSetting appSetting, IOrderService orderService, ITransactionRepository transactionRepository, IUserRepository userRepository)
+    private readonly IWebHostEnvironment _webHostEnvironment;
+    public PaymentService(IVnPayUtil vnPayUtil, IRedisUtil redisUtil, AppSetting appSetting, IOrderService orderService, ITransactionRepository transactionRepository, IUserRepository userRepository, IWebHostEnvironment webHostEnvironment)
     {
         _vnPayUtil = vnPayUtil;
         _redisUtil = redisUtil;
@@ -26,13 +29,14 @@ public class PaymentService : IPaymentService
         _orderService = orderService;
         _transactionRepository = transactionRepository;
         _userRepository = userRepository;
+        _webHostEnvironment = webHostEnvironment;
     }
     public async Task<string> CreatePaymentUrlAsync(string orderId, HttpContext context, string userId)
     {
-        var isProcessing = await _redisUtil.GetAsync($"order_payment_processing_{userId}");
+        var isProcessing = await _redisUtil.GetAsync<OrderPaymentProcessing>($"order_payment_processing_{userId}");
         if (isProcessing != null)
         {
-            return isProcessing;
+            return isProcessing.PaymentLink;
         }
         var order = await _redisUtil.GetAsync<OrderVirtualDto>($"calculated_order_{userId}_{orderId}");
         if (order == null)
@@ -57,7 +61,14 @@ public class PaymentService : IPaymentService
             OrderType = "other",
             ReadOrdIds = readOrdIds,
         }, context, userId);
-        await _redisUtil.SetAsync($"order_payment_processing_{userId}", paymentUrl, TimeSpan.FromMinutes(15));
+
+        // Lưu thông tin payment processing với cấu trúc OrderPaymentProcessing
+        var orderPaymentProcessing = new OrderPaymentProcessing
+        {
+            Time = 15 * 60, // 15 phút = 900 giây
+            PaymentLink = paymentUrl
+        };
+        await _redisUtil.SetAsync($"order_payment_processing_{userId}", orderPaymentProcessing, TimeSpan.FromMinutes(15));
         BackgroundJob.Schedule<IJobService>(service => service.UpdatePaymentStatusFailedInOrderAsync(orderId, userId), TimeSpan.FromMinutes(15));
         return paymentUrl;
     }
@@ -115,22 +126,40 @@ public class PaymentService : IPaymentService
 
                         Console.WriteLine($"[ProcessCallbackAsync] Order {readOrdId} đã được cập nhật thành công");
                     }
-                    // Xóa đơn hàng sau khi thanh toán thành công
-                    BackgroundJob.Enqueue<IJobService>(service => service.DeleteOrderOnRedisAsync(orderId, userId, true));
+                    
                     var user = await _userRepository.GetByIdAsync(userId);
 
-                    var templatePath = Path.Combine(Directory.GetCurrentDirectory(), "Template", "PaymentSuccess.html");
+                    var templatePath = Path.Combine(_webHostEnvironment.ContentRootPath, "Template", "PaymentSuccess.html");
+                    Console.WriteLine($"[PaymentService] ContentRootPath: {_webHostEnvironment.ContentRootPath}");
+                    Console.WriteLine($"[PaymentService] TemplatePath: {templatePath}");
+                    Console.WriteLine($"[PaymentService] File exists: {File.Exists(templatePath)}");
                     string htmlBody;
                     if (File.Exists(templatePath))
                     {
+                        // Lấy thông tin đơn hàng từ Redis để có đầy đủ thông tin
+                        var order = await _redisUtil.GetAsync<OrderVirtualDto>($"calculated_order_{userId}_{orderId}");
+                        
                         htmlBody = await File.ReadAllTextAsync(templatePath);
                         htmlBody = htmlBody.Replace("{CustomerName}", recipientName);
-                        // htmlBody = htmlBody.Replace("{OrderId}", orderId);
+                        htmlBody = htmlBody.Replace("{RecipientName}", order?.RecipientName ?? recipientName);
+                        htmlBody = htmlBody.Replace("{RecipientPhone}", order?.RecipientPhone ?? "");
+                        htmlBody = htmlBody.Replace("{ShippingAddress}", order?.UserFullNewAddress ?? "");
                         htmlBody = htmlBody.Replace("{OrderDate}", DateTime.UtcNow.ToString("dd/MM/yyyy"));
                         htmlBody = htmlBody.Replace("{PaymentMethod}", "VNPay");
-                        htmlBody = htmlBody.Replace("{TotalAmount}", response.Amount.ToString("N0")+" VNĐ");
+                        htmlBody = htmlBody.Replace("{TotalAmount}", response.Amount.ToString("N0") + " VNĐ");
+                        htmlBody = htmlBody.Replace("{SubTotal}", (order?.OrderTotal ?? response.Amount).ToString("N0") + " VNĐ");
+                        htmlBody = htmlBody.Replace("{ShippingFee}", (order?.FeeShippingTotal ?? 0).ToString("N0") + " VNĐ");
+                        htmlBody = htmlBody.Replace("{Discount}", (order?.DiscountTotal ?? 0).ToString("N0") + " VNĐ");
+                        htmlBody = htmlBody.Replace("{Items}", ""); // Tạm thời để trống vì cần thông tin sản phẩm chi tiết
+                        htmlBody = htmlBody.Replace("{OrderTrackingUrl}", _appSetting.BaseUrlFrontend + "/orders/" + orderId);
                         BackgroundJob.Enqueue<IEmailUtil>(service => service.SendEmailAsync(user.Email, "Đơn hàng đã được tạo thành công", htmlBody, true));
                     }
+                    else
+                    {
+                        Console.WriteLine($"[PaymentService] Template file not found at: {templatePath}");
+                    }
+                    // Xóa đơn hàng sau khi thanh toán thành công
+                    BackgroundJob.Enqueue<IJobService>(service => service.DeleteOrderOnRedisAsync(orderId, userId, true));
                     var successUrl = _appSetting.BaseUrlFrontend + "/Payment/success?orderId=" + orderId;
                     Console.WriteLine($"[ProcessCallbackAsync] Transaction thành công, redirect URL: {successUrl}");
                     return successUrl;

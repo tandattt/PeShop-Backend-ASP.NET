@@ -230,5 +230,23 @@ public class ProductRepository : IProductRepository
         else return false;
     }
 
-
+    public async Task<List<Product>> GetProductsByStatusAsync(ProductStatus status)
+    {
+        return await _context.Products.Where(p => p.Status == status).ToListAsync();
+    }
+    public async Task<bool> UpdateProductStatusAsync(string productId, ProductStatus status, string? reason)
+    {
+        var product = await _context.Products.FirstOrDefaultAsync(p => p.Id == productId);
+        if (product == null) return false;
+        product.Status = status;
+        product.UpdatedAt = DateTime.UtcNow;
+        
+        if (reason != null)
+        {
+            product.Reason = reason;
+        }
+        var result = await _context.SaveChangesAsync();
+        if (result > 0) return true;
+        else return false;
+    }
 }
