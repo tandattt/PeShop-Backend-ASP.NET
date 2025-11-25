@@ -93,6 +93,10 @@ public partial class PeShopDbContext : DbContext
 
     public virtual DbSet<Message> Messages { get; set; }
 
+    public virtual DbSet<FlashSale> FlashSales { get; set; }
+
+    public virtual DbSet<FlashSaleProduct> FlashSaleProducts { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder
@@ -448,6 +452,7 @@ public partial class PeShopDbContext : DbContext
                 .HasMaxLength(36)
                 .HasColumnName("product_id");
             entity.Property(e => e.Quantity).HasColumnName("quantity");
+            entity.Property(e => e.IsFlashSale).HasColumnName("is_flash_sale");
             entity.Property(e => e.UpdatedAt)
                 .HasMaxLength(6)
                 .HasColumnName("updated_at");
@@ -1983,6 +1988,88 @@ public partial class PeShopDbContext : DbContext
             .Property(e => e.Status)
             .HasConversion<int>();
 
+        // FlashSale configuration
+        modelBuilder.Entity<FlashSale>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+
+            entity.ToTable("flash_sale");
+
+            entity.Property(e => e.Id)
+                .HasMaxLength(36)
+                .HasColumnName("id");
+            entity.Property(e => e.CreatedAt)
+                .HasMaxLength(6)
+                .HasColumnName("created_at");
+            entity.Property(e => e.CreatedBy)
+                .HasMaxLength(255)
+                .HasColumnName("created_by");
+            entity.Property(e => e.UpdatedAt)
+                .HasMaxLength(6)
+                .HasColumnName("updated_at");
+            entity.Property(e => e.UpdatedBy)
+                .HasMaxLength(255)
+                .HasColumnName("updated_by");
+            entity.Property(e => e.StartTime)
+                .HasMaxLength(6)
+                .HasColumnName("start_time");
+            entity.Property(e => e.EndTime)
+                .HasMaxLength(6)
+                .HasColumnName("end_time");
+            entity.Property(e => e.Status)
+                .HasConversion<int>()
+                .HasColumnName("status");
+        });
+
+        // FlashSaleProduct configuration
+        modelBuilder.Entity<FlashSaleProduct>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+
+            entity.ToTable("flash_sale_product");
+
+            entity.HasIndex(e => e.FlashSaleId, "FK_flash_sale_product_flash_sale");
+            entity.HasIndex(e => e.ProductId, "FK_flash_sale_product_product");
+
+            entity.Property(e => e.Id)
+                .HasMaxLength(36)
+                .HasColumnName("id");
+            entity.Property(e => e.CreatedAt)
+                .HasMaxLength(6)
+                .HasColumnName("created_at");
+            entity.Property(e => e.CreatedBy)
+                .HasMaxLength(255)
+                .HasColumnName("created_by");
+            entity.Property(e => e.UpdatedAt)
+                .HasMaxLength(6)
+                .HasColumnName("updated_at");
+            entity.Property(e => e.UpdatedBy)
+                .HasMaxLength(255)
+                .HasColumnName("updated_by");
+            entity.Property(e => e.FlashSaleId)
+                .HasMaxLength(36)
+                .HasColumnName("flash_sale_id");
+            entity.Property(e => e.ProductId)
+                .HasMaxLength(36)
+                .HasColumnName("product_id");
+            entity.Property(e => e.PercentDecrease)
+                .HasColumnName("percent_decrease");
+            entity.Property(e => e.Quantity)
+                .HasColumnName("quantity");
+            entity.Property(e => e.UsedQuantity)
+                .HasColumnName("used_quantity");
+            entity.Property(e => e.OrderLimit)
+                .HasColumnName("order_limit");
+
+            entity.HasOne(d => d.FlashSale).WithMany(p => p.FlashSaleProducts)
+                .HasForeignKey(d => d.FlashSaleId)
+                .HasConstraintName("FK_flash_sale_product_flash_sale");
+
+            entity.HasOne(d => d.Product).WithMany()
+                .HasForeignKey(d => d.ProductId)
+                .HasConstraintName("FK_flash_sale_product_product");
+        });
+
         // Variant enum mapping
         modelBuilder.Entity<Variant>()
             .Property(e => e.Status)
@@ -1996,6 +2083,11 @@ public partial class PeShopDbContext : DbContext
         // Message enum mapping
         modelBuilder.Entity<Message>()
             .Property(e => e.SenderType)
+            .HasConversion<int>();
+
+        // FlashSale enum mapping
+        modelBuilder.Entity<FlashSale>()
+            .Property(e => e.Status)
             .HasConversion<int>();
 
         // modelBuilder.Entity<OrderVoucher>()

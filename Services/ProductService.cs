@@ -15,13 +15,15 @@ public class ProductService : IProductService
     private readonly IImageProductRepository _imageProductRepository;
     private readonly AppSetting _appSetting;
     private readonly IPromotionRepository _promotionRepository;
-    public ProductService(IProductRepository productRepository, IApiHelper apiHelper, IImageProductRepository imageProductRepository, AppSetting appSetting, IPromotionRepository promotionRepository)
+    private readonly IFlashSaleRepository _flashSaleRepository;
+    public ProductService(IProductRepository productRepository, IApiHelper apiHelper, IImageProductRepository imageProductRepository, AppSetting appSetting, IPromotionRepository promotionRepository, IFlashSaleRepository flashSaleRepository)
     {
         _productRepository = productRepository;
         _apiHelper = apiHelper;
         _imageProductRepository = imageProductRepository;
         _appSetting = appSetting;
         _promotionRepository = promotionRepository;
+        _flashSaleRepository = flashSaleRepository;
     }
     public async Task<ProductDetailResponse> GetProductDetailAsync(string? productId, string? slug)
     {
@@ -45,6 +47,9 @@ public class ProductService : IProductService
         }
 
         var imageProducts = await _imageProductRepository.GetListImageProductByProductIdAsync(product.Id);
+        var hasFlashSale = await _flashSaleRepository.HasFlashSalesForProductsAsync(new List<string> { product.Id });
+        var flashSaleDiscounts = await _flashSaleRepository.GetFlashSaleDiscountsForProductsAsync(new List<string> { product.Id });
+        var flashSalePrice = flashSaleDiscounts.TryGetValue(product.Id, out var percentDecrease) ? product.Price * (100 - percentDecrease) / 100 : null;
         return new ProductDetailResponse
         {
             BoughtCount = product.BoughtCount ?? 0,
@@ -62,6 +67,8 @@ public class ProductService : IProductService
             Price = product.Price ?? 0,
             ProductId = product.Id,
             ProductName = product.Name ?? string.Empty,
+            HasFlashSale = hasFlashSale.GetValueOrDefault(product.Id, false),
+            FlashSalePrice = flashSalePrice,
             Category = new CategoryForProductDto
             {
                 Id = product.Category?.Id ?? string.Empty,
@@ -146,15 +153,26 @@ public class ProductService : IProductService
             Slug = p.Slug ?? string.Empty,
             ShopId = p.Shop?.Id ?? string.Empty,
             ShopName = p.Shop?.Name ?? string.Empty,
-            HasPromotion = null
+            HasPromotion = null,
+            HasFlashSale = null,
+            FlashSalePrice = null
         }).ToList();
 
         var productIds = productDtos.Select(p => p.Id).ToList();
         var promotionsDict = await _promotionRepository.HasPromotionsForProductsAsync(productIds);
+        var flashSalesDict = await _flashSaleRepository.HasFlashSalesForProductsAsync(productIds);
+        var flashSaleDiscountsDict = await _flashSaleRepository.GetFlashSaleDiscountsForProductsAsync(productIds);
 
         foreach (var productDto in productDtos)
         {
             productDto.HasPromotion = promotionsDict.GetValueOrDefault(productDto.Id, false);
+            productDto.HasFlashSale = flashSalesDict.GetValueOrDefault(productDto.Id, false);
+            
+            // Tính giá flash sale nếu sản phẩm có flash sale
+            if (productDto.HasFlashSale == true && flashSaleDiscountsDict.TryGetValue(productDto.Id, out var percentDecrease))
+            {
+                productDto.FlashSalePrice = productDto.Price * (100 - percentDecrease) / 100;
+            }
         }
         // Calculate pagination info
         var totalPages = (int)Math.Ceiling((double)totalCount / request.PageSize);

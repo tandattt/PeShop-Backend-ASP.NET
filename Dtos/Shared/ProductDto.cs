@@ -14,5 +14,7 @@ namespace PeShop.Dtos.Shared
         public string ShopId { get; set; } = string.Empty;
         public string ShopName { get; set; } = string.Empty;
         public bool? HasPromotion { get; set; }
+        public bool? HasFlashSale { get; set; }
+        public decimal? FlashSalePrice { get; set; }
     }
 }

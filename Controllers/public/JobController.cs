@@ -5,7 +5,7 @@ using PeShop.Setting;
 using PeShop.Constants;
 using PeShop.Services.Interfaces;
 using PeShop.Exceptions;
-
+using System.Text.Json;
 namespace PeShop.Controllers
 {
 
@@ -51,13 +51,16 @@ namespace PeShop.Controllers
         [HttpPost("set-job")]
         public async Task<IActionResult> SetJobAsync([FromBody] JobDto dto)
         {
+            Console.WriteLine("SetJobAsync: " + JsonSerializer.Serialize(dto));
             if (!Request.Headers.TryGetValue("API-KEY", out var authHeader))
             {
+                Console.WriteLine("SetJobAsync: Missing Authorization header");
                 throw new UnauthorizedException("Missing Authorization header");
             }
             // var token = authHeader.ToString().Replace("Bearer ", "");
             if (authHeader != _appSetting.ApiKeySystem)
             {
+                Console.WriteLine("SetJobAsync: Invalid API key");
                 throw new ForBidenException("Invalid API key");
             }
             await _jobService.SetJobAsync(dto);

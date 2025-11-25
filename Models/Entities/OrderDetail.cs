@@ -19,7 +19,7 @@ public partial class OrderDetail
 
     public uint? Quantity { get; set; }
 
-
+    public bool? IsFlashSale { get; set; }
 
     public string? OrderId { get; set; }
 

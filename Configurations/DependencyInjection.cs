@@ -11,7 +11,8 @@ using PeShop.Extensions;
 using PeShop.Configurations;
 using PeShop.Helpers;
 using PeShop.Middleware;
-
+using MySqlConnector;
+using PeShop.GlobalVariables;
 namespace PeShop.Configurations
 {
     public static class DependencyInjection
@@ -34,6 +35,14 @@ namespace PeShop.Configurations
                 options.EnableDetailedErrors(environment.IsDevelopment());
             });
 
+            int warmCount = WarmConnection.WarmConnectionCount; // số connection muốn tạo sẵn
+
+            for (int i = 0; i < warmCount; i++)
+            {
+                using var conn = new MySqlConnection(connectionString);
+                conn.Open();
+                // ngay sau khi using kết thúc -> connection trả vào pool
+            }
             // Auto đăng ký Services
             services.Scan(scan => scan
                 .FromAssembliesOf(typeof(IAuthService))
@@ -99,12 +108,13 @@ namespace PeShop.Configurations
             // Đăng ký ApiHelper
             services.AddScoped<IApiHelper, ApiHelper>();
 
-            //Cors
+            //Cors - Mở full, không giới hạn domain
             services.AddCors(options =>
             {
                 options.AddPolicy("AllowAll",
                     policy => policy
-                        .WithOrigins("http://localhost:3000","http://169.254.47.240:5500") // domain FE của bạn
+                        // .WithOrigins("http://localhost:3000","http://169.254.47.240:5500","http://127.0.0.1:5500") // domain FE của bạn
+                        .SetIsOriginAllowed(_ => true) // Cho phép tất cả origins
                         .AllowAnyMethod()
                         .AllowAnyHeader()
                         .AllowCredentials()); // Cho phép cookie/token

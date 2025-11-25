@@ -10,10 +10,13 @@ using PeShop.Setting;
 using PeShop.Data.Repositories.Interfaces;
 using PeShop.Models.Entities;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using Models.Enums;
 using PeShop.Dtos.API;
 using PeShop.GlobalVariables;
 using PeShop.Exceptions;
+using System.IO;
+using System.Text.Json.Serialization;
 namespace PeShop.Services;
 
 public class JobService : IJobService
@@ -131,18 +134,63 @@ public class JobService : IJobService
     }
     public Task SetJobAsync(JobDto dto)
     {
+        Console.WriteLine("SetJobAsync: " + JsonSerializer.Serialize(dto));
 
-        var runTime = new DateTimeOffset(dto.RunTime, TimeSpan.FromHours(7));
-        var delay = runTime - DateTimeOffset.Now;
+        // ✅ Xử lý DateTime UTC đúng cách
+        DateTime utcDateTime = dto.RunTime.Kind == DateTimeKind.Utc
+            ? dto.RunTime
+            : DateTime.SpecifyKind(dto.RunTime, DateTimeKind.Utc);
+
+        var runTime = new DateTimeOffset(utcDateTime, TimeSpan.Zero);
+        var delay = runTime - DateTimeOffset.UtcNow;
         
+        // ✅ Convert JsonElement thành string JSON để lưu vào Hangfire (tránh serialize metadata)
+        // Lưu JsonData dưới dạng string để Hangfire có thể deserialize lại đúng
+        if (dto.JsonData is JsonElement jsonElement)
+        {
+            if (jsonElement.ValueKind == JsonValueKind.String)
+            {
+                // Nếu là string, lấy string đó
+                dto.JsonData = jsonElement.GetString() ?? string.Empty;
+            }
+            else
+            {
+                // Nếu là object, convert thành JSON string
+                // Deserialize JsonElement thành object rồi serialize lại thành string
+                try
+                {
+                    var obj = JsonSerializer.Deserialize<object>(jsonElement);
+                    dto.JsonData = JsonSerializer.Serialize(obj);
+                }
+                catch
+                {
+                    // Fallback: dùng GetRawText() nếu có thể
+                    try
+                    {
+                        dto.JsonData = jsonElement.GetRawText();
+                    }
+                    catch
+                    {
+                        // Cuối cùng: giữ nguyên, sẽ xử lý ở RunJobAsync
+                        Console.WriteLine("Warning: Could not convert JsonElement to string");
+                    }
+                }
+            }
+        }
+        
+        Console.WriteLine("dto.JsonData after convert: " + JsonSerializer.Serialize(dto.JsonData));
         if (!string.IsNullOrEmpty(dto.Id))
         {
-            // Tự đặt ID cho job (ví dụ: voucher_123123)
+            // Tự đặt ID cho job từ dto.Id
+            // Hangfire không hỗ trợ set custom ID trực tiếp cho scheduled job
+            // Nên dùng Create với ScheduledState, sau đó có thể dùng dto.Id để track
             var hangfireJobId = _backgroundJobClient.Create(
                 () => RunJobAsync(dto),
                 new Hangfire.States.ScheduledState(delay)
             );
-            
+            // Lưu mapping giữa dto.Id và hangfireJobId vào file
+            SaveJobMapping(dto.Id, hangfireJobId);
+            Console.WriteLine($"Job created with custom ID: {dto.Id}, Hangfire JobId: {hangfireJobId}");
         }
         else
         {
@@ -152,37 +200,177 @@ public class JobService : IJobService
                 runTime
             );
         }
-        
+
         return Task.CompletedTask;
     }
-    
+
     public Task DeleteJobAsync(string jobId)
     {
-        
-        if (!string.IsNullOrEmpty(jobId))
+        if (string.IsNullOrEmpty(jobId))
+        {
+            throw new BadRequestException("Job ID is required");
+        }
+
+        // Tìm Hangfire JobId từ custom ID
+        var hangfireJobId = GetHangfireJobId(jobId);
+
+        if (!string.IsNullOrEmpty(hangfireJobId))
         {
             // Xóa job bằng Hangfire job ID
-            BackgroundJob.Delete(jobId);
+            BackgroundJob.Delete(hangfireJobId);
+            // Xóa mapping khỏi file
+            RemoveJobMapping(jobId);
+            Console.WriteLine($"Deleted job with custom ID: {jobId}, Hangfire JobId: {hangfireJobId}");
         }
         else
         {
-            throw new BadRequestException("Job ID is required");            
+            // Nếu không tìm thấy mapping, coi như jobId là Hangfire JobId trực tiếp
+            BackgroundJob.Delete(jobId);
+            Console.WriteLine($"Deleted job with Hangfire JobId: {jobId}");
         }
-        
+
         return Task.CompletedTask;
+    }
+
+    private const string JobMappingFilePath = "job_mappings.json";
+
+    private void SaveJobMapping(string customId, string hangfireJobId)
+    {
+        try
+        {
+            var mappings = LoadJobMappings();
+            mappings[customId] = hangfireJobId;
+
+            var json = JsonSerializer.Serialize(mappings, new JsonSerializerOptions { WriteIndented = true });
+            File.WriteAllText(JobMappingFilePath, json);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error saving job mapping: {ex.Message}");
+        }
+    }
+
+    private string? GetHangfireJobId(string customId)
+    {
+        try
+        {
+            var mappings = LoadJobMappings();
+            return mappings.TryGetValue(customId, out var jobId) ? jobId : null;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error getting job mapping: {ex.Message}");
+            return null;
+        }
+    }
+
+    private void RemoveJobMapping(string customId)
+    {
+        try
+        {
+            var mappings = LoadJobMappings();
+            if (mappings.Remove(customId))
+            {
+                var json = JsonSerializer.Serialize(mappings, new JsonSerializerOptions { WriteIndented = true });
+                File.WriteAllText(JobMappingFilePath, json);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error removing job mapping: {ex.Message}");
+        }
+    }
+
+    private Dictionary<string, string> LoadJobMappings()
+    {
+        try
+        {
+            if (File.Exists(JobMappingFilePath))
+            {
+                var json = File.ReadAllText(JobMappingFilePath);
+                var mappings = JsonSerializer.Deserialize<Dictionary<string, string>>(json);
+                return mappings ?? new Dictionary<string, string>();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading job mappings: {ex.Message}");
+        }
+        return new Dictionary<string, string>();
     }
 
     public async Task RunJobAsync(JobDto dto)
     {
         var apiName = dto.ApiName;
-        var jsonData = dto.JsonData;
-        var apiUrl = $"{_appSetting.BaseApiBackendJava}{apiName}";
+        var apiUrl = $"{apiName}";
         var headers = new Dictionary<string, string>
         {
-            { "Authorization", $"Bearer {_appSetting.ApiKeySystem}"}
+            { "API-KEY", $"{_appSetting.ApiKeySystem}"}
         };
-        var response = await _apiHelper.PostAsync<dynamic>(apiUrl, jsonData, headers);
-        if (response?.data != null)
+        Console.WriteLine("API-KEY: " + headers["API-KEY"]);
+        
+        // ✅ Convert JsonData thành object để gửi (không phải string JSON)
+        object? requestBody = null;
+        
+        if (dto.JsonData is string jsonString)
+        {
+            // Nếu là string JSON, parse thành object
+            try
+            {
+                requestBody = JsonSerializer.Deserialize<object>(jsonString);
+            }
+            catch
+            {
+                // Nếu không parse được, giữ nguyên string
+                requestBody = jsonString;
+            }
+        }
+        else if (dto.JsonData is JsonElement jsonElement)
+        {
+            if (jsonElement.ValueKind == JsonValueKind.String)
+            {
+                // Nếu JsonElement là string, parse string đó thành object
+                var str = jsonElement.GetString();
+                if (!string.IsNullOrEmpty(str))
+                {
+                    try
+                    {
+                        requestBody = JsonSerializer.Deserialize<object>(str);
+                    }
+                    catch
+                    {
+                        requestBody = str;
+                    }
+                }
+            }
+            else
+            {
+                // Nếu JsonElement là object, deserialize thành object
+                try
+                {
+                    requestBody = JsonSerializer.Deserialize<object>(jsonElement);
+                }
+                catch
+                {
+                    try
+                    {
+                        requestBody = JsonSerializer.Deserialize<object>(jsonElement.GetRawText());
+                    }
+                    catch
+                    {
+                        Console.WriteLine("Warning: Could not convert JsonElement to object");
+                    }
+                }
+            }
+        }
+        else
+        {
+            requestBody = dto.JsonData;
+        }
+        
+        Console.WriteLine("requestBody: " + JsonSerializer.Serialize(requestBody));
+        var response = await _apiHelper.PostAsync<string>(apiUrl, requestBody, headers);
+        if (!string.IsNullOrEmpty(response))
         {
             Console.WriteLine("Job executed successfully");
         }
@@ -251,7 +439,7 @@ public class JobService : IJobService
             return;
         }
         HandleProduct.IsRunningHandleProduct = true;
-        var productDtos = productInRedis.Products.  Select(p => new ProductApi
+        var productDtos = productInRedis.Products.Select(p => new ProductApi
         {
             Id = p.Id,
             Name = p.Name ?? string.Empty,

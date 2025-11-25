@@ -3,7 +3,7 @@ public class MessageResponse
 {
     
     public List<MessageDetailResponse> It { get; set; } = new List<MessageDetailResponse>();
-    public List<MessageDetailResponse> My { get; set; } = new List<MessageDetailResponse>();
+    public List<MessageDetailResponse> Me { get; set; } = new List<MessageDetailResponse>();
 }
 
 public class MessageDetailResponse

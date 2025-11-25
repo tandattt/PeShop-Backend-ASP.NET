@@ -15,14 +15,13 @@ public class CheckHandleController : ControllerBase
     [HttpGet("check-handle-product")]
     public IActionResult CheckHandleProduct()
     {
-        if (!Request.Headers.TryGetValue("Authorization", out var authHeader))
+        if (!Request.Headers.TryGetValue("API-KEY", out var apiKey))
         {
 
             return Unauthorized("Missing Authorization header");
         }
 
-        var token = authHeader.ToString().Replace("Bearer ", "");
-        if (token != _appSetting.ApiKeySystem)
+        if (apiKey != _appSetting.ApiKeySystem)
         {
             return Forbid("Invalid API key");
         }

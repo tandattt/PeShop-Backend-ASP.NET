@@ -17,6 +17,8 @@ public class ProductDetailResponse
     public decimal Price { get; set; }
     public string ProductId { get; set; } = string.Empty;
     public string ProductName { get; set; } = string.Empty;
+    public bool? HasFlashSale { get; set; }
+    public decimal? FlashSalePrice { get; set; }
     public CategoryForProductDto Category { get; set; } = new CategoryForProductDto();
     public CategoryChildForProductDto CategoryChild { get; set; } = new CategoryChildForProductDto();
     public List<VariantForProductDto> Variants { get; set; } = new List<VariantForProductDto>();

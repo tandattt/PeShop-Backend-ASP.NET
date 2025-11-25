@@ -143,7 +143,7 @@ namespace PeShop.Services
                 Content = m.Content,
                 CreatedAt = m.CreatedAt ?? DateTime.UtcNow,
             }).ToList();
-            var my = messages.Where(m => m.SenderType != targetType).Select(m => new MessageDetailResponse
+            var me = messages.Where(m => m.SenderType != targetType).Select(m => new MessageDetailResponse
             {
                 Id = m.Id.ToString(),
                 Content = m.Content,
@@ -152,7 +152,7 @@ namespace PeShop.Services
             var messageResponses = new MessageResponse
             {
                 It = it,
-                My = my,
+                Me = me,
             };
             await _messageRepository.UpdateMessageSeenAsync(request.UserId, request.ShopId, request.Type);
             var totalPages = (int)Math.Ceiling((double)totalCount / request.PageSize);

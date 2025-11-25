@@ -74,7 +74,21 @@ namespace PeShop.Helpers
                 }
 
                 var content = await response.Content.ReadAsStringAsync();
-                Console.WriteLine("3"+JsonSerializer.Deserialize<T>(content));
+                Console.WriteLine("Response content: " + content);
+                
+                // Nếu content rỗng hoặc null, trả về default
+                if (string.IsNullOrWhiteSpace(content))
+                {
+                    return default(T);
+                }
+                
+                // Nếu T là string, trả về content trực tiếp
+                if (typeof(T) == typeof(string))
+                {
+                    return (T)(object)content;
+                }
+                
+                // Deserialize thành T
                 return JsonSerializer.Deserialize<T>(content);
             }
             catch (Exception ex)
@@ -102,7 +116,16 @@ namespace PeShop.Helpers
 
                 if (data != null)
                 {
-                    var json = JsonSerializer.Serialize(data);
+                    string json;
+                    // Nếu data là string, gửi trực tiếp (không serialize)
+                    if (data is string str)
+                    {
+                        json = str;
+                    }
+                    else
+                    {
+                        json = JsonSerializer.Serialize(data);
+                    }
                     request.Content = new StringContent(json, Encoding.UTF8, "application/json");
                 }
 
@@ -315,7 +338,16 @@ namespace PeShop.Helpers
 
                 if (data != null)
                 {
-                    var json = JsonSerializer.Serialize(data);
+                    string json;
+                    // Nếu data là string, gửi trực tiếp (không serialize)
+                    if (data is string str)
+                    {
+                        json = str;
+                    }
+                    else
+                    {
+                        json = JsonSerializer.Serialize(data);
+                    }
                     request.Content = new StringContent(json, Encoding.UTF8, "application/json");
                 }
 
