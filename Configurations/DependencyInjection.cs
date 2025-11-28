@@ -120,8 +120,7 @@ namespace PeShop.Configurations
                         .AllowCredentials()); // Cho phép cookie/token
             });
             // Rate Limiting
-            services.AddRateLimiterPolicy();
-            services.AddRateLimiterPolicyEndpoint();
+            services.AddRateLimiterPolicies();
             return services;
         }
     }

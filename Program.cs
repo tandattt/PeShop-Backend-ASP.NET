@@ -91,7 +91,8 @@ app.UseCors("AllowAll");
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.MapControllers();
+
+app.MapControllers().RequireRateLimiting(PolicyConstants.IpPolicy);
 
 app.MapHub<NotificationHub>("/hubs/notification");
 

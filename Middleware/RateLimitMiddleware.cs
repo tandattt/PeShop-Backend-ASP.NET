@@ -4,90 +4,60 @@ using PeShop.Constants;
 namespace PeShop.Middleware;
 public static class RateLimitMiddleware
 {
-    public static IServiceCollection AddRateLimiterPolicy(this IServiceCollection services)
-    {
-        services.AddRateLimiter(options =>
-        {
-            options.AddPolicy(PolicyConstants.IpPolicy, context =>
-            {
-                var ip = context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
-
-                return RateLimitPartition.GetFixedWindowLimiter(
-                    partitionKey: ip,
-                    factory: _ => new FixedWindowRateLimiterOptions
-                    {
-                        PermitLimit = 50,                 // giới hạn 50 request
-                        Window = TimeSpan.FromSeconds(1), // trong vòng 1 giây
-                        QueueLimit = 0
-                    });
-            });
-        });
-
-        return services;
-    }
-    public static IServiceCollection AddRateLimiterFLashSalesPolicy(this IServiceCollection services)
-    {
-        services.AddRateLimiter(options =>
-        {
-            // Policy cho flash sales - cho phép đợi trong hàng đợi
-            options.AddPolicy(PolicyConstants.FlashSalesPolicy, context =>
-            {
-                var ip = context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
-
-                return RateLimitPartition.GetFixedWindowLimiter(
-                    partitionKey: ip,
-                    factory: _ => new FixedWindowRateLimiterOptions
-                    {
-                        // PermitLimit = 20,                 // tối đa 20 request
-                        // Window = TimeSpan.FromMinutes(1), // mỗi 1 phút
-                        QueueLimit = int.MaxValue,                  // cho phép 10 request đợi trong hàng đợi
-                        QueueProcessingOrder = QueueProcessingOrder.OldestFirst // xử lý theo thứ tự cũ nhất trước
-                    });
-            });
-
-            // Policy chung cho các API khác - có thể đợi
-            // options.AddPolicy("api-wait-policy", context =>
-            // {
-            //     var ip = context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
-
-            //     return RateLimitPartition.GetFixedWindowLimiter(
-            //         partitionKey: ip,
-            //         factory: _ => new FixedWindowRateLimiterOptions
-            //         {
-            //             PermitLimit = 50,                 // tối đa 50 request
-            //             Window = TimeSpan.FromMinutes(1), // mỗi 1 phút
-            //             QueueLimit = 5,                   // cho phép 5 request đợi trong hàng đợi
-            //             QueueProcessingOrder = QueueProcessingOrder.OldestFirst
-            //         });
-            // });
-        });
-
-        return services;
-    }
-    public static IServiceCollection AddRateLimiterPolicyEndpoint(this IServiceCollection services)
+    public static IServiceCollection AddRateLimiterPolicies(this IServiceCollection services)
 {
     services.AddRateLimiter(options =>
     {
-        options.AddPolicy(PolicyConstants.IpPolicyEndpoint, context =>
+        // ------------------ IP Policy --------------------
+        options.AddPolicy(PolicyConstants.IpPolicy, context =>
         {
             var ip = context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
-            // Lấy path của endpoint (ví dụ: /api/product, /api/user)
-            var path = context.Request.Path.Value?.ToLowerInvariant() ?? "";
-            
-            // Partition key = IP + Path để mỗi endpoint có rate limit riêng
-            var partitionKey = $"{ip}:{path}";
 
             return RateLimitPartition.GetFixedWindowLimiter(
-                partitionKey: partitionKey,
+                partitionKey: ip,
                 factory: _ => new FixedWindowRateLimiterOptions
                 {
-                    PermitLimit = 50,                 // giới hạn 50 request
-                    Window = TimeSpan.FromMinutes(1), // mỗi 1 phút (thay vì 1 giây)
+                    PermitLimit = 50,
+                    Window = TimeSpan.FromSeconds(1),
                     QueueLimit = 0
                 });
         });
+
+        // ------------------ Flash Sales Policy --------------------
+        options.AddPolicy(PolicyConstants.FlashSalesPolicy, context =>
+        {
+            var ip = context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+
+            return RateLimitPartition.GetFixedWindowLimiter(
+                partitionKey: ip,
+                factory: _ => new FixedWindowRateLimiterOptions
+                {
+                    PermitLimit = 20,
+                    Window = TimeSpan.FromMinutes(1),
+                    QueueLimit = int.MaxValue,
+                    QueueProcessingOrder = QueueProcessingOrder.OldestFirst
+                });
+        });
+
+        // ------------------ Endpoint-based Policy --------------------
+        options.AddPolicy(PolicyConstants.IpPolicyEndpoint, context =>
+        {
+            var ip = context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+            var path = context.Request.Path.Value?.ToLowerInvariant() ?? "";
+
+            return RateLimitPartition.GetFixedWindowLimiter(
+                partitionKey: $"{ip}:{path}",
+                factory: _ => new FixedWindowRateLimiterOptions
+                {
+                    PermitLimit = 50,
+                    Window = TimeSpan.FromMinutes(1),
+                    QueueLimit = 0
+                });
+        });
+
     });
 
     return services;
 }
+
 }
