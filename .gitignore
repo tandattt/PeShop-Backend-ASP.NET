@@ -35,8 +35,9 @@ artifacts/
 # Sensitive configuration files
 appsettings.json
 appsettings.*.json
-!appsettings.Development.json
-
+appsettings.Development.json
+job_mappings.json
+GlobalVariables.cs
 # Markdown files
 *.md
 
@@ -45,6 +46,3 @@ appsettings.*.json
 *.temp
 *~
 
-job_mappings.json
-
-GlobalVariables.cs
