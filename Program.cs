@@ -76,6 +76,9 @@ if (app.Environment.IsDevelopment())
     app.UseHangfireDashboard("/hangfire");
 }
 
+// 🔹 Seed permissions on startup
+await PeShop.Data.Seeders.PermissionSeeder.SeedPermissionsAsync(app.Services);
+
 // 🔹 Đăng ký job định kỳ
 using (var scope = app.Services.CreateScope())
 {

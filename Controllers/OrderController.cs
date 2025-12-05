@@ -90,4 +90,15 @@ public class OrderController : ControllerBase
         }
         return Ok(order);
     }
+    [HttpDelete("cancle-order")]
+    [Authorize(Roles = RoleConstants.User)]
+    public async Task<IActionResult> CancleOrder([FromQuery] string orderId)
+    {
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        var result = await _orderService.CancleOrder(orderId,  userId);
+        if(result.Status == false){
+            return BadRequest(result.Message);
+        }
+        return Ok(result.Message);
+    }
 }

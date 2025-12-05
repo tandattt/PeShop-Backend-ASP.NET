@@ -3,4 +3,9 @@ using PeShop.Models.Entities;
 public interface ICategoryChildRepository
 {
     Task<List<CategoryChild>> GetCategoryChildrenAsync(string categoryId);
+    Task<CategoryChild> CreateAsync(CategoryChild categoryChild);
+    Task<CategoryChild?> GetByIdAsync(string id);
+    Task<List<CategoryChild>> GetAllAsync();
+    Task<CategoryChild> UpdateAsync(CategoryChild categoryChild);
+    Task<bool> DeleteAsync(string id);
 }

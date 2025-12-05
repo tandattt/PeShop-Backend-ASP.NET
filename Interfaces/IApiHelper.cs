@@ -6,7 +6,10 @@ namespace PeShop.Interfaces
         /// Gọi API GET
         /// </summary>
         Task<T?> GetAsync<T>(string url, Dictionary<string, string>? headers = null);
-
+        /// <summary>
+        /// Gọi API GET raw
+        /// </summary>
+        Task<T?> GetRawAsync<T>(string url,object? data = null, Dictionary<string, string>? headers = null);
         /// <summary>
         /// Gọi API POST
         /// </summary>

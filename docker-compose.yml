@@ -8,6 +8,11 @@ services:
     ports:
       - "5000:5000"
     restart: unless-stopped
+    volumes:
+      # Mount thư mục data để lưu các file như job_mappings.json
+      - ./data:/app/data
+      # Mount thư mục Template để có thể chỉnh sửa template mà không cần rebuild
+      - ./Template:/app/Template
     networks:
       - shared_network
 

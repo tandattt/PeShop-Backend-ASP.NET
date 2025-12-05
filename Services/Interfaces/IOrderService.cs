@@ -14,4 +14,5 @@ public interface IOrderService
     Task<StatusResponse> UpdatePaymentStatusInOrderAsync(string orderId, string userId, PaymentStatus paymentStatus);
     Task<List<OrderResponse>> GetOrderAsync( string userId);
     Task<OrderDetailResponse> GetOrderDetailAsync(string orderId, string userId);
+    Task<StatusResponse> CancleOrder (string orderId, string userId);
 }

@@ -1,4 +1,3 @@
-using PeShop.Dtos.Requests;
 using PeShop.Models.Enums;
 namespace PeShop.Dtos.Requests;
 
@@ -8,7 +7,14 @@ public class OrderRequest : ProductRequest
     public string CategoryId { get; set; } = string.Empty;
     public string ShopId { get; set; } = string.Empty;
     public string OrderCode { get; set; } = string.Empty;
-    // public 
+    
+    // FlashSale fields - INTERNAL USE ONLY
+    // These fields are automatically filled by Backend, NOT from Frontend request
+    // Frontend should NOT send these fields, they will be ignored and recalculated
+    // Note: IsFlashSale has been removed - flash sale status is now tracked at Order level via HasFlashSale
+    public string? FlashSaleProductId { get; set; } = null;
+    public uint? FlashSalePercentDecrease { get; set; } = null;
+    public decimal? FlashSalePrice { get; set; } = null;
 }
 
 public class OrderVirtualRequest{

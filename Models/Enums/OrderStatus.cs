@@ -33,6 +33,10 @@ namespace PeShop.Models.Enums
         /// <summary>
         /// Đã giao hàng
         /// </summary>
-        Delivered = 5
+        Delivered = 5,
+
+
+        /// đã hủy
+        Cancelled  = 6
     }
 }

@@ -17,6 +17,7 @@ using PeShop.GlobalVariables;
 using PeShop.Exceptions;
 using System.IO;
 using System.Text.Json.Serialization;
+using Microsoft.AspNetCore.Hosting;
 namespace PeShop.Services;
 
 public class JobService : IJobService
@@ -32,7 +33,9 @@ public class JobService : IJobService
     private readonly IProductRepository _productRepository;
     private readonly ITransactionRepository _transactionRepository;
     private readonly IBackgroundJobClient _backgroundJobClient;
-    public JobService(IVoucherService voucherService, IRedisUtil redisUtil, AppSetting appSetting, IApiHelper apiHelper, IOrderRepository orderRepository, IUserRankRepository userRankRepository, IRankService rankService, IProductRepository productRepository, ITransactionRepository transactionRepository, IBackgroundJobClient backgroundJobClient)
+    private readonly IWebHostEnvironment _webHostEnvironment;
+    
+    public JobService(IVoucherService voucherService, IRedisUtil redisUtil, AppSetting appSetting, IApiHelper apiHelper, IOrderRepository orderRepository, IUserRankRepository userRankRepository, IRankService rankService, IProductRepository productRepository, ITransactionRepository transactionRepository, IBackgroundJobClient backgroundJobClient, IWebHostEnvironment webHostEnvironment)
     {
         _voucherService = voucherService;
         _redisUtil = redisUtil;
@@ -44,6 +47,7 @@ public class JobService : IJobService
         _productRepository = productRepository;
         _transactionRepository = transactionRepository;
         _backgroundJobClient = backgroundJobClient;
+        _webHostEnvironment = webHostEnvironment;
     }
     public async Task UpdatePaymentStatusFailedInOrderAsync(string orderId, string userId)
     {
@@ -232,7 +236,19 @@ public class JobService : IJobService
         return Task.CompletedTask;
     }
 
-    private const string JobMappingFilePath = "job_mappings.json";
+    private string JobMappingFilePath
+    {
+        get
+        {
+            var dataPath = Path.Combine(_webHostEnvironment.ContentRootPath, "data");
+            // Đảm bảo thư mục data tồn tại
+            if (!Directory.Exists(dataPath))
+            {
+                Directory.CreateDirectory(dataPath);
+            }
+            return Path.Combine(dataPath, "job_mappings.json");
+        }
+    }
 
     private void SaveJobMapping(string customId, string hangfireJobId)
     {

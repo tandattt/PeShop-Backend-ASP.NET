@@ -97,6 +97,10 @@ public partial class PeShopDbContext : DbContext
 
     public virtual DbSet<FlashSaleProduct> FlashSaleProducts { get; set; }
 
+    public virtual DbSet<Permission> Permissions { get; set; }
+
+    public virtual DbSet<RolePermission> RolePermissions { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder
@@ -228,6 +232,8 @@ public partial class PeShopDbContext : DbContext
                 .HasMaxLength(16)
                 .IsFixedLength()
                 .HasColumnName("updated_by");
+            entity.Property(e => e.IsDeleted)
+                .HasColumnName("is_deleted");
         });
 
         modelBuilder.Entity<CategoryChild>(entity =>
@@ -264,6 +270,8 @@ public partial class PeShopDbContext : DbContext
                 .HasMaxLength(16)
                 .IsFixedLength()
                 .HasColumnName("updated_by");
+            entity.Property(e => e.IsDeleted)
+                .HasColumnName("is_deleted");
 
             entity.HasOne(d => d.Category).WithMany(p => p.CategoryChildren)
                 .HasForeignKey(d => d.CategoryId)
@@ -410,6 +418,8 @@ public partial class PeShopDbContext : DbContext
             entity.Property(e => e.UserId)
                 .HasMaxLength(36)
                 .HasColumnName("user_id");
+            entity.Property(e => e.HasFlashSale)
+                .HasColumnName("has_flash_sale");
 
             entity.HasOne(d => d.Shop).WithMany(p => p.Orders)
                 .HasForeignKey(d => d.ShopId)
@@ -452,7 +462,6 @@ public partial class PeShopDbContext : DbContext
                 .HasMaxLength(36)
                 .HasColumnName("product_id");
             entity.Property(e => e.Quantity).HasColumnName("quantity");
-            entity.Property(e => e.IsFlashSale).HasColumnName("is_flash_sale");
             entity.Property(e => e.UpdatedAt)
                 .HasMaxLength(6)
                 .HasColumnName("updated_at");
@@ -461,6 +470,10 @@ public partial class PeShopDbContext : DbContext
                 .IsFixedLength()
                 .HasColumnName("updated_by");
             entity.Property(e => e.VariantId).HasColumnName("variant_id");
+            
+            entity.Property(e => e.FlashSaleProductId)
+                .HasMaxLength(255)
+                .HasColumnName("flash_sale_product_id");
 
             entity.HasOne(d => d.Order).WithMany(p => p.OrderDetails)
                 .HasForeignKey(d => d.OrderId)
@@ -473,6 +486,10 @@ public partial class PeShopDbContext : DbContext
             entity.HasOne(d => d.Variant).WithMany(p => p.OrderDetails)
                 .HasForeignKey(d => d.VariantId)
                 .HasConstraintName("FKbxjrinr4c8w8k5gjn7qtkod70");
+
+            entity.HasOne(d => d.FlashSaleProduct).WithMany()
+                .HasForeignKey(d => d.FlashSaleProductId)
+                .HasConstraintName("fk_order_detail_flash_sale_product");
         });
 
         modelBuilder.Entity<OrderVoucher>(entity =>
@@ -1122,6 +1139,8 @@ public partial class PeShopDbContext : DbContext
                 .HasMaxLength(16)
                 .IsFixedLength()
                 .HasColumnName("updated_by");
+            entity.Property(e => e.IsDeleted)
+                .HasColumnName("is_deleted");
 
             entity.HasOne(d => d.Category).WithMany(p => p.TemplateCategories)
                 .HasForeignKey(d => d.CategoryId)
@@ -1159,6 +1178,8 @@ public partial class PeShopDbContext : DbContext
                 .HasMaxLength(16)
                 .IsFixedLength()
                 .HasColumnName("updated_by");
+            entity.Property(e => e.IsDeleted)
+                .HasColumnName("is_deleted");
 
             entity.HasOne(d => d.CategoryChild).WithMany(p => p.TemplateCategoryChildren)
                 .HasForeignKey(d => d.CategoryChildId)
@@ -2093,6 +2114,79 @@ public partial class PeShopDbContext : DbContext
         // modelBuilder.Entity<OrderVoucher>()
         //     .Property(e => e.Type)
         //     .HasConversion<int>();
+
+        // Permission configuration
+        modelBuilder.Entity<Permission>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+
+            entity.ToTable("permission");
+
+            entity.HasIndex(e => e.Name, "UQ_permission_name").IsUnique();
+
+            entity.Property(e => e.Id)
+                .ValueGeneratedOnAdd()
+                .HasColumnName("id");
+            entity.Property(e => e.Name)
+                .HasMaxLength(50)
+                .HasColumnName("name");
+            entity.Property(e => e.Description)
+                .HasMaxLength(255)
+                .HasColumnName("description");
+            entity.Property(e => e.CreatedAt)
+                .HasMaxLength(6)
+                .HasColumnName("created_at");
+            entity.Property(e => e.CreatedBy)
+                .HasMaxLength(36)
+                .HasColumnName("created_by");
+            entity.Property(e => e.UpdatedAt)
+                .HasMaxLength(6)
+                .HasColumnName("updated_at");
+            entity.Property(e => e.UpdatedBy)
+                .HasMaxLength(36)
+                .HasColumnName("updated_by");
+        });
+
+        // RolePermission configuration
+        modelBuilder.Entity<RolePermission>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+
+            entity.ToTable("role_permission");
+
+            entity.HasIndex(e => new { e.RoleId, e.PermissionId }, "UQ_role_permission").IsUnique();
+
+            entity.Property(e => e.Id)
+                .ValueGeneratedOnAdd()
+                .HasColumnName("id");
+            entity.Property(e => e.RoleId)
+                .HasMaxLength(36)
+                .HasColumnName("role_id");
+            entity.Property(e => e.PermissionId)
+                .HasColumnName("permission_id");
+            entity.Property(e => e.CreatedAt)
+                .HasMaxLength(6)
+                .HasColumnName("created_at");
+            entity.Property(e => e.CreatedBy)
+                .HasMaxLength(36)
+                .HasColumnName("created_by");
+            entity.Property(e => e.UpdatedAt)
+                .HasMaxLength(6)
+                .HasColumnName("updated_at");
+            entity.Property(e => e.UpdatedBy)
+                .HasMaxLength(36)
+                .HasColumnName("updated_by");
+
+            entity.HasOne(d => d.Role).WithMany()
+                .HasForeignKey(d => d.RoleId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("FK_role_permission_role");
+
+            entity.HasOne(d => d.Permission).WithMany(p => p.RolePermissions)
+                .HasForeignKey(d => d.PermissionId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("FK_role_permission_permission");
+        });
     }
 
     partial void OnModelCreatingPartial(ModelBuilder modelBuilder);

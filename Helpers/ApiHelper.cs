@@ -43,6 +43,37 @@ namespace PeShop.Helpers
         }
 
         /// <summary>
+        /// Gọi API GET raw
+        /// </summary>
+        public async Task<T?> GetRawAsync<T>(string url,object? data = null, Dictionary<string, string>? headers = null)
+        {
+            try
+            {
+                var request = new HttpRequestMessage(HttpMethod.Get, url);
+                if (headers != null)
+                {
+                    foreach (var header in headers)
+                    {
+                        request.Headers.Add(header.Key, header.Value);
+                    }
+                }
+                if (data != null)
+                {
+                    var json = JsonSerializer.Serialize(data);
+                    request.Content = new StringContent(json, Encoding.UTF8, "application/json");
+                }
+                var response = await _httpClient.SendAsync(request);
+                response.EnsureSuccessStatusCode();
+
+                var content = await response.Content.ReadAsStringAsync();
+                return JsonSerializer.Deserialize<T>(content);
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Lỗi khi gọi GET API raw: {ex.Message}", ex);
+            }
+        }
+
         /// Gọi API POST
         /// </summary>
         public async Task<T?> PostAsync<T>(string url, object? data = null, Dictionary<string, string>? headers = null)

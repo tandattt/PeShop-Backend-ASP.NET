@@ -1,0 +1,10 @@
+namespace PeShop.Dtos.GHN;
+
+public class CreateStoreRequest
+{
+    public int District_id { get; set; }
+    public string Ward_code { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
+    public string Phone { get; set; } = string.Empty;
+    public string Address { get; set; } = string.Empty;
+}

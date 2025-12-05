@@ -19,17 +19,19 @@ public partial class OrderDetail
 
     public uint? Quantity { get; set; }
 
-    public bool? IsFlashSale { get; set; }
-
     public string? OrderId { get; set; }
 
     public string? ProductId { get; set; }
 
     public int? VariantId { get; set; }
 
+    public string? FlashSaleProductId { get; set; }
+
     public virtual Order? Order { get; set; }
 
     public virtual Product? Product { get; set; }
 
     public virtual Variant? Variant { get; set; }
+
+    public virtual FlashSaleProduct? FlashSaleProduct { get; set; }
 }

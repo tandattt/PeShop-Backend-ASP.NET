@@ -32,6 +32,8 @@ public class OrderService : IOrderService
     private readonly IUserRepository _userRepository;
     private readonly IJobService _jobService;
     private readonly IWebHostEnvironment _webHostEnvironment;
+    private readonly IFlashSaleRepository _flashSaleRepository;
+    
     public OrderService(
         IOrderHelper orderHelper,
         IRedisUtil redisUtil,
@@ -48,7 +50,8 @@ public class OrderService : IOrderService
         IReviewService reviewService,
         IUserRepository userRepository,
         IJobService jobService,
-        IWebHostEnvironment webHostEnvironment
+        IWebHostEnvironment webHostEnvironment,
+        IFlashSaleRepository flashSaleRepository
         )
     {
         _orderHelper = orderHelper;
@@ -67,16 +70,43 @@ public class OrderService : IOrderService
         _userRepository = userRepository;
         _jobService = jobService;
         _webHostEnvironment = webHostEnvironment;
+        _flashSaleRepository = flashSaleRepository;
+    }
+    
+    // Helper class để flatten data
+    private class OrderProductItem
+    {
+        public ItemShop Shop { get; set; } = null!;
+        public OrderRequest Product { get; set; } = null!;
+    }
+    
+    private class ValidationResult
+    {
+        public bool IsValid { get; set; }
+        public string ErrorMessage { get; set; } = string.Empty;
+        public List<(int VariantId, uint Quantity)> VariantUpdates { get; set; } = new();
+        public List<(string FlashSaleProductId, uint Quantity)> FlashSaleUpdates { get; set; } = new();
     }
     public async Task<CreateVirtualOrderResponse> CreateVirtualOrder(OrderVirtualRequest request, string userId)
     {
         try
         {
-            // Nhóm các sản phẩm theo shop
+            // SECURITY: Reset FlashSale fields từ Frontend request
+            // Backend sẽ tự động tính lại, không tin tưởng data từ Frontend
+            foreach (var item in request.Items)
+            {
+                item.FlashSaleProductId = null;
+                item.FlashSalePercentDecrease = null;
+                item.FlashSalePrice = null;
+                item.PriceOriginal = 0; // Sẽ được tính lại
+                item.CategoryId = string.Empty; // Sẽ được fill lại
+            }
+            
+            // Nhóm các sản phẩm theo shop (Backend tự động check và apply FlashSale)
             var itemShops = await _orderHelper.GroupItemsByShopAsync(request.Items);
 
-            // Tính tổng giá trị đơn hàng
-            // decimal orderTotal = itemShops.Sum(shop => shop.PriceOriginal);
+            // Xác định HasFlashSale ở cấp Order dựa trên việc có ít nhất một shop có FlashSaleDiscount > 0
+            bool hasFlashSale = itemShops.Any(shop => shop.FlashSaleDiscount > 0);
 
             var userAddress = await _userAddressRepository.GetUserAddressByIdAsync(request.UserAddressId, userId);
             // Tạo đơn hàng ảo
@@ -90,7 +120,8 @@ public class OrderService : IOrderService
                 RecipientName = userAddress?.RecipientName ?? string.Empty,
                 RecipientPhone = userAddress?.Phone ?? string.Empty,
                 CreatedAt = DateTime.UtcNow,
-                UserFullNewAddress = userAddress?.FullNewAddress ?? string.Empty
+                UserFullNewAddress = userAddress?.FullNewAddress ?? string.Empty,
+                HasFlashSale = hasFlashSale
             };
 
             // Lưu vào Redis
@@ -139,8 +170,22 @@ public class OrderService : IOrderService
                 };
             }
 
-            // Nhóm các sản phẩm mới theo shop
+            // SECURITY: Reset FlashSale fields từ Frontend request
+            // Backend sẽ tự động tính lại, không tin tưởng data từ Frontend
+            foreach (var item in request.Items)
+            {
+                item.FlashSaleProductId = null;
+                item.FlashSalePercentDecrease = null;
+                item.FlashSalePrice = null;
+                item.PriceOriginal = 0;
+                item.CategoryId = string.Empty;
+            }
+
+            // Nhóm các sản phẩm mới theo shop (Backend tự động check và apply FlashSale)
             var itemShops = await _orderHelper.GroupItemsByShopAsync(request.Items);
+
+            // Xác định HasFlashSale ở cấp Order dựa trên việc có ít nhất một shop có FlashSaleDiscount > 0
+            bool hasFlashSale = itemShops.Any(shop => shop.FlashSaleDiscount > 0);
 
             // Tính tổng giá trị đơn hàng mới
             decimal orderTotal = itemShops.Sum(shop => shop.PriceOriginal);
@@ -150,6 +195,7 @@ public class OrderService : IOrderService
             existingOrder.OrderTotal = orderTotal;
             existingOrder.AmountTotal = orderTotal;
             existingOrder.FeeShippingTotal = 0; // Reset shipping fee
+            existingOrder.HasFlashSale = hasFlashSale; // Cập nhật HasFlashSale khi update order
 
             // Lưu lại vào Redis
             bool isSaved = await _redisUtil.SetAsync($"order_{userId}_{existingOrder.OrderId}", JsonSerializer.Serialize(existingOrder));
@@ -202,6 +248,7 @@ public class OrderService : IOrderService
         }
         order.OrderTotal = order.ItemShops.Sum(x => x.PriceOriginal);
         order.FeeShippingTotal = order.ItemShops.Sum(x => x.FeeShipping);
+        order.FlashSaleDiscountTotal = order.ItemShops.Sum(x => x.FlashSaleDiscount);
         var Promotion = await _redisUtil.GetAsync<List<PromotionInOrderResponse>>($"promotion_in_order_{userId}_{orderId}");
         if (Promotion == null)
         {
@@ -350,45 +397,68 @@ public class OrderService : IOrderService
         {
             var result = await _transactionRepository.ExecuteInTransactionAsync(async () =>
             {
-                List<string> createdOrderIds = new List<string>(); // Lưu tất cả OrderIds đã tạo
+                List<string> createdOrderIds = new List<string>();
 
-                // BƯỚC 1: Kiểm tra và trừ số lượng variant TRƯỚC khi tạo order
-                foreach (var itemShop in orders.ItemShops)
+                // BƯỚC 0: Flatten data - Chỉ loop 1 lần
+                var allProducts = orders.ItemShops
+                    .SelectMany(shop => shop.Products.Select(p => new OrderProductItem 
+                    { 
+                        Shop = shop, 
+                        Product = p 
+                    }))
+                    .ToList();
+
+                // BƯỚC 1: Collect tất cả IDs cần validate
+                var variantIds = allProducts
+                    .Where(x => x.Product.VariantId.HasValue)
+                    .Select(x => x.Product.VariantId!.Value)
+                    .Distinct()
+                    .ToList();
+
+                var flashSaleProductIds = allProducts
+                    .Where(x => !string.IsNullOrEmpty(x.Product.FlashSaleProductId))
+                    .Select(x => x.Product.FlashSaleProductId!)
+                    .Distinct()
+                    .ToList();
+
+                var productIds = allProducts
+                    .Where(x => !string.IsNullOrEmpty(x.Product.FlashSaleProductId))
+                    .Select(x => x.Product.ProductId)
+                    .Distinct()
+                    .ToList();
+
+                // BƯỚC 2: Batch query - Giảm database calls
+                var variants = await _variantRepository.GetVariantsByIdsAsync(variantIds);
+                var flashSaleProducts = flashSaleProductIds.Any() 
+                    ? await _flashSaleRepository.GetFlashSaleProductsByIdsAsync(flashSaleProductIds)
+                    : new Dictionary<string, FlashSaleProduct>();
+                var activeFlashSales = productIds.Any()
+                    ? await _flashSaleRepository.GetActiveFlashSaleProductsAsync(productIds)
+                    : new Dictionary<string, FlashSaleProduct>();
+
+                // BƯỚC 3: Validate tất cả trong 1 loop
+                var validationResult = await ValidateOrderProducts(
+                    allProducts, 
+                    variants, 
+                    flashSaleProducts, 
+                    activeFlashSales, 
+                    userId);
+
+                if (!validationResult.IsValid)
                 {
-                    foreach (var product in itemShop.Products)
-                    {
-                        if (product.VariantId == null)
-                        {
-                            throw new Exception("VariantId không được để trống");
-                        }
-                        
-                        // Kiểm tra variant tồn tại và status
-                        var variantDb = await _variantRepository.GetVariantByIdAsync(product.VariantId.Value.ToString());
-                        if (variantDb == null)
-                        {
-                            throw new Exception("Biến thể không tồn tại");
-                        }
-                        if (variantDb.Status != VariantStatus.Show)
-                        {
-                            throw new Exception("Biến thể sản phẩm không khả dụng");
-                        }
-                        
-                        // Atomic update - chỉ trừ quantity nếu đủ số lượng
-                        var success = await _variantRepository.DecreaseVariantQuantityAsync(
-                            product.VariantId.Value, 
-                            product.Quantity);
-                        
-                        if (!success)
-                        {
-                            throw new Exception($"Số lượng sản phẩm không đủ");
-                        }
-                    }
+                    throw new Exception(validationResult.ErrorMessage);
                 }
 
-                // BƯỚC 2: Sau khi đã xác nhận đủ số lượng, mới tạo order
+                // BƯỚC 4: Batch decrease quantities (atomic operations)
+                await BatchDecreaseQuantitiesAsync(validationResult);
+
+                // BƯỚC 5: Tạo Orders - Group lại theo shop
                 foreach (var itemShop in orders.ItemShops)
                 {
                     decimal platformFeeTotal = 0;
+                    // Xác định HasFlashSale dựa trên việc có product nào có FlashSaleProductId != null
+                    bool shopHasFlashSale = itemShop.Products.Any(p => !string.IsNullOrEmpty(p.FlashSaleProductId));
+                    
                     var order = new Order
                     {
                         Id = Guid.NewGuid().ToString(),
@@ -410,7 +480,7 @@ public class OrderService : IOrderService
                         FinalPrice = itemShop.PriceOriginal + itemShop.FeeShipping - itemShop.VoucherValue,
                         PaymentMethod = paymentMethod,
                         StatusPayment = paymentStatus,
-
+                        HasFlashSale = shopHasFlashSale
                     };
                     // Console.WriteLine($"[DEBUG] Creating Order for ShopId: {itemShop.ShopId}");
                     var orderDB = await _orderRepository.CreateOrderAsync(order);
@@ -421,118 +491,18 @@ public class OrderService : IOrderService
                     }
                     // Console.WriteLine($"[DEBUG] Order created successfully with ID: {orderDB.Id}");
 
-                    // Lưu OrderId để tạo OrderVoucherSystem sau này
                     createdOrderIds.Add(orderDB.Id);
+                    
+                    // Xử lý voucher shop
                     if (itemShop.VoucherId != null)
                     {
-                        var voucher = await _voucherRepository.GetUserVoucherShopsByVoucherShopIdAsync(userId, itemShop.VoucherId);
-                        if (voucher != null)
-                        {
-                            if (voucher.UsedCount >= voucher.ClaimedCount)
-                            {
-                                throw new Exception("bạn đã dùng hết voucher này");
-                            }
-                            voucher.UsedCount = voucher.UsedCount + 1;
-                            await _voucherRepository.UpdateUserVoucherShopAsync(voucher);
-                        }
-                        else
-                        {
-                            var voucherShop = await _voucherRepository.GetVoucherShopByIdAsync(itemShop.VoucherId);
-                            if (voucherShop == null)
-                            {
-                                throw new Exception("Voucher không tồn tại");
-                            }
-                            var userVoucherShop = new UserVoucherShop
-                            {
-                                Id = Guid.NewGuid().ToString(),
-                                UserId = userId,
-                                VoucherShopId = itemShop.VoucherId,
-                                ClaimedCount = voucherShop.LimitForUser ?? 0,
-                                UsedCount = 1,
-                                CreatedAt = DateTime.UtcNow,
-                                CreatedBy = userId,
-                                UpdatedAt = DateTime.UtcNow,
-                                UpdatedBy = userId
-                            };
-                            // Console.WriteLine($"[DEBUG] Creating UserVoucherShop for UserId: {userId}, VoucherShopId: {itemShop.VoucherId}");
-                            await _voucherRepository.CreateUserVoucherShopAsync(userVoucherShop);
-                            // Console.WriteLine($"[DEBUG] UserVoucherShop created successfully");
-
-                            // Kiểm tra số lượng voucher shop trước khi trừ
-                            if (voucherShop.Quantity == null || voucherShop.Quantity <= 0)
-                            {
-                                throw new Exception("Voucher shop đã hết số lượng");
-                            }
-                            voucherShop.Quantity = voucherShop.Quantity - 1;
-                            await _voucherRepository.UpdateVoucherShopAsync(voucherShop);
-                        }
-                        var orderVoucher = new OrderVoucher
-                        {
-                            OrderId = orderDB.Id,
-                            VoucherShopId = itemShop.VoucherId,
-                            CreatedAt = DateTime.UtcNow,
-                            CreatedBy = userId,
-                            UpdatedAt = DateTime.UtcNow,
-                            UpdatedBy = userId,
-                            VoucherSystemId = orders.VoucherSystemId,
-                        };
-                        
-                       
-                        // Console.WriteLine($"[DEBUG] Creating OrderVoucher for OrderId: {orderDB.Id}, VoucherId: {itemShop.VoucherId}");
-                        var orderVoucherDB = await _orderRepository.CreateOrderVoucherAsync(orderVoucher);
-                        if (orderVoucherDB == null)
-                        {
-                            // Console.WriteLine($"[ERROR] Failed to create OrderVoucher for OrderId: {orderDB.Id}");
-                            throw new Exception("Lỗi khi tạo đơn hàng");
-                        }
-                        // Console.WriteLine($"[DEBUG] OrderVoucher created successfully with ID: {orderVoucherDB.Id}");
-
+                        await ProcessShopVoucherAsync(itemShop.VoucherId, userId, orderDB.Id);
                     }
-                    if (itemShop.Gifts.IsNullOrEmpty() == false)
+
+                    // Xử lý promotion gifts
+                    if (itemShop.Gifts?.Any() == true)
                     {
-                        // Nhóm gifts theo PromotionId để chỉ tăng used_count 1 lần cho mỗi promotion
-                        var giftsByPromotion = itemShop.Gifts
-                            .Where(g => g.PromotionId != null)
-                            .GroupBy(g => g.PromotionId!)
-                            .ToList();
-
-                        foreach (var promotionGroup in giftsByPromotion)
-                        {
-                            var promotionId = promotionGroup.Key;
-
-                            // Kiểm tra giới hạn sử dụng promotion (chỉ check 1 lần cho mỗi promotion)
-                            var promotion = await _promotionRepository.GetPromotionByIdAsync(promotionId);
-                            if (promotion != null && promotion.TotalUsageLimit.HasValue && promotion.TotalUsageLimit == promotion.UsedCount)
-                            {
-                                throw new Exception("Promotion đã đạt giới hạn sử dụng");
-                            }
-
-                            // Tăng used_count 1 lần cho promotion này
-                            if (promotion != null)
-                            {
-                                promotion.UsedCount = (promotion.UsedCount ?? 0) + 1;
-                                promotion.UpdatedAt = DateTime.UtcNow;
-                                await _promotionRepository.UpdatePromotionAsync(promotion);
-                            }
-
-                            // Tạo PromotionUsage cho tất cả gifts trong promotion này (nhưng không tăng used_count nữa)
-                            foreach (var gift in promotionGroup)
-                            {
-                                var promotionUsage = new PromotionUsage
-                                {
-                                    Id = Guid.NewGuid().ToString(),
-                                    PromotionId = gift.PromotionId,
-                                    PromotionGiftId = gift.PromotionGiftId,
-                                    OrderId = orderDB.Id,
-                                    CreatedAt = DateTime.UtcNow,
-                                    CreatedBy = userId,
-                                    UpdatedAt = DateTime.UtcNow,
-                                    UpdatedBy = userId
-                                };
-                                // Tạo PromotionUsage mà không tăng used_count (vì đã tăng ở trên)
-                                await _promotionRepository.CreatePromotionUsageWithoutIncrementAsync(promotionUsage);
-                            }
-                        }
+                        await ProcessPromotionGiftsAsync(itemShop.Gifts, orderDB.Id, userId);
                     }
                     // foreach (var product in itemShop.Products)
                     // {
@@ -563,29 +533,28 @@ public class OrderService : IOrderService
                             Id = Guid.NewGuid().ToString(),
                             OrderId = orderDB.Id,
                             ProductId = product.ProductId,
-                            OriginalPrice = product.PriceOriginal,
+                            OriginalPrice = product.PriceOriginal / product.Quantity,
                             Quantity = product.Quantity,
                             VariantId = product.VariantId,
+                            FlashSaleProductId = !string.IsNullOrEmpty(product.FlashSaleProductId) ? product.FlashSaleProductId : null,
                             CreatedAt = DateTime.UtcNow,
                             CreatedBy = userId,
                             UpdatedAt = DateTime.UtcNow,
                             UpdatedBy = userId
                         };
-                        // Console.WriteLine($"[DEBUG] Creating OrderDetail for ProductId: {product.ProductId}");
+                        
                         var orderDetailDB = await _orderDetailRepository.CreateOrderDetailAsync(orderDetail);
                         if (orderDetailDB == null)
                         {
-                            //      Console.WriteLine($"[ERROR] Failed to create OrderDetail for ProductId: {product.ProductId}");
                             throw new Exception("Lỗi khi tạo đơn hàng");
                         }
-                        // Console.WriteLine($"[DEBUG] OrderDetail created successfully with ID: {orderDetailDB.Id}");
+                        
                         var platformFee = await _platformFeeRepository.GetPlatformFeeByCategoryIdAsync(product.CategoryId);
                         if (platformFee == null)
                         {
                             throw new Exception("Phí platform không tồn tại");
                         }
-                        platformFeeTotal += product.PriceOriginal * (platformFee / 100m) * product.Quantity;
-                        // Số lượng đã được kiểm tra và trừ ở bước 1, không cần kiểm tra lại
+                        platformFeeTotal += (product.PriceOriginal / product.Quantity) * (platformFee / 100m) * product.Quantity;
                     }
 
                     // Tạo Payout cho shop này
@@ -611,84 +580,18 @@ public class OrderService : IOrderService
 
 
                 }
-                // Console.WriteLine($"[DEBUG] Created {createdOrderIds.Count} Orders");
-                // Tạo OrderVoucherSystem cho TẤT CẢ các Orders (vì VoucherSystem áp dụng cho toàn bộ đơn hàng)
+                // Xử lý VoucherSystem
                 if (orders.VoucherSystemId != null)
                 {
-                    // foreach (var orderId in createdOrderIds)
-                    // {
-                    //     var orderVoucherSystem = new OrderVoucher
-                    //     {
-                    //         OrderId = orderId,
-                    //         VoucherId = orders.VoucherSystemId,
-                    //         CreatedAt = DateTime.UtcNow,
-                    //         CreatedBy = userId,
-                    //         UpdatedAt = DateTime.UtcNow,
-                    //         UpdatedBy = userId,
-                    //         VoucherPrice = orders.VoucherSystemValue,
-                    //         VoucherName = orders.VoucherSystemName,
-                    //         Type = OrderVoucherType.System,
-                    //     };
-                    //  var orderVoucherSystemDB = await _orderRepository.CreateOrderVoucherAsync(orderVoucherSystem);
-                    //     if (orderVoucherSystemDB == null)
-                    //     {
-                    //         throw new Exception("Lỗi khi tạo OrderVoucherSystem");
-                    //     }
-                    
-                    // }
-
-                    // // Xử lý UserVoucherSystem sau khi tạo tất cả orders
-                    // if (orders.VoucherSystemId != null)
-                    // {
-                    var userVoucherSystem = await _voucherRepository.GetUserVoucherSystemByVoucherSystemIdAsync(userId, orders.VoucherSystemId);
-                    var voucherSystem = await _voucherRepository.GetVoucherSystemByIdAsync(orders.VoucherSystemId);
-                    if (voucherSystem == null)
-                    {
-                        throw new Exception("Voucher system không tồn tại");
-                    }
-                    if (userVoucherSystem != null)
-                    {
-                        if (userVoucherSystem.UsedCount >= userVoucherSystem.ClaimedCount)
-                        {
-                            throw new Exception("bạn đã dùng hết voucher system này");
-                        }
-                        userVoucherSystem.UsedCount = userVoucherSystem.UsedCount + 1;
-                        await _voucherRepository.UpdateUserVoucherSystemAsync(userVoucherSystem);
-                        // Console.WriteLine($"[DEBUG] Updated UserVoucherSystem UsedCount to: {userVoucherSystem.UsedCount}");
-                    }
-                    else
-                    {
-                        var newUserVoucherSystem = new UserVoucherSystem
-                        {
-                            Id = Guid.NewGuid().ToString(),
-                            UserId = userId,
-                            VoucherSystemId = orders.VoucherSystemId,
-                            ClaimedCount = voucherSystem.LimitForUser ?? 0,
-                            UsedCount = 1,
-                            CreatedAt = DateTime.UtcNow,
-                            CreatedBy = userId,
-                            UpdatedAt = DateTime.UtcNow,
-                            UpdatedBy = userId
-                        };
-                        // Console.WriteLine($"[DEBUG] Creating UserVoucherSystem for UserId: {userId}, VoucherSystemId: {orders.VoucherSystemId}");
-                        await _voucherRepository.CreateUserVoucherSystemAsync(newUserVoucherSystem);
-                    }
-
-
-                    // Console.WriteLine($"[DEBUG] UserVoucherSystem created successfully");
-
-                    // Kiểm tra số lượng voucher system trước khi trừ
-                    if (voucherSystem.Quantity == null || voucherSystem.Quantity <= 0)
-                    {
-                        throw new Exception("Voucher system đã hết số lượng");
-                    }
-                    voucherSystem.Quantity = voucherSystem.Quantity - 1;
-                    await _voucherRepository.UpdateVoucherSystemAsync(voucherSystem);
-
+                    await ProcessSystemVoucherAsync(orders.VoucherSystemId, userId);
                 }
 
-                // Console.WriteLine($"[DEBUG] All operations completed successfully");
-                return new StatusResponse<List<string>> { Status = true, Message = "Đơn hàng đã được tạo thành công", Data = createdOrderIds.ToList() };
+                return new StatusResponse<List<string>> 
+                { 
+                    Status = true, 
+                    Message = "Đơn hàng đã được tạo thành công", 
+                    Data = createdOrderIds 
+                };
             });
 
             // Console.WriteLine($"[DEBUG] Transaction completed successfully");
@@ -746,6 +649,7 @@ public class OrderService : IOrderService
             OriginalPrice = order.OriginalPrice ?? 0,
             OrderStatus = order.StatusOrder ?? OrderStatus.Pending,
             OrderCode = order.OrderCode ?? string.Empty,
+            HasFlashSale = order.HasFlashSale,
             Items = order.OrderDetails
             .Select(y => new OrderItemResponse
             {
@@ -794,6 +698,7 @@ public class OrderService : IOrderService
                 PaymentMethod = x.PaymentMethod ?? PaymentMethod.COD,
                 PaymentStatus = x.StatusPayment ?? PaymentStatus.Unpaid,
                 OrderStatus = x.StatusOrder ?? OrderStatus.Pending,
+                HasFlashSale = x.HasFlashSale,
                 Items = x.OrderDetails
                 .Select(y => new OrderItemResponse
                 {
@@ -824,5 +729,282 @@ public class OrderService : IOrderService
         }
 
         return orderResponses;
+    }
+
+    public async Task<StatusResponse> CancleOrder(string orderId, string userId){
+        var order = await _orderRepository.GetOrderByIdAsync(orderId, userId);
+        if(order == null){
+            return new StatusResponse{Status = false, Message= "order không tồn tại"};
+        } 
+        if (order.StatusOrder != 0){
+            return new StatusResponse{Status = false, Message= "không được chỉnh sửa đơn hàng đã xác nhận"};
+        }
+        order.StatusOrder = OrderStatus.Cancelled;
+       
+        var result = await _orderRepository.UpdatePaymentStatusInOrderAsync(order); // dùng chung được cho update cả order nhưng đặt tên sai á nha
+        if (result == false)
+        {
+            return new StatusResponse{Status = false, Message= "cập nhật thất bại"};
+        }
+        else{
+             return new StatusResponse{Status = true, Message= "cập nhật thành công"};
+        }
+
+    }
+    
+    // Helper methods for optimized SaveOrderAsync
+    private async Task<ValidationResult> ValidateOrderProducts(
+        List<OrderProductItem> allProducts,
+        Dictionary<int, Variant> variants,
+        Dictionary<string, FlashSaleProduct> flashSaleProducts,
+        Dictionary<string, FlashSaleProduct> activeFlashSales,
+        string userId)
+    {
+        var result = new ValidationResult { IsValid = true };
+
+        foreach (var item in allProducts)
+        {
+            var product = item.Product;
+
+            // Validate Variant
+            if (!product.VariantId.HasValue)
+            {
+                result.IsValid = false;
+                result.ErrorMessage = "VariantId không được để trống";
+                return result;
+            }
+
+            if (!variants.TryGetValue(product.VariantId.Value, out var variant))
+            {
+                result.IsValid = false;
+                result.ErrorMessage = "Biến thể không tồn tại";
+                return result;
+            }
+
+            if (variant.Status != VariantStatus.Show)
+            {
+                result.IsValid = false;
+                result.ErrorMessage = "Biến thể sản phẩm không khả dụng";
+                return result;
+            }
+
+            if (variant.Quantity < product.Quantity)
+            {
+                result.IsValid = false;
+                result.ErrorMessage = $"Số lượng sản phẩm không đủ";
+                return result;
+            }
+
+            result.VariantUpdates.Add((product.VariantId.Value, product.Quantity));
+
+            // Validate FlashSale - Sử dụng FlashSaleProductId thay vì IsFlashSale
+            if (!string.IsNullOrEmpty(product.FlashSaleProductId))
+            {
+                if (!activeFlashSales.TryGetValue(product.ProductId, out var activeFlashSale) ||
+                    activeFlashSale.Id != product.FlashSaleProductId)
+                {
+                    result.IsValid = false;
+                    result.ErrorMessage = $"Flash sale cho sản phẩm {product.ProductId} đã hết hạn";
+                    return result;
+                }
+
+                if (!flashSaleProducts.TryGetValue(product.FlashSaleProductId, out var flashSaleProduct))
+                {
+                    result.IsValid = false;
+                    result.ErrorMessage = "Flash sale không tồn tại";
+                    return result;
+                }
+
+                var remainingQuantity = (flashSaleProduct.Quantity ?? 0) - (flashSaleProduct.UsedQuantity ?? 0);
+                if (remainingQuantity < product.Quantity)
+                {
+                    result.IsValid = false;
+                    result.ErrorMessage = $"Số lượng flash sale không đủ";
+                    return result;
+                }
+
+                if (flashSaleProduct.OrderLimit.HasValue)
+                {
+                    var userPurchaseCount = await _flashSaleRepository.GetUserFlashSalePurchaseCountAsync(
+                        userId, product.FlashSaleProductId);
+
+                    if (userPurchaseCount + product.Quantity > flashSaleProduct.OrderLimit.Value)
+                    {
+                        result.IsValid = false;
+                        result.ErrorMessage = $"Bạn chỉ được mua tối đa {flashSaleProduct.OrderLimit.Value} sản phẩm flash sale này";
+                        return result;
+                    }
+                }
+
+                result.FlashSaleUpdates.Add((product.FlashSaleProductId, product.Quantity));
+            }
+        }
+
+        return result;
+    }
+
+    private async Task BatchDecreaseQuantitiesAsync(ValidationResult validationResult)
+    {
+        var variantTasks = validationResult.VariantUpdates
+            .Select(update => _variantRepository.DecreaseVariantQuantityAsync(update.Item1, update.Item2));
+        
+        var variantResults = await Task.WhenAll(variantTasks);
+        if (variantResults.Any(r => !r))
+        {
+            throw new Exception("Lỗi khi cập nhật số lượng sản phẩm");
+        }
+
+        if (validationResult.FlashSaleUpdates.Any())
+        {
+            var flashSaleTasks = validationResult.FlashSaleUpdates
+                .Select(update => _flashSaleRepository.DecreaseFlashSaleQuantityAsync(update.Item1, update.Item2));
+            
+            var flashSaleResults = await Task.WhenAll(flashSaleTasks);
+            if (flashSaleResults.Any(r => !r))
+            {
+                throw new Exception("Lỗi khi cập nhật số lượng flash sale");
+            }
+        }
+    }
+
+    private async Task ProcessShopVoucherAsync(string voucherId, string userId, string orderId)
+    {
+        var voucher = await _voucherRepository.GetUserVoucherShopsByVoucherShopIdAsync(userId, voucherId);
+        if (voucher != null)
+        {
+            if (voucher.UsedCount >= voucher.ClaimedCount)
+            {
+                throw new Exception("Bạn đã dùng hết voucher này");
+            }
+            voucher.UsedCount += 1;
+            await _voucherRepository.UpdateUserVoucherShopAsync(voucher);
+        }
+        else
+        {
+            var voucherShop = await _voucherRepository.GetVoucherShopByIdAsync(voucherId);
+            if (voucherShop == null)
+            {
+                throw new Exception("Voucher không tồn tại");
+            }
+
+            var userVoucherShop = new UserVoucherShop
+            {
+                Id = Guid.NewGuid().ToString(),
+                UserId = userId,
+                VoucherShopId = voucherId,
+                ClaimedCount = voucherShop.LimitForUser ?? 0,
+                UsedCount = 1,
+                CreatedAt = DateTime.UtcNow,
+                CreatedBy = userId,
+                UpdatedAt = DateTime.UtcNow,
+                UpdatedBy = userId
+            };
+            await _voucherRepository.CreateUserVoucherShopAsync(userVoucherShop);
+
+            if (voucherShop.Quantity == null || voucherShop.Quantity <= 0)
+            {
+                throw new Exception("Voucher shop đã hết số lượng");
+            }
+            voucherShop.Quantity -= 1;
+            await _voucherRepository.UpdateVoucherShopAsync(voucherShop);
+        }
+
+        var orderVoucher = new OrderVoucher
+        {
+            OrderId = orderId,
+            VoucherShopId = voucherId,
+            CreatedAt = DateTime.UtcNow,
+            CreatedBy = userId,
+            UpdatedAt = DateTime.UtcNow,
+            UpdatedBy = userId,
+        };
+        await _orderRepository.CreateOrderVoucherAsync(orderVoucher);
+    }
+
+    private async Task ProcessPromotionGiftsAsync(List<GiftInOrder> gifts, string orderId, string userId)
+    {
+        var giftsByPromotion = gifts
+            .Where(g => g.PromotionId != null)
+            .GroupBy(g => g.PromotionId!)
+            .ToList();
+
+        foreach (var promotionGroup in giftsByPromotion)
+        {
+            var promotionId = promotionGroup.Key;
+            var promotion = await _promotionRepository.GetPromotionByIdAsync(promotionId);
+            
+            if (promotion != null && promotion.TotalUsageLimit.HasValue && 
+                promotion.TotalUsageLimit == promotion.UsedCount)
+            {
+                throw new Exception("Promotion đã đạt giới hạn sử dụng");
+            }
+
+            if (promotion != null)
+            {
+                promotion.UsedCount = (promotion.UsedCount ?? 0) + 1;
+                promotion.UpdatedAt = DateTime.UtcNow;
+                await _promotionRepository.UpdatePromotionAsync(promotion);
+            }
+
+            foreach (var gift in promotionGroup)
+            {
+                var promotionUsage = new PromotionUsage
+                {
+                    Id = Guid.NewGuid().ToString(),
+                    PromotionId = gift.PromotionId,
+                    PromotionGiftId = gift.PromotionGiftId,
+                    OrderId = orderId,
+                    CreatedAt = DateTime.UtcNow,
+                    CreatedBy = userId,
+                    UpdatedAt = DateTime.UtcNow,
+                    UpdatedBy = userId
+                };
+                await _promotionRepository.CreatePromotionUsageWithoutIncrementAsync(promotionUsage);
+            }
+        }
+    }
+
+    private async Task ProcessSystemVoucherAsync(string voucherSystemId, string userId)
+    {
+        var userVoucherSystem = await _voucherRepository.GetUserVoucherSystemByVoucherSystemIdAsync(userId, voucherSystemId);
+        var voucherSystem = await _voucherRepository.GetVoucherSystemByIdAsync(voucherSystemId);
+        
+        if (voucherSystem == null)
+        {
+            throw new Exception("Voucher system không tồn tại");
+        }
+
+        if (userVoucherSystem != null)
+        {
+            if (userVoucherSystem.UsedCount >= userVoucherSystem.ClaimedCount)
+            {
+                throw new Exception("Bạn đã dùng hết voucher system này");
+            }
+            userVoucherSystem.UsedCount += 1;
+            await _voucherRepository.UpdateUserVoucherSystemAsync(userVoucherSystem);
+        }
+        else
+        {
+            var newUserVoucherSystem = new UserVoucherSystem
+            {
+                Id = Guid.NewGuid().ToString(),
+                UserId = userId,
+                VoucherSystemId = voucherSystemId,
+                ClaimedCount = voucherSystem.LimitForUser ?? 0,
+                UsedCount = 1,
+                CreatedAt = DateTime.UtcNow,
+                CreatedBy = userId,
+                UpdatedAt = DateTime.UtcNow,
+                UpdatedBy = userId
+            };
+            await _voucherRepository.CreateUserVoucherSystemAsync(newUserVoucherSystem);
+        }
+
+        if (voucherSystem.Quantity == null || voucherSystem.Quantity <= 0)
+        {
+            throw new Exception("Voucher system đã hết số lượng");
+        }
+        voucherSystem.Quantity -= 1;
+        await _voucherRepository.UpdateVoucherSystemAsync(voucherSystem);
     }
 }

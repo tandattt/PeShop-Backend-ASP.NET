@@ -19,6 +19,8 @@ public partial class TemplateCategoryChild
 
     public string? CategoryChildId { get; set; }
 
+    public bool? IsDeleted { get; set; }
+
     public virtual ICollection<AttributeTemplate> AttributeTemplates { get; set; } = new List<AttributeTemplate>();
 
     public virtual CategoryChild? CategoryChild { get; set; }

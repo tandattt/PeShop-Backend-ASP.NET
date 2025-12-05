@@ -19,6 +19,8 @@ public partial class Category
 
     public string? Type { get; set; }
 
+    public bool? IsDeleted { get; set; }
+
     public virtual ICollection<CategoryChild> CategoryChildren { get; set; } = new List<CategoryChild>();
 
     public virtual ICollection<Product> Products { get; set; } = new List<Product>();

@@ -52,6 +52,9 @@ public partial class Order
 
     public virtual ICollection<PromotionUsage> PromotionUsages { get; set; } = new List<PromotionUsage>();
 
+    // Indicates if this order contains any flash sale products
+    public bool? HasFlashSale { get; set; }
+
     public virtual Shop? Shop { get; set; }
 
     public virtual User? User { get; set; }

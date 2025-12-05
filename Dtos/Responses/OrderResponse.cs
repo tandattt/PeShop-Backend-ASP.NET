@@ -17,7 +17,9 @@ public class OrderResponse{
     public string ShopId { get; set; } = string.Empty;
     public string ShopName { get; set; } = string.Empty;
     public List<OrderItemResponse> Items { get; set; } = new List<OrderItemResponse>();
-
+    
+    // Indicates if this order contains any flash sale products
+    public bool? HasFlashSale { get; set; }
 }
 
 public class OrderItemResponse{

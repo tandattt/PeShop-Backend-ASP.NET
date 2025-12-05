@@ -166,5 +166,48 @@ namespace PeShop.Data.Repositories
                 .AnyAsync(v => v.ShopId == shop_id && v.UserId == userId && v.CreatedAt >= startDate && v.CreatedAt <= endDate);
                 
         }
+
+        public async Task AssignRoleToUserAsync(string userId, string roleId)
+        {
+            var user = await _context.Users
+                .Include(u => u.Roles)
+                .FirstOrDefaultAsync(u => u.Id == userId);
+
+            if (user == null) return;
+
+            var role = await _context.Roles.FindAsync(roleId);
+            if (role == null) return;
+
+            if (!user.Roles.Any(r => r.Id == roleId))
+            {
+                user.Roles.Add(role);
+                await _context.SaveChangesAsync();
+            }
+        }
+
+        public async Task RemoveRoleFromUserAsync(string userId, string roleId)
+        {
+            var user = await _context.Users
+                .Include(u => u.Roles)
+                .FirstOrDefaultAsync(u => u.Id == userId);
+
+            if (user == null) return;
+
+            var role = user.Roles.FirstOrDefault(r => r.Id == roleId);
+            if (role != null)
+            {
+                user.Roles.Remove(role);
+                await _context.SaveChangesAsync();
+            }
+        }
+
+        public async Task<List<Role>> GetUserRoleEntitiesAsync(string userId)
+        {
+            var user = await _context.Users
+                .Include(u => u.Roles)
+                .FirstOrDefaultAsync(u => u.Id == userId);
+
+            return user?.Roles.ToList() ?? [];
+        }
     }
 }

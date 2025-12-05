@@ -21,6 +21,8 @@ public partial class CategoryChild
 
     public string? CategoryId { get; set; }
 
+    public bool? IsDeleted { get; set; }
+
     public virtual Category? Category { get; set; }
 
     public virtual ICollection<Product> Products { get; set; } = new List<Product>();

@@ -49,13 +49,28 @@ public class VariantRepository : IVariantRepository
     public async Task<bool> DecreaseVariantQuantityAsync(int variantId, uint quantity)
     {
         var affected = await _context.Database.ExecuteSqlInterpolatedAsync($@"
-            UPDATE Variants
-            SET Quantity = Quantity - {quantity}
-            WHERE Id = {variantId}
-              AND Status = {(int)VariantStatus.Show}
-              AND Quantity >= {quantity};
+            UPDATE variant
+            SET quantity = quantity - {quantity}
+            WHERE id = {variantId}
+              AND status = {(int)VariantStatus.Show}
+              AND quantity >= {quantity};
         ");
         
         return affected > 0;
+    }
+
+    public async Task<Dictionary<int, Variant>> GetVariantsByIdsAsync(List<int> variantIds)
+    {
+        if (variantIds == null || !variantIds.Any())
+        {
+            return new Dictionary<int, Variant>();
+        }
+
+        var variants = await _context.Variants
+            .Include(v => v.Product)
+            .Where(v => variantIds.Contains(v.Id))
+            .ToListAsync();
+
+        return variants.ToDictionary(v => v.Id, v => v);
     }
 }

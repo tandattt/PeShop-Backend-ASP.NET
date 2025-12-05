@@ -9,12 +9,14 @@ public class OrderHelper : IOrderHelper
     private readonly IVoucherRepository _voucherRepository;
     private readonly IProductRepository _productRepository;
     private readonly IShopRepository _shopRepository;
+    private readonly IFlashSaleRepository _flashSaleRepository;
     
-    public OrderHelper(IVoucherRepository voucherRepository, IProductRepository productRepository, IShopRepository shopRepository)
+    public OrderHelper(IVoucherRepository voucherRepository, IProductRepository productRepository, IShopRepository shopRepository, IFlashSaleRepository flashSaleRepository)
     {
         _voucherRepository = voucherRepository;
         _productRepository = productRepository;
         _shopRepository = shopRepository;
+        _flashSaleRepository = flashSaleRepository;
     }
     public async Task<decimal> CalculateOrderTotalAsync(List<OrderRequest> items)
     {
@@ -64,17 +66,52 @@ public class OrderHelper : IOrderHelper
             shopGroups[shopId].Add(item);
         }
         
+        // Batch check FlashSale cho tất cả products
+        var productIds = items.Select(i => i.ProductId).Distinct().ToList();
+        var flashSaleStatuses = await _flashSaleRepository.HasFlashSalesForProductsAsync(productIds);
+        var flashSaleDiscounts = await _flashSaleRepository.GetFlashSaleDiscountsForProductsAsync(productIds);
+        var activeFlashSales = await _flashSaleRepository.GetActiveFlashSaleProductsAsync(productIds);
+        
         var itemShops = new List<ItemShop>();
         
         foreach (var shopGroup in shopGroups)
         {
             decimal shopTotal = 0;
+            decimal shopFlashSaleDiscount = 0;
             var orderCode = (1000000 + new Random().Next(1000000));
+            
             foreach (var product in shopGroup.Value)
             {
                 productDto productDto = await GetProductPriceAsync(product);
-                product.PriceOriginal = productDto.Price * product.Quantity;
                 product.CategoryId = productDto.CategoryId;
+                
+                // Check và apply FlashSale
+                if (flashSaleStatuses.ContainsKey(product.ProductId) && flashSaleStatuses[product.ProductId])
+                {
+                    product.FlashSalePercentDecrease = flashSaleDiscounts[product.ProductId];
+                    
+                    // Lấy FlashSaleProductId
+                    if (activeFlashSales.TryGetValue(product.ProductId, out var flashSaleProduct))
+                    {
+                        product.FlashSaleProductId = flashSaleProduct.Id;
+                    }
+                    
+                    // Tính giá FlashSale
+                    var flashSalePrice = productDto.Price * (100 - flashSaleDiscounts[product.ProductId]) / 100m;
+                    product.FlashSalePrice = flashSalePrice;
+                    
+                    // Dùng giá FlashSale
+                    product.PriceOriginal = flashSalePrice * product.Quantity;
+                    
+                    // Tính discount
+                    var discount = (productDto.Price - flashSalePrice) * product.Quantity;
+                    shopFlashSaleDiscount += discount;
+                }
+                else
+                {
+                    product.PriceOriginal = productDto.Price * product.Quantity;
+                }
+                
                 shopTotal += product.PriceOriginal;
             }
             
@@ -87,9 +124,9 @@ public class OrderHelper : IOrderHelper
                 ShopName = shop?.Name ?? "Unknown Shop",
                 ShopLogoUrl = shop?.LogoUrl,
                 Products = shopGroup.Value,
-                
                 OrderCode = orderCode.ToString(),
-                PriceOriginal = shopTotal
+                PriceOriginal = shopTotal,
+                FlashSaleDiscount = shopFlashSaleDiscount
             });
         }
         

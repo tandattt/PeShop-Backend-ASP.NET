@@ -12,6 +12,43 @@ public class CategoryRepository : ICategoryRepository
     }
     public async Task<List<Category>> GetCategoriesAsync()
     {
-        return await _context.Categories.ToListAsync();
+        return await _context.Categories
+            .Where(c => c.IsDeleted == null || c.IsDeleted == false)
+            .ToListAsync();
+    }
+
+    public async Task<Category> CreateAsync(Category category)
+    {
+        _context.Categories.Add(category);
+        await _context.SaveChangesAsync();
+        return category;
+    }
+
+    public async Task<Category?> GetByIdAsync(string id)
+    {
+        return await _context.Categories
+            .Where(c => c.Id == id && (c.IsDeleted == null || c.IsDeleted == false))
+            .FirstOrDefaultAsync();
+    }
+
+    public async Task<Category> UpdateAsync(Category category)
+    {
+        _context.Categories.Update(category);
+        await _context.SaveChangesAsync();
+        return category;
+    }
+
+    public async Task<bool> DeleteAsync(string id)
+    {
+        var category = await _context.Categories.FindAsync(id);
+        if (category == null)
+        {
+            return false;
+        }
+        
+        category.IsDeleted = true;
+        category.UpdatedAt = DateTime.UtcNow;
+        await _context.SaveChangesAsync();
+        return true;
     }
 }

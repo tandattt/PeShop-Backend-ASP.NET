@@ -1,0 +1,145 @@
+using PeShop.Interfaces;
+using PeShop.Setting;
+using PeShop.Dtos.GHN;
+using System.Text.Json;
+using PeShop.Exceptions;
+namespace PeShop.Utilities;
+public class GHNUtil : IGHNUtil
+{
+    private readonly IApiHelper _apiHelper;
+    private readonly AppSetting _appSetting;
+    public GHNUtil(IApiHelper apiHelper, AppSetting appSetting)
+    {
+        _apiHelper = apiHelper;
+        _appSetting = appSetting;
+    }
+    public async Task<ProvinceResponse?> GetListProvinceAsync()
+    {
+        var url = $"{_appSetting.BaseApiGHN}/master-data/province";
+        var response = await _apiHelper.GetAsync<ProvinceResponse>(url, new Dictionary<string, string> { { "Token", $"{_appSetting.TokenGHN}" } });
+        var data = response?.data.Select(x => new ProvinceDto
+        {
+            ProvinceID = x.ProvinceID,
+            ProvinceName = x.ProvinceName,
+            Code = x.Code,
+            UpdatedSource = x.UpdatedSource
+        }).Where(x => x.UpdatedSource != "internal").ToList();
+        if (response?.code != 200)
+        {
+            throw new BadRequestException(response?.message ?? "Lỗi khi lấy danh sách tỉnh/thành phố");
+        }
+        return new ProvinceResponse
+        {
+            code = response?.code ?? 0,
+            message = response?.message ?? string.Empty,
+            data = data ?? new List<ProvinceDto>()
+        };
+    }
+    public async Task<DistrictResponse?> GetListDistrictAsync(int provinceId)
+    {
+        var url = $"{_appSetting.BaseApiGHN}/master-data/district";
+        var response = await _apiHelper.GetRawAsync<DistrictResponse>(url, new { province_id = provinceId }, new Dictionary<string, string> { { "Token", $"{_appSetting.TokenGHN}" } });
+        var data = response?.data.Select(x => new DistrictDto
+        {
+            DistrictID = x.DistrictID,
+            DistrictName = x.DistrictName,
+            ProvinceID = x.ProvinceID,
+            SupportType = x.SupportType,
+            Type = x.Type,
+            Code = x.Code,
+            UpdatedSource = x.UpdatedSource
+        }).Where(x => x.UpdatedSource != "internal").ToList();
+        if (response?.code != 200)
+        {
+            throw new BadRequestException(response?.message ?? "Lỗi khi lấy danh sách quận/huyện");
+        }
+        return new DistrictResponse
+        {
+            code = response?.code ?? 0,
+            message = response?.message ?? string.Empty,
+            data = data ?? new List<DistrictDto>()
+        };
+    }
+    public async Task<WardResponse?> GetListWardAsync(int districtId)
+    {
+        var url = $"{_appSetting.BaseApiGHN}/master-data/ward?district_id={districtId}";
+        var response = await _apiHelper.GetAsync<WardResponse>(url, new Dictionary<string, string> { { "Token", $"{_appSetting.TokenGHN}" } });
+        var data = response?.data.Select(x => new WardDto
+        {
+            WardCode = x.WardCode,
+            DistrictID = x.DistrictID,
+            WardName = x.WardName,
+            UpdatedSource = x.UpdatedSource
+        }).Where(x => x.UpdatedSource != "internal").ToList();
+        if (response?.code != 200)
+        {
+            throw new BadRequestException(response?.message ?? "Lỗi khi lấy danh sách xã/phường");
+        }
+        return new WardResponse
+        {
+            code = response?.code ?? 0,
+            message = response?.message ?? string.Empty,
+            data = data ?? new List<WardDto>()
+        };
+    }
+    public async Task<CreateStoreResponse?> CreateStoreAsync(CreateStoreRequest request)
+    {
+        var url = $"{_appSetting.BaseApiGHN}/v2/shop/register";
+        var response = await _apiHelper.GetRawAsync<CreateStoreResponse>(url, request, new Dictionary<string, string> { { "Token", $"{_appSetting.TokenGHN}" } });
+        var responseraw = await _apiHelper.GetRawResponseAsync(url, request, new Dictionary<string, string> { { "Token", $"{_appSetting.TokenGHN}" } });
+        Console.WriteLine("response: " + JsonSerializer.Serialize(responseraw));
+        if (response?.code != 200)
+        {
+            throw new BadRequestException(response?.message ?? "Lỗi khi tạo cửa hàng");
+        }
+        return response;
+    }
+    public async Task<GetServiceResponse?> GetServiceAsync(GetServiceRequest request)
+    {
+        // Console.WriteLine("1");
+        var url = $"{_appSetting.BaseApiGHN}/v2/shipping-order/available-services";
+        var response = await _apiHelper.PostAsync<GetServiceResponse>(url, request, new Dictionary<string, string> { { "Token", $"{_appSetting.TokenGHN}" } });
+        if (response?.code != 200)
+        {
+            throw new BadRequestException(response?.message ?? "Lỗi khi lấy danh sách dịch vụ");
+        }
+        return response;
+    }
+    public async Task<ShippingResponse?> CalculateFeeShippingAsync(ShippingRequest request)
+    {
+        var url1 = $"{_appSetting.BaseApiGHN}/v2/shipping-order/available-services";
+        var serviceDto = new GetServiceRequest
+        {
+            shop_id = request.shop_id,
+            from_district = request.from_district_id,
+            to_district = request.to_district_id
+        };
+        var response1 = await GetServiceAsync(serviceDto);
+        var service_id = response1?.data?.Where(x => x.short_name == "Hàng nhẹ").FirstOrDefault()?.service_id;
+        Console.WriteLine(service_id);
+        request.service_id = service_id ?? 0;
+        var url = $"{_appSetting.BaseApiGHN}/v2/shipping-order/fee";
+        var header = new Dictionary<string, string> { { "Token", $"{_appSetting.TokenGHN}" }, { "ShopId", $"{request.shop_id}" } };
+        Console.WriteLine(header);
+        var response = await _apiHelper.PostAsync<ShippingResponse>(url, request, header);
+        if (response?.code != 200)
+        {
+            throw new BadRequestException(response?.message ?? "Lỗi khi tính phí vận chuyển");
+        }
+        return response;
+    }
+
+    public async Task<GHNOrderResponse?> CreateOrderAsync(GHNCreateOrderRequest request)
+    {
+        var url = $"{_appSetting.BaseApiGHN}/v2/shipping-order/create";
+         var header = new Dictionary<string, string> { { "Token", $"{_appSetting.TokenGHN}" }, { "ShopId", $"{request.ShopId}" } };
+        var response = await _apiHelper.PostAsync<GHNOrderResponse>(url, request, header);
+        var responseraw = await _apiHelper.GetRawResponseAsync(url, request, new Dictionary<string, string> { { "Token", $"{_appSetting.TokenGHN}" } });
+        Console.WriteLine("response: " + JsonSerializer.Serialize(responseraw));
+        if (response?.code != 200)
+        {
+            throw new BadRequestException(response?.message ?? "Lỗi khi tạo đơn hàng");
+        }
+        return response;
+    }
+}

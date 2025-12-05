@@ -134,4 +134,87 @@ public class FlashSaleRepository : IFlashSaleRepository
 
         return result;
     }
+
+    public async Task<FlashSaleProduct?> GetActiveFlashSaleProductAsync(string productId)
+    {
+        var currentTime = DateTime.Now;
+        
+        return await _context.FlashSaleProducts
+            .Include(fsp => fsp.Product)
+            .Include(fsp => fsp.FlashSale)
+            .Where(fsp => fsp.ProductId == productId
+                        && fsp.Product != null && fsp.Product.Status == ProductStatus.Active
+                        && fsp.FlashSale != null 
+                        && fsp.FlashSale.Status == FlashSaleStatus.Active
+                        && fsp.FlashSale.StartTime <= currentTime
+                        && fsp.FlashSale.EndTime >= currentTime)
+            .FirstOrDefaultAsync();
+    }
+
+    public async Task<Dictionary<string, FlashSaleProduct>> GetFlashSaleProductsByIdsAsync(List<string> flashSaleProductIds)
+    {
+        if (flashSaleProductIds == null || !flashSaleProductIds.Any())
+        {
+            return new Dictionary<string, FlashSaleProduct>();
+        }
+
+        var flashSaleProducts = await _context.FlashSaleProducts
+            .Include(fsp => fsp.Product)
+            .Include(fsp => fsp.FlashSale)
+            .Where(fsp => fsp.Id != null && flashSaleProductIds.Contains(fsp.Id))
+            .ToListAsync();
+
+        return flashSaleProducts.ToDictionary(fsp => fsp.Id, fsp => fsp);
+    }
+
+    public async Task<Dictionary<string, FlashSaleProduct>> GetActiveFlashSaleProductsAsync(List<string> productIds)
+    {
+        if (productIds == null || !productIds.Any())
+        {
+            return new Dictionary<string, FlashSaleProduct>();
+        }
+
+        var currentTime = DateTime.Now;
+
+        var flashSaleProducts = await _context.FlashSaleProducts
+            .Include(fsp => fsp.Product)
+            .Include(fsp => fsp.FlashSale)
+            .Where(fsp => fsp.ProductId != null 
+                        && productIds.Contains(fsp.ProductId)
+                        && fsp.Product != null && fsp.Product.Status == ProductStatus.Active
+                        && fsp.FlashSale != null 
+                        && fsp.FlashSale.Status == FlashSaleStatus.Active
+                        && fsp.FlashSale.StartTime <= currentTime
+                        && fsp.FlashSale.EndTime >= currentTime)
+            .ToListAsync();
+
+        return flashSaleProducts
+            .Where(fsp => fsp.ProductId != null)
+            .ToDictionary(fsp => fsp.ProductId!, fsp => fsp);
+    }
+
+    public async Task<bool> DecreaseFlashSaleQuantityAsync(string flashSaleProductId, uint quantity)
+    {
+        var rowsAffected = await _context.Database.ExecuteSqlRawAsync(
+            @"UPDATE flash_sale_product 
+              SET used_quantity = used_quantity + {0}
+              WHERE id = {1} 
+              AND (quantity - COALESCE(used_quantity, 0)) >= {0}",
+            quantity, flashSaleProductId);
+        
+        return rowsAffected > 0;
+    }
+
+    public async Task<int> GetUserFlashSalePurchaseCountAsync(string userId, string flashSaleProductId)
+    {
+        var count = await _context.OrderDetails
+            .Where(od => od.Order != null 
+                      && od.Order.UserId == userId
+                      && od.FlashSaleProductId == flashSaleProductId
+                      && od.Order.StatusPayment != PaymentStatus.Failed
+                      && od.Order.StatusPayment != PaymentStatus.Refunded)
+            .SumAsync(od => (int?)od.Quantity) ?? 0;
+        
+        return count;
+    }
 }

@@ -16,8 +16,12 @@ public class OrderVirtualDto
     public decimal OrderTotal { get; set; }
     public decimal FeeShippingTotal { get; set; }
     public decimal DiscountTotal { get; set; }
+    public decimal FlashSaleDiscountTotal { get; set; } = 0;
     public decimal AmountTotal {get;set;} 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    
+    // Indicates if this order contains any flash sale products
+    public bool? HasFlashSale { get; set; }
 }
 
 public class GiftInOrder
@@ -43,4 +47,5 @@ public class ItemShop
     public string? VoucherId { get; set; } = null;
     public decimal VoucherValue {get;set;}
     public string? VoucherName { get; set; } = null;
+    public decimal FlashSaleDiscount { get; set; } = 0;
 }

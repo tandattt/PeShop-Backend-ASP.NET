@@ -24,10 +24,11 @@ namespace PeShop.Utilities
             var randomNumber = random.Next(100000000, 999999999);
             var tick = randomNumber.ToString();
             var pay = new VnPayLibrary();
+            var returnUrlPath = _vnPaySetting.PaymentBackReturnUrl;;
             string scheme = context.Request.Scheme;
             string host = context.Request.Host.Value;
             
-            var urlCallBack = _vnPaySetting.PaymentBackReturnUrl;
+            var urlCallBack = $"{scheme}://{host}{returnUrlPath}";
 
             if (model.Amount <= 0)
             {

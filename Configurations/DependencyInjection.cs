@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Authorization;
 using PeShop.Data.Contexts;
 using PeShop.Data.Repositories;
 using PeShop.Interfaces;
@@ -13,6 +14,7 @@ using PeShop.Helpers;
 using PeShop.Middleware;
 using MySqlConnector;
 using PeShop.GlobalVariables;
+using PeShop.Authorization;
 namespace PeShop.Configurations
 {
     public static class DependencyInjection
@@ -121,6 +123,14 @@ namespace PeShop.Configurations
             });
             // Rate Limiting
             services.AddRateLimiterPolicies();
+
+            // Memory Cache for permissions
+            services.AddMemoryCache();
+
+            // Authorization - Permission-based
+            services.AddSingleton<IAuthorizationPolicyProvider, PermissionPolicyProvider>();
+            services.AddSingleton<IAuthorizationHandler, PermissionAuthorizationHandler>();
+
             return services;
         }
     }
