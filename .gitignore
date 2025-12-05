@@ -44,3 +44,7 @@ appsettings.*.json
 *.tmp
 *.temp
 *~
+
+job_mappings.json
+
+GlobalVariables.cs
