@@ -85,6 +85,13 @@ public class OrderHelper : IOrderHelper
                 productDto productDto = await GetProductPriceAsync(product);
                 product.CategoryId = productDto.CategoryId;
                 
+                // Fill product info for GHN shipping
+                product.ProductName = productDto.Name;
+                product.ProductWeight = productDto.Weight;
+                product.ProductLength = productDto.Length;
+                product.ProductWidth = productDto.Width;
+                product.ProductHeight = productDto.Height;
+                
                 // Check và apply FlashSale
                 if (flashSaleStatuses.ContainsKey(product.ProductId) && flashSaleStatuses[product.ProductId])
                 {
@@ -126,7 +133,12 @@ public class OrderHelper : IOrderHelper
                 Products = shopGroup.Value,
                 OrderCode = orderCode.ToString(),
                 PriceOriginal = shopTotal,
-                FlashSaleDiscount = shopFlashSaleDiscount
+                FlashSaleDiscount = shopFlashSaleDiscount,
+                // Shop info for GHN shipping
+                ShopGHNId = shop?.GHNId,
+                ShopPhone = shop?.User?.Phone,
+                ShopAddress = shop?.FullNewAddress,
+                ShopDistrictId = !string.IsNullOrEmpty(shop?.OldDistrictId) ? int.Parse(shop.OldDistrictId) : null
             });
         }
         
@@ -135,6 +147,11 @@ public class OrderHelper : IOrderHelper
     private class productDto{
         public decimal Price { get; set; } = 0;
         public string CategoryId { get; set; } = string.Empty;
+        public string? Name { get; set; } = null;
+        public uint? Weight { get; set; } = null;
+        public uint? Length { get; set; } = null;
+        public uint? Width { get; set; } = null;
+        public uint? Height { get; set; } = null;
     }
     private async Task<productDto> GetProductPriceAsync(OrderRequest item)
     {
@@ -147,7 +164,12 @@ public class OrderHelper : IOrderHelper
             if (variant != null)
             {
                 productDto.Price = variant.Price ?? 0;
-                productDto.CategoryId = variant.Product.CategoryId ?? string.Empty;
+                productDto.CategoryId = variant.Product?.CategoryId ?? string.Empty;
+                productDto.Name = variant.Product?.Name;
+                productDto.Weight = variant.Product?.Weight;
+                productDto.Length = variant.Product?.Length;
+                productDto.Width = variant.Product?.Width;
+                productDto.Height = variant.Product?.Height;
             }
         }
         else
@@ -158,6 +180,11 @@ public class OrderHelper : IOrderHelper
             {
                 productDto.Price = product.Price ?? 0;
                 productDto.CategoryId = product.CategoryId ?? string.Empty;
+                productDto.Name = product.Name;
+                productDto.Weight = product.Weight;
+                productDto.Length = product.Length;
+                productDto.Width = product.Width;
+                productDto.Height = product.Height;
             }
         }
         

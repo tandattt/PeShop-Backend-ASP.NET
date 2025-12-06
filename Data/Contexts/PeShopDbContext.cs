@@ -1090,6 +1090,7 @@ public partial class PeShopDbContext : DbContext
             entity.Property(e => e.StreetLine)
                 .HasMaxLength(255)
                 .HasColumnName("street_line");
+            entity.Property(e => e.GHNId).HasColumnName("ghn_id");
             entity.Property(e => e.UpdatedAt)
                 .HasMaxLength(6)
                 .HasColumnName("updated_at");

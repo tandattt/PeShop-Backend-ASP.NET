@@ -19,6 +19,8 @@ namespace PeShop.Helpers
         {
             _configuration = configuration;
             _secretKey = _configuration["Jwt:SecretKey"] ?? throw new ArgumentNullException("Jwt:SecretKey");
+            _issuer = _configuration["Jwt:Issuer"] ?? "PeShop";
+            _audience = _configuration["Jwt:Audience"] ?? "PeShop";
         }
 
         /// <summary>
@@ -43,6 +45,16 @@ namespace PeShop.Helpers
             if(payloadDto.Authorities != null){
                 
             claims.AddRange(payloadDto.Authorities.Select(role => new Claim("authorities", role)));
+            }
+
+            // Thêm permissions
+            if(payloadDto.Permissions != null && payloadDto.Permissions.Count > 0){
+                claims.AddRange(payloadDto.Permissions.Select(permission => new Claim("permissions", permission)));
+                Console.WriteLine($"Added {payloadDto.Permissions.Count} permissions to token");
+            }
+            else
+            {
+                Console.WriteLine("No permissions to add to token (null or empty)");
             }
 
             var tokenDescriptor = new SecurityTokenDescriptor
@@ -117,6 +129,22 @@ namespace PeShop.Helpers
 
             return principal.Claims
                 .Where(c => c.Type == "authorities")
+                .Select(c => c.Value)
+                .ToList();
+        }
+
+        /// <summary>
+        /// Lấy permissions từ token
+        /// </summary>
+        /// <param name="token">JWT token</param>
+        /// <returns>Danh sách permissions</returns>
+        public List<string> GetPermissionsFromToken(string token)
+        {
+            var principal = ValidateToken(token);
+            if (principal == null) return new List<string>();
+
+            return principal.Claims
+                .Where(c => c.Type == "permissions")
                 .Select(c => c.Value)
                 .ToList();
         }

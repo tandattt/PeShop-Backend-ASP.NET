@@ -86,6 +86,11 @@ namespace PeShop.Configurations
             services.AddSingleton<VnPaySetting>(provider =>
                 configuration.GetSection("VnPay").Get<VnPaySetting>() ?? new VnPaySetting());
 
+            // Đăng ký GHNSetting
+            services.Configure<GHNSetting>(configuration.GetSection("GHNSetting"));
+            services.AddSingleton<GHNSetting>(provider =>
+                configuration.GetSection("GHNSetting").Get<GHNSetting>() ?? new GHNSetting());
+
 
 
 

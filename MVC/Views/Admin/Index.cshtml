@@ -1,0 +1,30 @@
+@{
+    ViewData["Title"] = "Dashboard";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">Dashboard</h1>
+</div>
+
+<div class="row">
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Categories</h5>
+                <p class="card-text">Quản lý danh mục sản phẩm</p>
+                <a href="/admin/categories" class="btn btn-primary">Quản lý</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Platform Fees</h5>
+                <p class="card-text">Quản lý phí sàn</p>
+                <a href="/admin/platform-fees" class="btn btn-primary">Quản lý</a>
+            </div>
+        </div>
+    </div>
+</div>
+

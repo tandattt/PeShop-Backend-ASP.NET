@@ -11,6 +11,7 @@ namespace PeShop.Interfaces
         ClaimsPrincipal? ValidateToken(string token);
         string? GetUserIdFromToken(string token);
         List<string> GetRolesFromToken(string token);
+        List<string> GetPermissionsFromToken(string token);
         string? GetShopIdFromToken(string token);
         bool IsTokenValid(string token);
     }

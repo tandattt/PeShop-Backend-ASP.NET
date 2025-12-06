@@ -47,6 +47,8 @@ public partial class Shop
 
     public string? UserId { get; set; }
 
+    public uint? GHNId { get; set; }
+
     public virtual ICollection<Order> Orders { get; set; } = new List<Order>();
 
     public virtual ICollection<Payout> Payouts { get; set; } = new List<Payout>();

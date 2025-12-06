@@ -39,19 +39,28 @@ public class PermissionService : IPermissionService
 
         if (_cache.TryGetValue(cacheKey, out List<string>? cachedPermissions) && cachedPermissions != null)
         {
+            // Console.WriteLine($"[PermissionService] Using cached permissions for user {userId}: {cachedPermissions.Count} permissions");
             return cachedPermissions;
         }
 
-        // Get user's roles
-        var roleIds = await _userRepository.GetUserRolesAsync(userId);
+        // Get user's roles (entities with IDs)
+        var userRoles = await _userRepository.GetUserRoleEntitiesAsync(userId);
+        // Console.WriteLine($"[PermissionService] User {userId} has {userRoles?.Count ?? 0} roles");
         
-        if (roleIds == null || roleIds.Count == 0)
+        if (userRoles == null || userRoles.Count == 0)
         {
+            // Console.WriteLine($"[PermissionService] No roles found for user {userId}");
             return [];
         }
 
+        // Extract role IDs
+        var roleIds = userRoles.Select(r => r.Id).ToList();
+        // Console.WriteLine($"[PermissionService] Role IDs: {string.Join(", ", roleIds)}");
+        // Console.WriteLine($"[PermissionService] Role Names: {string.Join(", ", userRoles.Select(r => r.Name))}");
+
         // Get permissions for all roles (union of permissions)
-        var permissions = await _permissionRepository.GetPermissionNamesByRoleIdsAsync(roleIds);
+        var permissions = await _permissionRepository.GetPermissionNamesByRoleIdsAsync(roleIds) ?? new List<string>();
+        // Console.WriteLine($"[PermissionService] Found {permissions.Count} permissions: {string.Join(", ", permissions)}");
 
         // Cache the result
         _cache.Set(cacheKey, permissions, _cacheExpiration);

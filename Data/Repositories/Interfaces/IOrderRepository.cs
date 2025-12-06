@@ -1,5 +1,8 @@
 using PeShop.Models.Entities;
+using PeShop.Models.Enums;
+
 namespace PeShop.Data.Repositories.Interfaces;
+
 public interface IOrderRepository
 {
     // Task<Order> GetOrderByIdAsync(string orderId);
@@ -12,4 +15,9 @@ public interface IOrderRepository
     Task<bool> UpdatePaymentStatusInOrderAsync(Order order);
     Task<List<Order>> GetOrderByUserIdAsync(string userId);
     Task<Order?> GetOrderDetailAsync(string orderId, string userId);
+    
+    // GHN Webhook methods
+    Task<Order?> GetOrderByOrderCodeAsync(string orderCode);
+    Task<bool> UpdateDeliveryStatusAsync(string orderCode, DeliveryStatus deliveryStatus, OrderStatus? orderStatus);
+    Task<Order> UpdateOrderAsync(Order order);
 }

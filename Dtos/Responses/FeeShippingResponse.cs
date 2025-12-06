@@ -35,3 +35,19 @@ public class ListFeeShippingResponse
 {
     public List<FeeShippingResponse> ListFeeShipping { get; set; } = new();
 }
+
+// V2 - GHN only response
+public class FeeShippingV2Response
+{
+    public string ShopId { get; set; } = string.Empty;
+    public string ShopName { get; set; } = string.Empty;
+    public int TotalFee { get; set; }
+    public int ServiceId { get; set; }
+    public string ServiceName { get; set; } = string.Empty;
+    public DateTime? ExpectedDeliveryTime { get; set; }
+}
+
+public class ListFeeShippingV2Response
+{
+    public List<FeeShippingV2Response> ListFeeShipping { get; set; } = new();
+}

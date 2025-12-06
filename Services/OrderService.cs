@@ -33,7 +33,10 @@ public class OrderService : IOrderService
     private readonly IJobService _jobService;
     private readonly IWebHostEnvironment _webHostEnvironment;
     private readonly IFlashSaleRepository _flashSaleRepository;
-    
+    private readonly IGHNUtil _ghnUtil;
+    private readonly IShopRepository _shopRepository;
+    private readonly IProductRepository _productRepository;
+
     public OrderService(
         IOrderHelper orderHelper,
         IRedisUtil redisUtil,
@@ -51,7 +54,10 @@ public class OrderService : IOrderService
         IUserRepository userRepository,
         IJobService jobService,
         IWebHostEnvironment webHostEnvironment,
-        IFlashSaleRepository flashSaleRepository
+        IFlashSaleRepository flashSaleRepository,
+        IGHNUtil ghnUtil,
+        IShopRepository shopRepository,
+        IProductRepository productRepository
         )
     {
         _orderHelper = orderHelper;
@@ -71,15 +77,18 @@ public class OrderService : IOrderService
         _jobService = jobService;
         _webHostEnvironment = webHostEnvironment;
         _flashSaleRepository = flashSaleRepository;
+        _ghnUtil = ghnUtil;
+        _shopRepository = shopRepository;
+        _productRepository = productRepository;
     }
-    
+
     // Helper class để flatten data
     private class OrderProductItem
     {
         public ItemShop Shop { get; set; } = null!;
         public OrderRequest Product { get; set; } = null!;
     }
-    
+
     private class ValidationResult
     {
         public bool IsValid { get; set; }
@@ -101,7 +110,7 @@ public class OrderService : IOrderService
                 item.PriceOriginal = 0; // Sẽ được tính lại
                 item.CategoryId = string.Empty; // Sẽ được fill lại
             }
-            
+
             // Nhóm các sản phẩm theo shop (Backend tự động check và apply FlashSale)
             var itemShops = await _orderHelper.GroupItemsByShopAsync(request.Items);
 
@@ -109,6 +118,15 @@ public class OrderService : IOrderService
             bool hasFlashSale = itemShops.Any(shop => shop.FlashSaleDiscount > 0);
 
             var userAddress = await _userAddressRepository.GetUserAddressByIdAsync(request.UserAddressId, userId);
+            
+            // Fallback: Nếu RecipientName trống, lấy tên từ User
+            string recipientName = userAddress?.RecipientName ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(recipientName))
+            {
+                var user = await _userRepository.GetByIdAsync(userId);
+                recipientName = user?.Name ?? user?.Username ?? "Khách hàng";
+            }
+            
             // Tạo đơn hàng ảo
             var order = new OrderVirtualDto
             {
@@ -117,17 +135,28 @@ public class OrderService : IOrderService
                 // OrderTotal = orderTotal,
                 // AmountTotal = orderTotal,
                 UserId = userId,
-                RecipientName = userAddress?.RecipientName ?? string.Empty,
+                RecipientName = recipientName,
                 RecipientPhone = userAddress?.Phone ?? string.Empty,
                 CreatedAt = DateTime.UtcNow,
                 UserFullNewAddress = userAddress?.FullNewAddress ?? string.Empty,
-                HasFlashSale = hasFlashSale
+                HasFlashSale = hasFlashSale,
+                // Address details for GHN shipping (using Old address - 3 levels)
+                ToWardCode = userAddress?.OldWardId,
+                ToDistrictId = !string.IsNullOrEmpty(userAddress?.OldDistrictId) ? int.Parse(userAddress.OldDistrictId) : null,
+                StreetLine = userAddress?.StreetLine
             };
 
             // Lưu vào Redis
             bool isSaved = await _redisUtil.SetAsync($"order_{userId}_{order.OrderId}", JsonSerializer.Serialize(order));
-            // Xóa đơn hàng sau 60 phút
-            BackgroundJob.Schedule<IJobService>(service => service.DeleteOrderOnRedisAsync(order.OrderId, userId, false), TimeSpan.FromMinutes(60));
+            // Xóa đơn hàng sau 60 phút (không block nếu Hangfire lỗi)
+            try
+            {
+                BackgroundJob.Schedule<IJobService>(service => service.DeleteOrderOnRedisAsync(order.OrderId, userId, false), TimeSpan.FromMinutes(60));
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[Warning] Failed to schedule background job: {ex.Message}");
+            }
             if (isSaved)
             {
                 return new CreateVirtualOrderResponse
@@ -361,7 +390,14 @@ public class OrderService : IOrderService
             {
                 return new StatusResponse { Status = false, Message = "Người dùng không tồn tại" };
             }
-            BackgroundJob.Enqueue<IJobService>(service => service.DeleteOrderOnRedisAsync(orderId, userId, false));
+            try
+            {
+                BackgroundJob.Enqueue<IJobService>(service => service.DeleteOrderOnRedisAsync(orderId, userId, false));
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[Warning] Failed to enqueue delete job: {ex.Message}");
+            }
             var templatePath = Path.Combine(_webHostEnvironment.ContentRootPath, "Template", "PaymentSuccess.html");
             Console.WriteLine($"[OrderService] ContentRootPath: {_webHostEnvironment.ContentRootPath}");
             Console.WriteLine($"[OrderService] TemplatePath: {templatePath}");
@@ -382,7 +418,14 @@ public class OrderService : IOrderService
                 htmlBody = htmlBody.Replace("{Discount}", orders.DiscountTotal.ToString("N0") + " VNĐ");
                 htmlBody = htmlBody.Replace("{Items}", ""); // Tạm thời để trống vì cần thông tin sản phẩm chi tiết
                 htmlBody = htmlBody.Replace("{OrderTrackingUrl}", "#"); // URL tracking sẽ được thêm sau khi có BaseUrlFrontend
-                BackgroundJob.Enqueue<IEmailUtil>(service => service.SendEmailAsync(user.Email, "Đơn hàng đã được tạo thành công", htmlBody, true));
+                try
+                {
+                    BackgroundJob.Enqueue<IEmailUtil>(service => service.SendEmailAsync(user.Email, "Đơn hàng đã được tạo thành công", htmlBody, true));
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[Warning] Failed to enqueue email job: {ex.Message}");
+                }
             }
             else
             {
@@ -401,10 +444,10 @@ public class OrderService : IOrderService
 
                 // BƯỚC 0: Flatten data - Chỉ loop 1 lần
                 var allProducts = orders.ItemShops
-                    .SelectMany(shop => shop.Products.Select(p => new OrderProductItem 
-                    { 
-                        Shop = shop, 
-                        Product = p 
+                    .SelectMany(shop => shop.Products.Select(p => new OrderProductItem
+                    {
+                        Shop = shop,
+                        Product = p
                     }))
                     .ToList();
 
@@ -429,7 +472,7 @@ public class OrderService : IOrderService
 
                 // BƯỚC 2: Batch query - Giảm database calls
                 var variants = await _variantRepository.GetVariantsByIdsAsync(variantIds);
-                var flashSaleProducts = flashSaleProductIds.Any() 
+                var flashSaleProducts = flashSaleProductIds.Any()
                     ? await _flashSaleRepository.GetFlashSaleProductsByIdsAsync(flashSaleProductIds)
                     : new Dictionary<string, FlashSaleProduct>();
                 var activeFlashSales = productIds.Any()
@@ -438,10 +481,10 @@ public class OrderService : IOrderService
 
                 // BƯỚC 3: Validate tất cả trong 1 loop
                 var validationResult = await ValidateOrderProducts(
-                    allProducts, 
-                    variants, 
-                    flashSaleProducts, 
-                    activeFlashSales, 
+                    allProducts,
+                    variants,
+                    flashSaleProducts,
+                    activeFlashSales,
                     userId);
 
                 if (!validationResult.IsValid)
@@ -453,12 +496,106 @@ public class OrderService : IOrderService
                 await BatchDecreaseQuantitiesAsync(validationResult);
 
                 // BƯỚC 5: Tạo Orders - Group lại theo shop
+                Console.WriteLine($"[DEBUG] Total shops in order: {orders.ItemShops.Count}");
                 foreach (var itemShop in orders.ItemShops)
                 {
                     decimal platformFeeTotal = 0;
                     // Xác định HasFlashSale dựa trên việc có product nào có FlashSaleProductId != null
                     bool shopHasFlashSale = itemShop.Products.Any(p => !string.IsNullOrEmpty(p.FlashSaleProductId));
+
+                    Console.WriteLine($"[DEBUG] Processing shop: {itemShop.ShopId} - {itemShop.ShopName}");
                     
+                    // Sử dụng thông tin shop từ Redis (đã được cache trong ItemShop)
+                    if (itemShop.ShopGHNId == null)
+                    {
+                        throw new Exception($"Shop chưa đăng ký GHN: {itemShop.ShopId}");
+                    }
+
+                    // Tính tổng cân nặng, kích thước và tạo items từ thông tin đã cache trong Redis
+                    int totalWeight = 0;
+                    int maxLength = 0;
+                    int maxWidth = 0;
+                    int maxHeight = 0;
+                    var ghnItems = new List<PeShop.Dtos.GHN.GHNOrderItem>();
+                    foreach (var p in itemShop.Products)
+                    {
+                        var productWeight = (int)(p.ProductWeight ?? 200); // Default 200g nếu không có
+                        var productLength = (int)(p.ProductLength ?? 20); // Default 20cm
+                        var productWidth = (int)(p.ProductWidth ?? 20); // Default 20cm
+                        var productHeight = (int)(p.ProductHeight ?? 10); // Default 10cm
+                        
+                        totalWeight += productWeight * (int)p.Quantity;
+                        // Lấy kích thước lớn nhất trong các sản phẩm
+                        if (productLength > maxLength) maxLength = productLength;
+                        if (productWidth > maxWidth) maxWidth = productWidth;
+                        maxHeight += productHeight * (int)p.Quantity; // Cộng dồn chiều cao
+                        
+                        ghnItems.Add(new PeShop.Dtos.GHN.GHNOrderItem
+                        {
+                            name = p.ProductName ?? p.ProductId,
+                            quantity = (int)p.Quantity,
+                            weight = productWeight
+                        });
+                    }
+
+                    // Sử dụng from_district_id từ cache
+                    int fromDistrictId = itemShop.ShopDistrictId ?? 0;
+
+                    // Gọi service để lấy service_id
+                    var serviceRequest = new PeShop.Dtos.GHN.GetServiceRequest
+                    {
+                        shop_id = (int)itemShop.ShopGHNId,
+                        from_district = fromDistrictId,
+                        to_district = orders.ToDistrictId ?? 0
+                    };
+                    var serviceResponse = await _ghnUtil.GetServiceAsync(serviceRequest);
+                    var serviceId = serviceResponse?.data?.FirstOrDefault(x => x.short_name == "Hàng nhẹ")?.service_id ?? 0;
+
+                    // Validate to_name - GHN yêu cầu bắt buộc
+                    string toName = orders.RecipientName;
+                    if (string.IsNullOrWhiteSpace(toName))
+                    {
+                        // Fallback: Lấy tên từ User nếu RecipientName trống
+                        var user = await _userRepository.GetByIdAsync(userId);
+                        toName = user?.Name ?? user?.Username ?? "Khách hàng";
+                    }
+
+                    // Tạo đơn hàng trên GHN để lấy OrderCode (sử dụng data từ Redis)
+                    var ghnRequest = new PeShop.Dtos.GHN.GHNCreateOrderRequest
+                    {
+                        ShopId = (int)itemShop.ShopGHNId,
+                        payment_type_id = paymentMethod == PaymentMethod.COD ? 2 : 1, // 2 = COD, 1 = Đã thanh toán
+                        note = "",
+                        required_note = "KHONGCHOXEMHANG",
+                        from_name = itemShop.ShopName ?? "",
+                        from_phone = itemShop.ShopPhone ?? "",
+                        from_address = itemShop.ShopAddress ?? "",
+                        from_ward_name = "",
+                        from_district_name = "",
+                        from_province_name = "",
+                        to_name = toName,
+                        to_phone = orders.RecipientPhone ?? "",
+                        to_address = orders.StreetLine ?? orders.UserFullNewAddress,
+                        to_ward_code = orders.ToWardCode ?? "",
+                        to_district_id = orders.ToDistrictId ?? 0,
+                        cod_amount = paymentMethod == PaymentMethod.COD ? (int)(itemShop.PriceOriginal + itemShop.FeeShipping - itemShop.VoucherValue) : 0,
+                        service_id = serviceId,
+                        service_type_id = 2, // Hàng nhẹ
+                        length = maxLength > 0 ? maxLength : 20, // Chiều dài lớn nhất
+                        width = maxWidth > 0 ? maxWidth : 20, // Chiều rộng lớn nhất
+                        height = maxHeight > 0 ? maxHeight : 10, // Tổng chiều cao
+                        weight = totalWeight > 0 ? totalWeight : 200, // Tổng cân nặng thực tế
+                        items = ghnItems
+                    };
+                    Console.WriteLine(JsonSerializer.Serialize(ghnRequest));
+                    var ghnResponse = await _ghnUtil.CreateOrderAsync(ghnRequest);
+                    if (ghnResponse == null || ghnResponse.code != 200)
+                    {
+                        throw new Exception($"Lỗi khi tạo đơn hàng GHN: {ghnResponse?.message ?? "Unknown error"}");
+                    }
+
+                    var ghnOrderCode = ghnResponse.data.order_code;
+
                     var order = new Order
                     {
                         Id = Guid.NewGuid().ToString(),
@@ -469,10 +606,10 @@ public class OrderService : IOrderService
                         DiscountPrice = orders.VoucherSystemValue + itemShop.VoucherValue,
                         SystemVoucherDiscount = orders.VoucherSystemValue,
                         ShopVoucherDiscount = itemShop.VoucherValue,
-                        OrderCode = itemShop.OrderCode,
+                        OrderCode = ghnOrderCode, // Sử dụng OrderCode từ GHN
                         ShippingFee = itemShop.FeeShipping,
                         DeliveryAddress = orders.UserFullNewAddress,
-                        DeliveryStatus = DeliveryStatus.NotDelivered,
+                        DeliveryStatus = DeliveryStatus.Ready_To_Pick,
                         StatusOrder = OrderStatus.Pending,
                         ShopId = itemShop.ShopId,
                         UserId = userId,
@@ -492,7 +629,7 @@ public class OrderService : IOrderService
                     // Console.WriteLine($"[DEBUG] Order created successfully with ID: {orderDB.Id}");
 
                     createdOrderIds.Add(orderDB.Id);
-                    
+
                     // Xử lý voucher shop
                     if (itemShop.VoucherId != null)
                     {
@@ -542,13 +679,13 @@ public class OrderService : IOrderService
                             UpdatedAt = DateTime.UtcNow,
                             UpdatedBy = userId
                         };
-                        
+
                         var orderDetailDB = await _orderDetailRepository.CreateOrderDetailAsync(orderDetail);
                         if (orderDetailDB == null)
                         {
                             throw new Exception("Lỗi khi tạo đơn hàng");
                         }
-                        
+
                         var platformFee = await _platformFeeRepository.GetPlatformFeeByCategoryIdAsync(product.CategoryId);
                         if (platformFee == null)
                         {
@@ -586,11 +723,11 @@ public class OrderService : IOrderService
                     await ProcessSystemVoucherAsync(orders.VoucherSystemId, userId);
                 }
 
-                return new StatusResponse<List<string>> 
-                { 
-                    Status = true, 
-                    Message = "Đơn hàng đã được tạo thành công", 
-                    Data = createdOrderIds 
+                return new StatusResponse<List<string>>
+                {
+                    Status = true,
+                    Message = "Đơn hàng đã được tạo thành công",
+                    Data = createdOrderIds
                 };
             });
 
@@ -622,7 +759,7 @@ public class OrderService : IOrderService
             return new StatusResponse { Status = false, Message = "Lỗi khi cập nhật trạng thái thanh toán" };
         }
         return new StatusResponse { Status = true, Message = "Đơn hàng đã được cập nhật trạng thái thanh toán thành công" };
-        
+
     }
 
     public async Task<OrderDetailResponse> GetOrderDetailAsync(string orderId, string userId)
@@ -662,18 +799,18 @@ public class OrderService : IOrderService
                 Quantity = (int)(y.Quantity ?? 0)
             }).ToList()
         };
-        
+
         // Batch check review status để tránh N+1 query
         var reviewItems = orderDetailResponse.Items
             .Select(item => (orderId, item.ProductId))
             .ToList();
         var reviewStatuses = await _reviewService.GetAllowReviewStatusBatchAsync(reviewItems, userId);
-        
+
         foreach (var item in orderDetailResponse.Items)
         {
             item.IsAllowReview = reviewStatuses.GetValueOrDefault((orderId, item.ProductId), false);
         }
-        
+
         return orderDetailResponse;
 
     }
@@ -713,13 +850,13 @@ public class OrderService : IOrderService
                 })
                     .ToList()
             }).ToList();
-        
+
         // Batch check review status để tránh N+1 query
         var reviewItems = orderResponses
             .SelectMany(order => order.Items.Select(item => (order.OrderId, item.ProductId)))
             .ToList();
         var reviewStatuses = await _reviewService.GetAllowReviewStatusBatchAsync(reviewItems, userId);
-        
+
         foreach (var item in orderResponses)
         {
             foreach (var orderItem in item.Items)
@@ -731,27 +868,39 @@ public class OrderService : IOrderService
         return orderResponses;
     }
 
-    public async Task<StatusResponse> CancleOrder(string orderId, string userId){
+    public async Task<StatusResponse> CancleOrder(string orderId, string userId)
+    {
         var order = await _orderRepository.GetOrderByIdAsync(orderId, userId);
-        if(order == null){
-            return new StatusResponse{Status = false, Message= "order không tồn tại"};
-        } 
-        if (order.StatusOrder != 0){
-            return new StatusResponse{Status = false, Message= "không được chỉnh sửa đơn hàng đã xác nhận"};
-        }
-        order.StatusOrder = OrderStatus.Cancelled;
-       
-        var result = await _orderRepository.UpdatePaymentStatusInOrderAsync(order); // dùng chung được cho update cả order nhưng đặt tên sai á nha
-        if (result == false)
+        if (order == null)
         {
-            return new StatusResponse{Status = false, Message= "cập nhật thất bại"};
+            return new StatusResponse { Status = false, Message = "order không tồn tại" };
         }
-        else{
-             return new StatusResponse{Status = true, Message= "cập nhật thành công"};
+        if (order.StatusOrder != 0)
+        {
+            return new StatusResponse { Status = false, Message = "không được hủy đơn hàng đã xác nhận" };
         }
+        var result = await _transactionRepository.ExecuteInTransactionAsync(async () =>
+            {
+                order.StatusOrder = OrderStatus.Cancelled;
+                order.DeliveryStatus = DeliveryStatus.Cancel;
+                order.UpdatedAt = DateTime.UtcNow;
+                var resultGHN = await _ghnUtil.CancelOrderAsync(order.OrderCode);
+                if (resultGHN?.data.FirstOrDefault()?.result == false)
+                {
+                    throw new Exception("Lỗi khi hủy đơn hàng");
+                }
+                var resultOrder = await _orderRepository.UpdatePaymentStatusInOrderAsync(order); // dùng chung được cho update cả order nhưng đặt tên sai á nha
+                if (resultOrder == false)
+                {
+                    throw new Exception("Lỗi khi cập nhật đơn hàng");
+                }
+                return new StatusResponse { Status = true, Message = "cập nhật thành công" };
+            }
+            );
+        return result;
 
     }
-    
+
     // Helper methods for optimized SaveOrderAsync
     private async Task<ValidationResult> ValidateOrderProducts(
         List<OrderProductItem> allProducts,
@@ -847,7 +996,7 @@ public class OrderService : IOrderService
     {
         var variantTasks = validationResult.VariantUpdates
             .Select(update => _variantRepository.DecreaseVariantQuantityAsync(update.Item1, update.Item2));
-        
+
         var variantResults = await Task.WhenAll(variantTasks);
         if (variantResults.Any(r => !r))
         {
@@ -858,7 +1007,7 @@ public class OrderService : IOrderService
         {
             var flashSaleTasks = validationResult.FlashSaleUpdates
                 .Select(update => _flashSaleRepository.DecreaseFlashSaleQuantityAsync(update.Item1, update.Item2));
-            
+
             var flashSaleResults = await Task.WhenAll(flashSaleTasks);
             if (flashSaleResults.Any(r => !r))
             {
@@ -932,8 +1081,8 @@ public class OrderService : IOrderService
         {
             var promotionId = promotionGroup.Key;
             var promotion = await _promotionRepository.GetPromotionByIdAsync(promotionId);
-            
-            if (promotion != null && promotion.TotalUsageLimit.HasValue && 
+
+            if (promotion != null && promotion.TotalUsageLimit.HasValue &&
                 promotion.TotalUsageLimit == promotion.UsedCount)
             {
                 throw new Exception("Promotion đã đạt giới hạn sử dụng");
@@ -968,7 +1117,7 @@ public class OrderService : IOrderService
     {
         var userVoucherSystem = await _voucherRepository.GetUserVoucherSystemByVoucherSystemIdAsync(userId, voucherSystemId);
         var voucherSystem = await _voucherRepository.GetVoucherSystemByIdAsync(voucherSystemId);
-        
+
         if (voucherSystem == null)
         {
             throw new Exception("Voucher system không tồn tại");

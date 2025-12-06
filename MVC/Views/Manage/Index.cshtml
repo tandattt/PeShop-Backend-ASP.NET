@@ -1,0 +1,217 @@
+@{
+    ViewData["Title"] = "Dashboard";
+    Layout = "_ManageLayout";
+}
+
+<style>
+    .stat-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 15px;
+        padding: 1.5rem;
+        color: white;
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+        height: 100%;
+    }
+
+    .stat-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+    }
+
+    .stat-card.primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+
+    .stat-card.success {
+        background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+    }
+
+    .stat-card.warning {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    }
+
+    .stat-card.info {
+        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    }
+
+    .stat-icon {
+        width: 60px;
+        height: 60px;
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 1rem;
+    }
+
+    .stat-icon i {
+        font-size: 2rem;
+    }
+
+    .stat-value {
+        font-size: 2rem;
+        font-weight: 700;
+        margin-bottom: 0.25rem;
+    }
+
+    .stat-label {
+        font-size: 0.9rem;
+        opacity: 0.9;
+    }
+
+    .welcome-card {
+        background: white;
+        border-radius: 15px;
+        padding: 2rem;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        margin-bottom: 2rem;
+    }
+
+    .welcome-header {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        margin-bottom: 1rem;
+    }
+
+    .welcome-icon {
+        width: 60px;
+        height: 60px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 1.5rem;
+    }
+
+    .quick-action-card {
+        background: white;
+        border-radius: 15px;
+        padding: 1.5rem;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+        height: 100%;
+        border-left: 4px solid #667eea;
+    }
+
+    .quick-action-card:hover {
+        transform: translateX(5px);
+        box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+    }
+
+    .quick-action-icon {
+        width: 50px;
+        height: 50px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 1.25rem;
+        margin-bottom: 1rem;
+    }
+
+    .section-title {
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: #2d3748;
+        margin-bottom: 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+</style>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="mb-1" style="color: #2d3748; font-weight: 700;">
+            <i class="bi bi-speedometer2 text-primary"></i> Dashboard
+        </h2>
+        <p class="text-muted mb-0">Tổng quan hệ thống quản trị</p>
+    </div>
+    <div>
+        <span class="badge bg-primary fs-6 px-3 py-2">
+            <i class="bi bi-calendar3 me-1"></i> @DateTime.Now.ToString("dd/MM/yyyy")
+        </span>
+    </div>
+</div>
+
+<!-- Welcome Card -->
+<div class="welcome-card">
+    <div class="welcome-header">
+        <div class="welcome-icon">
+            <i class="bi bi-hand-thumbs-up"></i>
+        </div>
+        <div>
+            <h4 class="mb-1" style="color: #2d3748; font-weight: 600;">Chào mừng trở lại!</h4>
+            <p class="text-muted mb-0">Hệ thống quản trị PeShop - Quản lý hiệu quả, đơn giản</p>
+        </div>
+    </div>
+</div>
+
+<!-- Statistics Cards -->
+<div class="row g-4 mb-4">
+    <div class="col-md-3 col-sm-6">
+        <div class="stat-card primary">
+            <div class="stat-icon">
+                <i class="bi bi-shop"></i>
+            </div>
+            <div class="stat-value">-</div>
+            <div class="stat-label">Tổng số Shop</div>
+        </div>
+    </div>
+    <div class="col-md-3 col-sm-6">
+        <div class="stat-card success">
+            <div class="stat-icon">
+                <i class="bi bi-cart-check"></i>
+            </div>
+            <div class="stat-value">-</div>
+            <div class="stat-label">Đơn hàng hôm nay</div>
+        </div>
+    </div>
+    <div class="col-md-3 col-sm-6">
+        <div class="stat-card warning">
+            <div class="stat-icon">
+                <i class="bi bi-people"></i>
+            </div>
+            <div class="stat-value">-</div>
+            <div class="stat-label">Người dùng</div>
+        </div>
+    </div>
+    <div class="col-md-3 col-sm-6">
+        <div class="stat-card info">
+            <div class="stat-icon">
+                <i class="bi bi-graph-up-arrow"></i>
+            </div>
+            <div class="stat-value">-</div>
+            <div class="stat-label">Doanh thu</div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Actions -->
+<div class="row">
+    <div class="col-12">
+        <h5 class="section-title">
+            <i class="bi bi-lightning-charge-fill text-warning"></i>
+            Chức năng nhanh
+        </h5>
+    </div>
+    <div class="col-md-4 mb-3">
+        <a href="/manage/ghn-tool/switch-status" class="text-decoration-none">
+            <div class="quick-action-card">
+                <div class="quick-action-icon">
+                    <i class="bi bi-truck"></i>
+                </div>
+                <h6 class="mb-2" style="color: #2d3748; font-weight: 600;">GHN Tool</h6>
+                <p class="text-muted mb-0 small">Chuyển đổi trạng thái đơn hàng GHN</p>
+            </div>
+        </a>
+    </div>
+    <!-- Thêm các quick action khác ở đây -->
+</div>

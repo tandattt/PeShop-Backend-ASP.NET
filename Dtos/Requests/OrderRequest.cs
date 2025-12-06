@@ -15,6 +15,14 @@ public class OrderRequest : ProductRequest
     public string? FlashSaleProductId { get; set; } = null;
     public uint? FlashSalePercentDecrease { get; set; } = null;
     public decimal? FlashSalePrice { get; set; } = null;
+    
+    // Product info for GHN shipping - INTERNAL USE ONLY
+    // These fields are automatically filled by Backend from Product entity
+    public string? ProductName { get; set; } = null;
+    public uint? ProductWeight { get; set; } = null;
+    public uint? ProductLength { get; set; } = null;
+    public uint? ProductWidth { get; set; } = null;
+    public uint? ProductHeight { get; set; } = null;
 }
 
 public class OrderVirtualRequest{

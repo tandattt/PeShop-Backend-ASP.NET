@@ -61,11 +61,25 @@ namespace PeShop.Extensions
         {
             return status switch
             {
-                DeliveryStatus.NotDelivered => "Chưa giao hàng",
+                DeliveryStatus.Ready_To_Pick => "Sẵn sàng để lấy hàng",
+                DeliveryStatus.Picking => "Đang đi lấy hàng",
+                DeliveryStatus.Cancel => "Đơn bị hủy",
+                DeliveryStatus.Money_Collect_Picking => "Đang lấy hàng và thu COD",
+                DeliveryStatus.Picked => "Đã lấy hàng xong",
+                DeliveryStatus.Storing => "Đang lưu kho",
+                DeliveryStatus.Transporting => "Đang vận chuyển",
+                DeliveryStatus.Sorting => "Đang phân loại",
                 DeliveryStatus.Delivering => "Đang giao hàng",
-                DeliveryStatus.Delivered => "Đã nhận hàng",
-                DeliveryStatus.DeliveryFailed => "Giao hàng thất bại",
-                DeliveryStatus.Prepared => "Đã chuẩn bị hàng",
+                DeliveryStatus.Money_Collect_Delivering => "Đang giao hàng và thu COD",
+                DeliveryStatus.Delivered => "Giao hàng thành công",
+                DeliveryStatus.Delivery_Fail => "Giao hàng thất bại",
+                DeliveryStatus.Waiting_To_Return => "Chờ hoàn hàng",
+                DeliveryStatus.Return => "Bắt đầu quy trình hoàn hàng",
+                DeliveryStatus.Return_Transporting => "Đang vận chuyển hàng hoàn",
+                DeliveryStatus.Return_Sorting => "Đang phân loại hàng hoàn",
+                DeliveryStatus.Returning => "Đang trả hàng về người gửi",
+                DeliveryStatus.Return_Fail => "Hoàn hàng thất bại",
+                DeliveryStatus.Returned => "Đã hoàn hàng thành công",
                 _ => status.ToString()
             };
         }

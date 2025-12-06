@@ -1,0 +1,433 @@
+@{
+    ViewData["Title"] = "GHN Tool - Chuyển đổi trạng thái";
+    Layout = "_ManageLayout";
+}
+
+<style>
+    .ghn-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 15px;
+        padding: 2rem;
+        color: white;
+        margin-bottom: 2rem;
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+    }
+
+    .ghn-header-icon {
+        width: 70px;
+        height: 70px;
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 15px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 1rem;
+    }
+
+    .ghn-header-icon i {
+        font-size: 2.5rem;
+    }
+
+    .ghn-header h2 {
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+    }
+
+    .ghn-header p {
+        opacity: 0.9;
+        margin: 0;
+    }
+
+    .form-card {
+        background: white;
+        border-radius: 15px;
+        padding: 2.5rem;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        border: 1px solid #e9ecef;
+    }
+
+    .form-label {
+        font-weight: 600;
+        color: #2d3748;
+        margin-bottom: 0.75rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .form-label i {
+        color: #667eea;
+    }
+
+    .form-control, .form-select {
+        border: 2px solid #e2e8f0;
+        border-radius: 10px;
+        padding: 0.75rem 1rem;
+        font-size: 0.95rem;
+        transition: all 0.3s ease;
+    }
+
+    .form-control:focus, .form-select:focus {
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    .input-group-icon {
+        position: relative;
+    }
+
+    .input-group-icon i {
+        position: absolute;
+        left: 15px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #a0aec0;
+        z-index: 10;
+    }
+
+    .input-group-icon .form-control,
+    .input-group-icon .form-select {
+        padding-left: 45px;
+    }
+
+    .btn-submit {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+        border-radius: 10px;
+        padding: 0.875rem 2rem;
+        font-weight: 600;
+        font-size: 1rem;
+        color: white;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        width: 100%;
+    }
+
+    .btn-submit:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
+        color: white;
+    }
+
+    .btn-submit:active {
+        transform: translateY(0);
+    }
+
+    .btn-submit:disabled {
+        opacity: 0.7;
+        cursor: not-allowed;
+        transform: none;
+    }
+
+    .alert {
+        border-radius: 10px;
+        border: none;
+        margin-bottom: 1.5rem;
+    }
+
+    .form-section {
+        margin-bottom: 2rem;
+    }
+
+    .form-section-title {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: #2d3748;
+        margin-bottom: 1.5rem;
+        padding-bottom: 0.75rem;
+        border-bottom: 2px solid #e9ecef;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .form-section-title i {
+        color: #667eea;
+    }
+
+    .required-field::after {
+        content: " *";
+        color: #dc3545;
+    }
+</style>
+
+<div class="ghn-header">
+    <div class="ghn-header-icon">
+        <i class="bi bi-truck"></i>
+    </div>
+    <h2>Chuyển đổi trạng thái đơn hàng GHN</h2>
+    <p>Quản lý và cập nhật trạng thái đơn hàng Giao Hàng Nhanh một cách nhanh chóng</p>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-lg-10 col-xl-8">
+        <div class="form-card">
+            <div id="alertContainer"></div>
+
+            <form id="switchStatusForm">
+                <!-- Thông tin đơn hàng -->
+                <div class="form-section">
+                    <h5 class="form-section-title">
+                        <i class="bi bi-info-circle"></i>
+                        Thông tin đơn hàng
+                    </h5>
+
+                    <div class="mb-4">
+                        <label for="orderCode" class="form-label required-field">
+                            <i class="bi bi-upc-scan"></i>
+                            Order Code
+                        </label>
+                        <div class="input-group-icon">
+                            <i class="bi bi-hash"></i>
+                            <input type="text" id="orderCode" name="orderCode" class="form-control" 
+                                   placeholder="Nhập mã đơn hàng" required />
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label for="status" class="form-label required-field">
+                            <i class="bi bi-arrow-repeat"></i>
+                            Trạng thái
+                        </label>
+                        <div class="input-group-icon">
+                            <i class="bi bi-list-check"></i>
+                            <select id="status" name="status" class="form-select" required>
+                                <option value="">--- Chọn trạng thái ---</option>
+                                <option value="ready_to_pick">Ready To Pick</option>
+                                <option value="picking">Picking</option>
+                                <option value="cancel">Cancel</option>
+                                <option value="money_collect_picking">Money Collect Picking</option>
+                                <option value="picked">Picked</option>
+                                <option value="storing">Storing</option>
+                                <option value="transporting">Transporting</option>
+                                <option value="sorting">Sorting</option>
+                                <option value="delivering">Delivering</option>
+                                <option value="money_collect_delivering">Money Collect Delivering</option>
+                                <option value="delivered">Delivered</option>
+                                <option value="delivery_fail">Delivery Fail</option>
+                                <option value="waiting_to_return">Waiting To Return</option>
+                                <option value="return">Return</option>
+                                <option value="return_transporting">Return Transporting</option>
+                                <option value="return_sorting">Return Sorting</option>
+                                <option value="returning">Returning</option>
+                                <option value="return_fail">Return Fail</option>
+                                <option value="returned">Returned</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Thông tin bổ sung -->
+                <div class="form-section">
+                    <h5 class="form-section-title">
+                        <i class="bi bi-file-text"></i>
+                        Thông tin bổ sung (Tùy chọn)
+                    </h5>
+
+                    <div class="mb-4">
+                        <label for="action" class="form-label">
+                            <i class="bi bi-lightning"></i>
+                            Action
+                        </label>
+                        <div class="input-group-icon">
+                            <i class="bi bi-gear"></i>
+                            <input type="text" id="action" name="action" class="form-control" 
+                                   placeholder="Nhập action (nếu có)" />
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label for="reason" class="form-label">
+                            <i class="bi bi-chat-left-text"></i>
+                            Lý do
+                        </label>
+                        <div class="input-group-icon">
+                            <i class="bi bi-file-earmark-text"></i>
+                            <input type="text" id="reason" name="reason" class="form-control" 
+                                   placeholder="Nhập lý do (nếu có)" />
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label for="reasonCode" class="form-label">
+                            <i class="bi bi-code-square"></i>
+                            Mã lý do
+                        </label>
+                        <div class="input-group-icon">
+                            <i class="bi bi-123"></i>
+                            <input type="text" id="reasonCode" name="reasonCode" class="form-control" 
+                                   placeholder="Nhập mã lý do (nếu có)" />
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-grid gap-2">
+                    <button type="submit" class="btn btn-submit" id="submitBtn">
+                        <span id="submitText">
+                            <i class="bi bi-arrow-repeat me-2"></i>Chuyển đổi trạng thái
+                        </span>
+                        <span id="submitSpinner" class="spinner-border spinner-border-sm d-none ms-2" role="status"></span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.getElementById('switchStatusForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const submitBtn = document.getElementById('submitBtn');
+            const submitText = document.getElementById('submitText');
+            const submitSpinner = document.getElementById('submitSpinner');
+            const alertContainer = document.getElementById('alertContainer');
+            
+            // Disable button and show spinner
+            submitBtn.disabled = true;
+            submitText.innerHTML = '<i class="bi bi-hourglass-split me-2"></i>Đang xử lý...';
+            submitSpinner.classList.remove('d-none');
+            
+            // Clear previous alerts
+            alertContainer.innerHTML = '';
+            
+            // Get form data
+            const formData = {
+                orderCode: document.getElementById('orderCode').value,
+                status: document.getElementById('status').value,
+                action: document.getElementById('action').value || '',
+                reason: document.getElementById('reason').value || '',
+                reasonCode: document.getElementById('reasonCode').value || ''
+            };
+            
+            try {
+                const response = await fetch('/ghn/switch-order-status', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(formData)
+                });
+                
+                const result = await response.json();
+                
+                // Xử lý response có thể được wrap bởi SuccessResponseFilter
+                let responseData = result;
+                if (result && result.data && typeof result.data === 'object') {
+                    // Nếu có wrapper, lấy data bên trong
+                    responseData = result.data;
+                }
+                
+                if (response.ok && responseData) {
+                    // Kiểm tra result trong data
+                    let dataItem = null;
+                    if (responseData.data) {
+                        dataItem = Array.isArray(responseData.data) ? responseData.data[0] : responseData.data;
+                    } else if (responseData.result !== undefined) {
+                        dataItem = responseData;
+                    }
+                    
+                    const isSuccess = dataItem && dataItem.result === true;
+                    const message = dataItem?.message || responseData.message || 'Chuyển đổi trạng thái thành công!';
+                    
+                    if (isSuccess) {
+                        // Success - result = true, gọi webhook để cập nhật DB
+                        try {
+                            const webhookResponse = await fetch('/ghn/webhook', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                },
+                                body: JSON.stringify({
+                                    orderCode: formData.orderCode,
+                                    status: formData.status,
+                                    action: formData.action || null,
+                                    reason: formData.reason || null,
+                                    reasonCode: formData.reasonCode || null
+                                })
+                            });
+
+                            const webhookResult = await webhookResponse.json();
+                            
+                            // Xử lý response có thể được wrap bởi SuccessResponseFilter
+                            let webhookData = webhookResult;
+                            if (webhookResult && webhookResult.data && typeof webhookResult.data === 'object') {
+                                webhookData = webhookResult.data;
+                            }
+                            
+                            const isUpdated = webhookData?.updated === true;
+                            const webhookMessage = webhookData?.message || webhookResult?.message || '';
+                            
+                            if (webhookResponse.ok && isUpdated) {
+                                alertContainer.innerHTML = `
+                                    <div class="alert alert-success alert-dismissible fade show" role="alert">
+                                        <i class="bi bi-check-circle-fill me-2"></i>
+                                        <strong>Thành công!</strong> ${message}<br>
+                                        <small>Đã cập nhật trạng thái trong database.</small>
+                                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                                    </div>
+                                `;
+                            } else {
+                                // Webhook failed nhưng switch status thành công
+                                alertContainer.innerHTML = `
+                                    <div class="alert alert-warning alert-dismissible fade show" role="alert">
+                                        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                                        <strong>Thành công!</strong> ${message}<br>
+                                        <small>Cảnh báo: Không thể cập nhật trạng thái trong database. ${webhookMessage}</small>
+                                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                                    </div>
+                                `;
+                            }
+                        } catch (webhookError) {
+                            // Webhook error nhưng switch status thành công
+                            alertContainer.innerHTML = `
+                                <div class="alert alert-warning alert-dismissible fade show" role="alert">
+                                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                                    <strong>Thành công!</strong> ${message}<br>
+                                    <small>Cảnh báo: Lỗi khi cập nhật database: ${webhookError.message}</small>
+                                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                                </div>
+                            `;
+                        }
+                        
+                        // Reset form on success
+                        document.getElementById('switchStatusForm').reset();
+                    } else {
+                        // Warning/Error - result = false
+                        alertContainer.innerHTML = `
+                            <div class="alert alert-warning alert-dismissible fade show" role="alert">
+                                <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                                <strong>Cảnh báo!</strong> ${message}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                            </div>
+                        `;
+                    }
+                } else {
+                    // Error từ API
+                    const errorMessage = result?.message || result?.error?.message || result?.data?.message || 'Có lỗi xảy ra';
+                    alertContainer.innerHTML = `
+                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                            <i class="bi bi-x-circle-fill me-2"></i>
+                            <strong>Lỗi!</strong> ${errorMessage}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                alertContainer.innerHTML = `
+                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                        <i class="bi bi-x-circle-fill me-2"></i>
+                        <strong>Lỗi!</strong> ${error.message}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                `;
+            } finally {
+                // Re-enable button and hide spinner
+                submitBtn.disabled = false;
+                submitText.innerHTML = '<i class="bi bi-arrow-repeat me-2"></i>Chuyển đổi trạng thái';
+                submitSpinner.classList.add('d-none');
+            }
+        });
+    </script>
+}

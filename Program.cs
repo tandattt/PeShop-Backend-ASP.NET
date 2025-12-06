@@ -12,10 +12,18 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 
-builder.Services.AddControllers(options =>
+// Add MVC support for Views (bao gồm cả API Controllers)
+builder.Services.AddControllersWithViews(options =>
 {
     options.Filters.Add<GlobalExceptionFilter>();
     options.Filters.Add<SuccessResponseFilter>();
+})
+.AddViewLocalization()
+.AddDataAnnotationsLocalization()
+.AddRazorOptions(options =>
+{
+    options.ViewLocationFormats.Add("/MVC/Views/{1}/{0}.cshtml");
+    options.ViewLocationFormats.Add("/MVC/Views/Shared/{0}.cshtml");
 });
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
@@ -23,6 +31,14 @@ builder.Services.AddSwaggerConfig(builder.Environment);
 
 // Add SignalR
 builder.Services.AddSignalR();
+
+// Add Session
+builder.Services.AddSession(options =>
+{
+    options.IdleTimeout = TimeSpan.FromHours(24);
+    options.Cookie.HttpOnly = true;
+    options.Cookie.IsEssential = true;
+});
 // Add JWT Authentication
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
@@ -91,11 +107,20 @@ app.UseSwaggerUI();
 
 app.UseHttpsRedirection();
 app.UseCors("AllowAll");
+app.UseSession();
 app.UseAuthentication();
 app.UseAuthorization();
 
 
 app.MapControllers().RequireRateLimiting(PolicyConstants.IpPolicy);
+
+// Map MVC routes - tất cả routes MVC nằm dưới /manage
+app.MapControllerRoute(
+    name: "manage",
+    pattern: "manage/{controller=GHNTool}/{action=SwitchStatus}/{id?}");
+
+// Redirect root đến /manage (sẽ redirect đến GHN Tool)
+app.MapGet("/", () => Results.Redirect("/manage/ghn-tool/switch-status"));
 
 app.MapHub<NotificationHub>("/hubs/notification");
 

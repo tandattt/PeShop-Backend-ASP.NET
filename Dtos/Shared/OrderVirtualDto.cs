@@ -22,6 +22,11 @@ public class OrderVirtualDto
     
     // Indicates if this order contains any flash sale products
     public bool? HasFlashSale { get; set; }
+    
+    // Address details for GHN shipping (using Old address - 3 levels)
+    public string? ToWardCode { get; set; }  // OldWardId
+    public int? ToDistrictId { get; set; }   // OldDistrictId (parsed to int)
+    public string? StreetLine { get; set; }
 }
 
 public class GiftInOrder
@@ -48,4 +53,10 @@ public class ItemShop
     public decimal VoucherValue {get;set;}
     public string? VoucherName { get; set; } = null;
     public decimal FlashSaleDiscount { get; set; } = 0;
+    
+    // Shop info for GHN shipping - filled by Backend
+    public uint? ShopGHNId { get; set; } = null;
+    public string? ShopPhone { get; set; } = null;
+    public string? ShopAddress { get; set; } = null;
+    public int? ShopDistrictId { get; set; } = null;
 }

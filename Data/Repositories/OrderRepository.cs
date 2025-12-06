@@ -1,6 +1,7 @@
 namespace PeShop.Data.Repositories;
 using PeShop.Data.Repositories.Interfaces;
 using PeShop.Models.Entities;
+using PeShop.Models.Enums;
 using PeShop.Data.Contexts;
 using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
@@ -72,5 +73,42 @@ public class OrderRepository : IOrderRepository
             return true;
         }
         return false;
+    }
+
+    // GHN Webhook methods
+    public async Task<Order?> GetOrderByOrderCodeAsync(string orderCode)
+    {
+        return await _context.Orders
+            .FirstOrDefaultAsync(o => o.OrderCode == orderCode);
+    }
+
+    public async Task<bool> UpdateDeliveryStatusAsync(string orderCode, DeliveryStatus deliveryStatus, OrderStatus? orderStatus)
+    {
+        var order = await _context.Orders
+            .FirstOrDefaultAsync(o => o.OrderCode == orderCode);
+        
+        if (order == null)
+        {
+            return false;
+        }
+
+        order.DeliveryStatus = deliveryStatus;
+        
+        if (orderStatus.HasValue)
+        {
+            order.StatusOrder = orderStatus.Value;
+        }
+        
+        order.UpdatedAt = DateTime.UtcNow;
+        
+        var result = await _context.SaveChangesAsync();
+        return result > 0;
+    }
+
+    public async Task<Order> UpdateOrderAsync(Order order)
+    {
+        _context.Orders.Update(order);
+        await _context.SaveChangesAsync();
+        return order;
     }
 }

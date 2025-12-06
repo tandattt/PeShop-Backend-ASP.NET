@@ -31,3 +31,16 @@ public class ProductRequest{
     [Range(1, int.MaxValue, ErrorMessage = "Số lượng phải lớn hơn 0")]
     public uint Quantity { get; set; }
 }
+
+// V2 - GHN only request
+public class FeeShippingV2Request
+{
+    [Required(ErrorMessage = "OrderId là bắt buộc")]
+    public string OrderId { get; set; } = string.Empty;
+}
+
+public class ApplyFeeShippingV2Request
+{
+    [Required(ErrorMessage = "OrderId là bắt buộc")]
+    public string OrderId { get; set; } = string.Empty;
+}

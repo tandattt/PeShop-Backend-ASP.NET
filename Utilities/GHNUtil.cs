@@ -1,6 +1,7 @@
 using PeShop.Interfaces;
 using PeShop.Setting;
 using PeShop.Dtos.GHN;
+using PeShop.Dtos.Requests;
 using System.Text.Json;
 using PeShop.Exceptions;
 namespace PeShop.Utilities;
@@ -8,10 +9,12 @@ public class GHNUtil : IGHNUtil
 {
     private readonly IApiHelper _apiHelper;
     private readonly AppSetting _appSetting;
-    public GHNUtil(IApiHelper apiHelper, AppSetting appSetting)
+    private readonly GHNSetting _ghnSetting;
+    public GHNUtil(IApiHelper apiHelper, AppSetting appSetting, GHNSetting ghnSetting)
     {
         _apiHelper = apiHelper;
         _appSetting = appSetting;
+        _ghnSetting = ghnSetting;
     }
     public async Task<ProvinceResponse?> GetListProvinceAsync()
     {
@@ -86,8 +89,7 @@ public class GHNUtil : IGHNUtil
     {
         var url = $"{_appSetting.BaseApiGHN}/v2/shop/register";
         var response = await _apiHelper.GetRawAsync<CreateStoreResponse>(url, request, new Dictionary<string, string> { { "Token", $"{_appSetting.TokenGHN}" } });
-        var responseraw = await _apiHelper.GetRawResponseAsync(url, request, new Dictionary<string, string> { { "Token", $"{_appSetting.TokenGHN}" } });
-        Console.WriteLine("response: " + JsonSerializer.Serialize(responseraw));
+        Console.WriteLine($"[GHN] CreateStore response: code={response?.code}");
         if (response?.code != 200)
         {
             throw new BadRequestException(response?.message ?? "Lỗi khi tạo cửa hàng");
@@ -107,6 +109,7 @@ public class GHNUtil : IGHNUtil
     }
     public async Task<ShippingResponse?> CalculateFeeShippingAsync(ShippingRequest request)
     {
+        
         var url1 = $"{_appSetting.BaseApiGHN}/v2/shipping-order/available-services";
         var serviceDto = new GetServiceRequest
         {
@@ -121,6 +124,7 @@ public class GHNUtil : IGHNUtil
         var url = $"{_appSetting.BaseApiGHN}/v2/shipping-order/fee";
         var header = new Dictionary<string, string> { { "Token", $"{_appSetting.TokenGHN}" }, { "ShopId", $"{request.shop_id}" } };
         Console.WriteLine(header);
+        Console.WriteLine(JsonSerializer.Serialize(request));
         var response = await _apiHelper.PostAsync<ShippingResponse>(url, request, header);
         if (response?.code != 200)
         {
@@ -132,14 +136,59 @@ public class GHNUtil : IGHNUtil
     public async Task<GHNOrderResponse?> CreateOrderAsync(GHNCreateOrderRequest request)
     {
         var url = $"{_appSetting.BaseApiGHN}/v2/shipping-order/create";
-         var header = new Dictionary<string, string> { { "Token", $"{_appSetting.TokenGHN}" }, { "ShopId", $"{request.ShopId}" } };
+        var header = new Dictionary<string, string> { { "Token", $"{_appSetting.TokenGHN}" }, { "ShopId", $"{request.ShopId}" } };
         var response = await _apiHelper.PostAsync<GHNOrderResponse>(url, request, header);
-        var responseraw = await _apiHelper.GetRawResponseAsync(url, request, new Dictionary<string, string> { { "Token", $"{_appSetting.TokenGHN}" } });
-        Console.WriteLine("response: " + JsonSerializer.Serialize(responseraw));
+        Console.WriteLine($"[GHN] CreateOrder response: code={response?.code}, order_code={response?.data?.order_code}");
         if (response?.code != 200)
         {
             throw new BadRequestException(response?.message ?? "Lỗi khi tạo đơn hàng");
         }
+        return response;
+    }
+    public async Task<CancelOrderResponse?> CancelOrderAsync(string orderCode)
+    {
+        var url = $"{_appSetting.BaseApiGHN}/v2/switch-status/cancel";
+        var response = await _apiHelper.PostAsync<CancelOrderResponse>(url, new { order_codes = new List<string> { orderCode } }, new Dictionary<string, string> { { "Token", $"{_appSetting.TokenGHN}" } });
+        if (response?.code != 200)
+        {
+            throw new BadRequestException(response?.message ?? "Lỗi khi hủy đơn hàng");
+        }
+        return response;
+    }
+
+    public async Task<SwitchOrderStatusResponse?> SwitchOrderStatusAsync(SwitchOrderStatusRequest request)
+    {
+        var url = "https://dev-online-gateway.ghn.vn/integration/tool-support/public-api/v2/order/switchStatus";
+        
+        var headers = new Dictionary<string, string>
+        {
+            { "Token", _ghnSetting.Token },
+            // { "Content-Type", _ghnSetting.ContentType },
+            { "Accept", _ghnSetting.Accept },
+            { "Accept-Encoding", _ghnSetting.AcceptEncoding },
+            { "Accept-Language", _ghnSetting.AcceptLanguage },
+            { "Origin", _ghnSetting.Origin },
+            { "Referer", _ghnSetting.Referer },
+            { "User-Agent", _ghnSetting.UserAgent },
+            { "Sec-Ch-Ua", _ghnSetting.SecChUa },
+            { "Sec-Ch-Ua-Mobile", _ghnSetting.SecChUaMobile },
+            { "Sec-Ch-Ua-Platform", _ghnSetting.SecChUaPlatform },
+            { "Sec-Fetch-Dest", _ghnSetting.SecFetchDest },
+            { "Sec-Fetch-Mode", _ghnSetting.SecFetchMode },
+            { "Sec-Fetch-Site", _ghnSetting.SecFetchSite },
+            { "Priority", _ghnSetting.Priority }
+        };
+
+        var payload = new
+        {
+            order_code = request.OrderCode,
+            status = request.Status,
+            action = request.Action ?? "",
+            reason = request.Reason ?? "",
+            reasonCode = request.ReasonCode ?? ""
+        };
+
+        var response = await _apiHelper.PostAsync<SwitchOrderStatusResponse>(url, payload, headers);
         return response;
     }
 }

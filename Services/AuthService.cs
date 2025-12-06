@@ -10,6 +10,7 @@ using PeShop.Data.Repositories.Interfaces;
 using PeShop.Constants;
 using PeShop.Extensions;
 using PeShop.Utilities;
+using PeShop.Services.Interfaces;
 
 namespace PeShop.Services
 {
@@ -20,13 +21,15 @@ namespace PeShop.Services
         private readonly IRoleRepository _roleRepository;
         private readonly IRedisUtil _redisUtil;
         private readonly IShopRepository _shopRepository;
-        public AuthService(IUserRepository userRepository, IJwtHelper jwtHelper, IRoleRepository roleRepository, IRedisUtil redisUtil, IShopRepository shopRepository)
+        private readonly IPermissionService _permissionService;
+        public AuthService(IUserRepository userRepository, IJwtHelper jwtHelper, IRoleRepository roleRepository, IRedisUtil redisUtil, IShopRepository shopRepository, IPermissionService permissionService)
         {
             _userRepository = userRepository;
             _jwtHelper = jwtHelper;
             _roleRepository = roleRepository;
             _redisUtil = redisUtil;
             _shopRepository = shopRepository;
+            _permissionService = permissionService;
         }
 
         public async Task<LoginResponse?> LoginAsync(LoginRequest request)
@@ -44,13 +47,20 @@ namespace PeShop.Services
             }
 
             var userRoles = await _userRepository.GetUserRolesAsync(user.Id);
+            var userPermissions = await _permissionService.GetUserPermissionsAsync(user.Id);
             var shop = await _shopRepository.GetShopByUserIdAsync(user.Id);
-            Console.WriteLine("shop?.Id: " + shop?.Id);
+            // Console.WriteLine("shop?.Id: " + shop?.Id);
+            // Console.WriteLine("userPermissions count: " + (userPermissions?.Count ?? 0));
+            // if (userPermissions != null && userPermissions.Count > 0)
+            // {
+            //     Console.WriteLine("userPermissions: " + string.Join(", ", userPermissions));
+            // }
             var accessPayload = new JwtPayloadDto 
             {
                 Sub = user.Id,
                 ShopId = shop != null ? shop.Id : "",
                 Authorities = userRoles,
+                Permissions = userPermissions ?? new List<string>(),
                 TokenType = "access",
                 TimeLive = 24,
             };
