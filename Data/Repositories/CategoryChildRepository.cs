@@ -39,6 +39,30 @@ public class CategoryChildRepository : ICategoryChildRepository
             .ToListAsync();
     }
 
+    public async Task<(List<CategoryChild> Data, int TotalCount)> GetAllAsync(int page, int pageSize, string? search)
+    {
+        var query = _context.CategoryChildren
+            .Where(cc => cc.IsDeleted == null || cc.IsDeleted == false);
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            search = search.ToLower();
+            query = query.Where(cc => 
+                (cc.Name != null && cc.Name.ToLower().Contains(search)) ||
+                (cc.Description != null && cc.Description.ToLower().Contains(search)));
+        }
+
+        var totalCount = await query.CountAsync();
+
+        var data = await query
+            .OrderByDescending(cc => cc.CreatedAt)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+
+        return (data, totalCount);
+    }
+
     public async Task<CategoryChild> UpdateAsync(CategoryChild categoryChild)
     {
         _context.CategoryChildren.Update(categoryChild);

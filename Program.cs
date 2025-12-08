@@ -9,7 +9,6 @@ using PeShop.Constants;
 using PeShop.SignalR;
 
 var builder = WebApplication.CreateBuilder(args);
-
 // Add services to the container.
 
 // Add MVC support for Views (bao gồm cả API Controllers)

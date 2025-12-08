@@ -6,6 +6,10 @@ public partial class Permission
 
     public string Name { get; set; } = null!;
 
+    public string? Module { get; set; }
+
+    public string? Action { get; set; }
+
     public string? Description { get; set; }
 
     public DateTime? CreatedAt { get; set; }

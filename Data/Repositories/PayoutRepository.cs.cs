@@ -2,6 +2,9 @@ namespace PeShop.Data.Repositories;
 using PeShop.Data.Contexts;
 using PeShop.Data.Repositories.Interfaces;
 using PeShop.Models.Entities;
+using PeShop.Models.Enums;
+using Microsoft.EntityFrameworkCore;
+
 public class PayoutRepository : IPayoutRepository
 {
     private readonly PeShopDbContext _context;
@@ -20,5 +23,28 @@ public class PayoutRepository : IPayoutRepository
     {
         await _context.Payouts.AddAsync(payout);
         // Không gọi SaveChangesAsync để cho phép transaction commit sau
+    }
+
+    public async Task<Payout?> GetPayoutByOrderIdAsync(string orderId)
+    {
+        return await _context.Payouts
+            .FirstOrDefaultAsync(p => p.OrderId == orderId);
+    }
+
+    public async Task<bool> UpdatePayoutStatusAsync(string orderId, PayoutStatus status)
+    {
+        var payout = await _context.Payouts
+            .FirstOrDefaultAsync(p => p.OrderId == orderId);
+        
+        if (payout == null)
+        {
+            return false;
+        }
+
+        payout.Status = status;
+        payout.UpdatedAt = DateTime.UtcNow;
+        
+        var result = await _context.SaveChangesAsync();
+        return result > 0;
     }
 }   

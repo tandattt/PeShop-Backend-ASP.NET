@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using PeShop.Data.Contexts;
 using PeShop.Models.Entities;
 using PeShop.Models.Enums;
+using PeShop.Data.Repositories.Interfaces;
 
 namespace PeShop.Data.Repositories
 {
@@ -208,6 +209,56 @@ namespace PeShop.Data.Repositories
                 .FirstOrDefaultAsync(u => u.Id == userId);
 
             return user?.Roles.ToList() ?? [];
+        }
+
+        public async Task<(List<User> Users, int TotalCount)> GetUsersAsync(int page, int pageSize, string? search)
+        {
+            var query = _context.Users
+                .Include(u => u.Roles)
+                .AsQueryable();
+
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                search = search.ToLower();
+                query = query.Where(u => 
+                    (u.Username != null && u.Username.ToLower().Contains(search)) ||
+                    (u.Email != null && u.Email.ToLower().Contains(search)) ||
+                    (u.Name != null && u.Name.ToLower().Contains(search)) ||
+                    (u.Phone != null && u.Phone.Contains(search)));
+            }
+
+            var totalCount = await query.CountAsync();
+
+            var users = await query
+                .OrderByDescending(u => u.CreatedAt)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            return (users, totalCount);
+        }
+
+        public async Task<bool> UpdateStatusAsync(string userId, UserStatus status)
+        {
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == userId);
+            if (user == null)
+            {
+                return false;
+            }
+
+            user.Status = status;
+            user.UpdatedAt = DateTime.UtcNow;
+
+            // Đồng thời cập nhật status của shop nếu user có shop
+            var shop = await _context.Shops.FirstOrDefaultAsync(s => s.UserId == userId);
+            if (shop != null)
+            {
+                shop.Status = status == UserStatus.Active ? ShopStatus.active : ShopStatus.locked;
+                shop.UpdatedAt = DateTime.UtcNow;
+            }
+
+            await _context.SaveChangesAsync();
+            return true;
         }
     }
 }

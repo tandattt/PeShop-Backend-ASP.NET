@@ -13,6 +13,7 @@ public interface IOrderRepository
     Task<Order> GetOrderByIdAsync(string orderId, string userId);
     Task<List<Order>> GetOrdersByIdsAsync(List<string> orderIds, string userId);
     Task<bool> UpdatePaymentStatusInOrderAsync(Order order);
+    Task<bool> UpdateOrderStatusAsync(string orderId, OrderStatus statusOrder, DeliveryStatus deliveryStatus, PaymentStatus paymentStatus, string updatedBy);
     Task<List<Order>> GetOrderByUserIdAsync(string userId);
     Task<Order?> GetOrderDetailAsync(string orderId, string userId);
     

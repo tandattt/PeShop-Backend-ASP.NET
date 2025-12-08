@@ -180,10 +180,10 @@ public class FeeShippingService : IFeeShippingService
                 to_district = order.ToDistrictId ?? 0
             };
             // Console.WriteLine(JsonSerializer.Serialize(serviceRequest));
-            var serviceResponse = await _ghnUtil.GetServiceAsync(serviceRequest);
-            // // Ưu tiên "Hàng nhẹ", nếu không có thì lấy service đầu tiên
-            var service = serviceResponse?.data?.FirstOrDefault() 
-                          ?? serviceResponse?.data?.FirstOrDefault();
+            // var serviceResponse = await _ghnUtil.GetServiceAsync(serviceRequest);
+            // // // Ưu tiên "Hàng nhẹ", nếu không có thì lấy service đầu tiên
+            // var service = serviceResponse?.data?.Where(x => x.service_type_id == 2).FirstOrDefault() 
+            //               ?? serviceResponse?.data?.FirstOrDefault();
             
             // if (service == null)
             // {
@@ -194,7 +194,7 @@ public class FeeShippingService : IFeeShippingService
             var shippingRequest = new PeShop.Dtos.GHN.ShippingRequest
             {
                 shop_id = (int)itemShop.ShopGHNId,
-                // service_id = service.service_id,
+                service_type_id = 2,
                 from_district_id = itemShop.ShopDistrictId ?? 0,
                 to_district_id = order.ToDistrictId ?? 0,
                 to_ward_code = order.ToWardCode ?? "",
@@ -202,7 +202,7 @@ public class FeeShippingService : IFeeShippingService
             };
             Console.WriteLine(
                 shippingRequest.shop_id + " " +
-                shippingRequest.service_id + " " +
+                shippingRequest.service_type_id + " " +
                 shippingRequest.from_district_id + " " +
                 shippingRequest.to_district_id + " " +
                 shippingRequest.to_ward_code + " " +
@@ -215,8 +215,8 @@ public class FeeShippingService : IFeeShippingService
                 ShopId = itemShop.ShopId,
                 ShopName = itemShop.ShopName,
                 TotalFee = shippingResponse?.data?.total ?? 0,
-                ServiceId = service.service_id,
-                ServiceName = service.short_name ?? "GHN",
+                ServiceTypeId = 2,
+                ServiceTypeName = "Hàng nhẹ",
                 ExpectedDeliveryTime = null // Có thể lấy từ GHN response nếu cần
             });
         }
@@ -250,7 +250,7 @@ public class FeeShippingService : IFeeShippingService
                 return new StatusResponse { Status = false, Message = $"Không tìm thấy shop {fee.ShopId} trong đơn hàng" };
             }
             
-            targetShop.ShippingId = fee.ServiceId.ToString();
+            targetShop.ShippingId = fee.ServiceTypeId.ToString();
             targetShop.FeeShipping = fee.TotalFee;
         }
         

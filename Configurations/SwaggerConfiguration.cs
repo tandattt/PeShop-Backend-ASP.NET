@@ -45,7 +45,13 @@ namespace PeShop.Configurations
         Type = "string",
         Format = "binary"
     });
-
+    // Include XML comments for Swagger documentation
+    var xmlFile = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
+    var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
+    if (File.Exists(xmlPath))
+    {
+        c.IncludeXmlComments(xmlPath, includeControllerXmlComments: true);
+    }
     // Ignore problematic parameters
     c.IgnoreObsoleteActions();
     c.IgnoreObsoleteProperties();

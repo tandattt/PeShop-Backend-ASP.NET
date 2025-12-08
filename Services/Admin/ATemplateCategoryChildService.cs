@@ -1,6 +1,7 @@
 using PeShop.Data.Repositories.Interfaces;
 using PeShop.Dtos.Requests;
 using PeShop.Dtos.Responses;
+using PeShop.Dtos.Shared;
 using PeShop.Exceptions;
 using PeShop.Models.Entities;
 using PeShop.Services.Admin.Interfaces;
@@ -77,6 +78,38 @@ public class ATemplateCategoryChildService : IATemplateCategoryChildService
             UpdatedAt = tcc.UpdatedAt,
             UpdatedBy = tcc.UpdatedBy
         }).ToList();
+    }
+
+    public async Task<PaginationResponse<TemplateCategoryChildResponse>> GetAllAsync(AGetTemplateCategoryChildRequest request)
+    {
+        var (templateCategoryChildren, totalCount) = await _templateCategoryChildRepository.GetAllAsync(request.Page, request.PageSize);
+        
+        var data = templateCategoryChildren.Select(tcc => new TemplateCategoryChildResponse
+        {
+            Id = tcc.Id,
+            Name = tcc.Name,
+            CategoryChildId = tcc.CategoryChildId,
+            IsDeleted = tcc.IsDeleted,
+            CreatedAt = tcc.CreatedAt,
+            CreatedBy = tcc.CreatedBy,
+            UpdatedAt = tcc.UpdatedAt,
+            UpdatedBy = tcc.UpdatedBy
+        }).ToList();
+
+        var totalPages = (int)Math.Ceiling((double)totalCount / request.PageSize);
+
+        return new PaginationResponse<TemplateCategoryChildResponse>
+        {
+            Data = data,
+            CurrentPage = request.Page,
+            PageSize = request.PageSize,
+            TotalCount = totalCount,
+            TotalPages = totalPages,
+            HasNextPage = request.Page < totalPages,
+            HasPreviousPage = request.Page > 1,
+            NextPage = request.Page < totalPages ? request.Page + 1 : request.Page,
+            PreviousPage = request.Page > 1 ? request.Page - 1 : request.Page
+        };
     }
 
     public async Task<TemplateCategoryChildResponse> UpdateAsync(int id, UpdateTemplateCategoryChildRequest request)

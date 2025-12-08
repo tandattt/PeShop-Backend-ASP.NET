@@ -34,12 +34,48 @@ public class PlatformFeeRepository : IPlatformFeeRepository
             .ToListAsync();
     }
 
+    public async Task<(List<PlatformFee> Data, int TotalCount)> GetAllAsync(int page, int pageSize, string? categoryId)
+    {
+        var query = _context.PlatformFees.AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(categoryId))
+        {
+            query = query.Where(p => p.CategoryId == categoryId);
+        }
+
+        var totalCount = await query.CountAsync();
+
+        var data = await query
+            .OrderByDescending(p => p.CreatedAt)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+
+        return (data, totalCount);
+    }
+
     public async Task<List<PlatformFee>> GetByCategoryIdAsync(string categoryId)
     {
         return await _context.PlatformFees
             .Where(p => p.CategoryId == categoryId)
             .OrderByDescending(p => p.CreatedAt)
             .ToListAsync();
+    }
+
+    public async Task<(List<PlatformFee> Data, int TotalCount)> GetByCategoryIdAsync(string categoryId, int page, int pageSize)
+    {
+        var query = _context.PlatformFees
+            .Where(p => p.CategoryId == categoryId);
+
+        var totalCount = await query.CountAsync();
+
+        var data = await query
+            .OrderByDescending(p => p.CreatedAt)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+
+        return (data, totalCount);
     }
 
     public async Task<PlatformFee> UpdateAsync(PlatformFee platformFee)

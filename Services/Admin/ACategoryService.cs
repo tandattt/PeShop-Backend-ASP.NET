@@ -1,6 +1,7 @@
 using PeShop.Data.Repositories.Interfaces;
 using PeShop.Dtos.Requests;
 using PeShop.Dtos.Responses;
+using PeShop.Dtos.Shared;
 using PeShop.Exceptions;
 using PeShop.Models.Entities;
 using PeShop.Services.Admin.Interfaces;
@@ -78,6 +79,38 @@ public class ACategoryService : IACategoryService
             UpdatedAt = c.UpdatedAt,
             UpdatedBy = c.UpdatedBy
         }).ToList();
+    }
+
+    public async Task<PaginationResponse<CategoryResponse>> GetAllAsync(AGetCategoryRequest request)
+    {
+        var (categories, totalCount) = await _categoryRepository.GetCategoriesAsync(request.Page, request.PageSize, request.Search);
+        
+        var data = categories.Select(c => new CategoryResponse
+        {
+            Id = c.Id,
+            Name = c.Name,
+            Type = c.Type,
+            IsDeleted = c.IsDeleted,
+            CreatedAt = c.CreatedAt,
+            CreatedBy = c.CreatedBy,
+            UpdatedAt = c.UpdatedAt,
+            UpdatedBy = c.UpdatedBy
+        }).ToList();
+
+        var totalPages = (int)Math.Ceiling((double)totalCount / request.PageSize);
+
+        return new PaginationResponse<CategoryResponse>
+        {
+            Data = data,
+            CurrentPage = request.Page,
+            PageSize = request.PageSize,
+            TotalCount = totalCount,
+            TotalPages = totalPages,
+            HasNextPage = request.Page < totalPages,
+            HasPreviousPage = request.Page > 1,
+            NextPage = request.Page < totalPages ? request.Page + 1 : request.Page,
+            PreviousPage = request.Page > 1 ? request.Page - 1 : request.Page
+        };
     }
 
     public async Task<CategoryResponse> UpdateAsync(string id, UpdateCategoryRequest request)

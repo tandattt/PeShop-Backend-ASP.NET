@@ -65,7 +65,8 @@ public class OrderRepository : IOrderRepository
     }
     public async Task<bool> UpdatePaymentStatusInOrderAsync(Order order)
     {
-        Console.WriteLine("order: " + JsonSerializer.Serialize(order));
+        // Chỉ log ID và các field quan trọng để tránh object cycle - hiển thị enum dưới dạng tên
+        Console.WriteLine($"Updating order: Id={order.Id}, StatusPayment={order.StatusPayment} ({(int)order.StatusPayment}), StatusOrder={order.StatusOrder} ({(int)order.StatusOrder}), DeliveryStatus={order.DeliveryStatus} ({(int)order.DeliveryStatus})");
         _context.Orders.Update(order);
         var result = await _context.SaveChangesAsync();
         if (result > 0)
@@ -73,6 +74,24 @@ public class OrderRepository : IOrderRepository
             return true;
         }
         return false;
+    }
+    
+    public async Task<bool> UpdateOrderStatusAsync(string orderId, OrderStatus statusOrder, DeliveryStatus deliveryStatus, PaymentStatus paymentStatus, string updatedBy)
+    {
+        var order = await _context.Orders.FindAsync(orderId);
+        if (order == null)
+        {
+            return false;
+        }
+        
+        order.StatusOrder = statusOrder;
+        order.DeliveryStatus = deliveryStatus;
+        order.StatusPayment = paymentStatus;
+        order.UpdatedAt = DateTime.UtcNow;
+        order.UpdatedBy = updatedBy;
+        
+        var result = await _context.SaveChangesAsync();
+        return result > 0;
     }
 
     // GHN Webhook methods

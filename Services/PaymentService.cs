@@ -21,7 +21,10 @@ public class PaymentService : IPaymentService
     private readonly ITransactionRepository _transactionRepository;
     private readonly IUserRepository _userRepository;
     private readonly IWebHostEnvironment _webHostEnvironment;
-    public PaymentService(IVnPayUtil vnPayUtil, IRedisUtil redisUtil, AppSetting appSetting, IOrderService orderService, ITransactionRepository transactionRepository, IUserRepository userRepository, IWebHostEnvironment webHostEnvironment)
+    private readonly IOrderRepository _orderRepository;
+    private readonly IGHNUtil _ghnUtil;
+    private readonly IJobService _jobService;
+    public PaymentService(IVnPayUtil vnPayUtil, IRedisUtil redisUtil, AppSetting appSetting, IOrderService orderService, ITransactionRepository transactionRepository, IUserRepository userRepository, IWebHostEnvironment webHostEnvironment, IOrderRepository orderRepository, IGHNUtil ghnUtil, IJobService jobService)
     {
         _vnPayUtil = vnPayUtil;
         _redisUtil = redisUtil;
@@ -30,6 +33,9 @@ public class PaymentService : IPaymentService
         _transactionRepository = transactionRepository;
         _userRepository = userRepository;
         _webHostEnvironment = webHostEnvironment;
+        _orderRepository = orderRepository;
+        _ghnUtil = ghnUtil;
+        _jobService = jobService;
     }
     public async Task<string> CreatePaymentUrlAsync(string orderId, HttpContext context, string userId)
     {
@@ -146,13 +152,16 @@ public class PaymentService : IPaymentService
                         htmlBody = htmlBody.Replace("{ShippingAddress}", order?.UserFullNewAddress ?? "");
                         htmlBody = htmlBody.Replace("{OrderDate}", DateTime.UtcNow.ToString("dd/MM/yyyy"));
                         htmlBody = htmlBody.Replace("{PaymentMethod}", "VNPay");
-                        htmlBody = htmlBody.Replace("{TotalAmount}", response.Amount.ToString("N0") + " VNĐ");
+                        htmlBody = htmlBody.Replace("{TotalAmount}", ((order?.FeeShippingTotal ?? 0) + (order?.OrderTotal ?? response.Amount) - (order?.DiscountTotal ?? 0)).ToString("N0") + " VNĐ");
                         htmlBody = htmlBody.Replace("{SubTotal}", (order?.OrderTotal ?? response.Amount).ToString("N0") + " VNĐ");
                         htmlBody = htmlBody.Replace("{ShippingFee}", (order?.FeeShippingTotal ?? 0).ToString("N0") + " VNĐ");
                         htmlBody = htmlBody.Replace("{Discount}", (order?.DiscountTotal ?? 0).ToString("N0") + " VNĐ");
                         htmlBody = htmlBody.Replace("{Items}", ""); // Tạm thời để trống vì cần thông tin sản phẩm chi tiết
                         htmlBody = htmlBody.Replace("{OrderTrackingUrl}", _appSetting.BaseUrlFrontend + "/orders/" + orderId);
-                        BackgroundJob.Enqueue<IEmailUtil>(service => service.SendEmailAsync(user.Email, "Đơn hàng đã được tạo thành công", htmlBody, true));
+                        if (!string.IsNullOrEmpty(user.Email))
+                        {
+                            BackgroundJob.Enqueue<IEmailUtil>(service => service.SendEmailAsync(user.Email, "Đơn hàng đã được tạo thành công", htmlBody, true));
+                        }
                     }
                     else
                     {
@@ -179,7 +188,91 @@ public class PaymentService : IPaymentService
                     Console.WriteLine($"[ProcessCallbackAsync] Inner Exception: {ex.InnerException.Message}");
                 }
                 Console.WriteLine("Exception: " + ex.Message);
-                throw new Exception("Lỗi khi xử lý thanh toán");
+                
+                // Xử lý lỗi: cập nhật trạng thái thanh toán thất bại, xóa Redis, và hủy đơn hàng
+                try
+                {
+                    Console.WriteLine($"[ProcessCallbackAsync] Bắt đầu xử lý rollback cho {readOrdIds.Split(",").Length} order(s)...");
+                    var orderIds = readOrdIds.Split(",");
+                    
+                    foreach (var readOrdId in orderIds)
+                    {
+                        try
+                        {
+                            Console.WriteLine($"[ProcessCallbackAsync] Xử lý rollback cho order: {readOrdId}");
+                            
+                            // 1. Cập nhật payment status sang Failed
+                            var updatePaymentResult = await _orderService.UpdatePaymentStatusInOrderAsync(readOrdId, userId, PaymentStatus.Failed);
+                            Console.WriteLine($"[ProcessCallbackAsync] Order {readOrdId} - Update payment status: {updatePaymentResult.Status}");
+                            
+                            // 2. Lấy order để kiểm tra OrderCode (chỉ cần OrderCode, không cần full entity)
+                            var order = await _orderRepository.GetOrderByIdAsync(readOrdId, userId);
+                            string? orderCode = null;
+                            if (order != null)
+                            {
+                                orderCode = order.OrderCode;
+                                
+                                // 3. Nếu có OrderCode, gọi GHN API để cancel order trước
+                                if (!string.IsNullOrEmpty(orderCode))
+                                {
+                                    try
+                                    {
+                                        Console.WriteLine($"[ProcessCallbackAsync] Gọi GHN API để cancel order: {orderCode}");
+                                        var cancelResult = await _ghnUtil.CancelOrderAsync(orderCode);
+                                        if (cancelResult?.data?.FirstOrDefault()?.result == false)
+                                        {
+                                            Console.WriteLine($"[ProcessCallbackAsync] Warning: Không thể cancel order trên GHN: {orderCode}");
+                                        }
+                                        else
+                                        {
+                                            Console.WriteLine($"[ProcessCallbackAsync] Đã cancel order trên GHN thành công: {orderCode}");
+                                        }
+                                    }
+                                    catch (Exception ghnEx)
+                                    {
+                                        Console.WriteLine($"[ProcessCallbackAsync] Lỗi khi gọi GHN cancel order: {ghnEx.Message}");
+                                        // Tiếp tục xử lý dù GHN có lỗi
+                                    }
+                                }
+                            }
+                            
+                            // 4. Cập nhật order status sang Cancelled và delivery status sang Cancel
+                            // Sử dụng method riêng để tránh object cycle
+                            var updateStatusResult = await _orderRepository.UpdateOrderStatusAsync(
+                                readOrdId, 
+                                OrderStatus.Cancelled, 
+                                DeliveryStatus.Cancel, 
+                                PaymentStatus.Failed, 
+                                userId);
+                            
+                            if (updateStatusResult)
+                            {
+                                Console.WriteLine($"[ProcessCallbackAsync] Order {readOrdId} đã được cập nhật status sang Cancelled");
+                            }
+                            else
+                            {
+                                Console.WriteLine($"[ProcessCallbackAsync] Warning: Không thể cập nhật order status cho {readOrdId}");
+                            }
+                        }
+                        catch (Exception orderEx)
+                        {
+                            Console.WriteLine($"[ProcessCallbackAsync] Lỗi khi xử lý rollback cho order {readOrdId}: {orderEx.Message}");
+                            // Tiếp tục xử lý các order khác
+                        }
+                    }
+                    
+                    // 6. Xóa Redis
+                    Console.WriteLine($"[ProcessCallbackAsync] Xóa Redis cho orderId: {orderId}, userId: {userId}");
+                    BackgroundJob.Enqueue<IJobService>(service => service.DeleteOrderOnRedisAsync(orderId, userId, true));
+                    Console.WriteLine($"[ProcessCallbackAsync] Đã xóa Redis thành công");
+                }
+                catch (Exception rollbackEx)
+                {
+                    Console.WriteLine($"[ProcessCallbackAsync] Lỗi khi xử lý rollback: {rollbackEx.Message}");
+                    Console.WriteLine($"[ProcessCallbackAsync] Rollback StackTrace: {rollbackEx.StackTrace}");
+                }
+                
+                return _appSetting.BaseUrlFrontend + "/Payment/failed?orderId=" + orderId;
             }
         }
         else

@@ -1,6 +1,7 @@
 using PeShop.Data.Repositories.Interfaces;
 using PeShop.Dtos.Requests;
 using PeShop.Dtos.Responses;
+using PeShop.Dtos.Shared;
 using PeShop.Exceptions;
 using PeShop.Models.Entities;
 using PeShop.Services.Admin.Interfaces;
@@ -94,6 +95,38 @@ public class APlatformFeeService : IAPlatformFeeService
         }).ToList();
     }
 
+    public async Task<PaginationResponse<PlatformFeeResponse>> GetAllAsync(AGetPlatformFeeRequest request)
+    {
+        var (platformFees, totalCount) = await _platformFeeRepository.GetAllAsync(request.Page, request.PageSize, request.CategoryId);
+        
+        var data = platformFees.Select(pf => new PlatformFeeResponse
+        {
+            Id = pf.Id,
+            CategoryId = pf.CategoryId,
+            Fee = pf.Fee,
+            IsActive = pf.IsActive,
+            CreatedAt = pf.CreatedAt,
+            CreatedBy = pf.CreatedBy,
+            UpdatedAt = pf.UpdatedAt,
+            UpdatedBy = pf.UpdatedBy
+        }).ToList();
+
+        var totalPages = (int)Math.Ceiling((double)totalCount / request.PageSize);
+
+        return new PaginationResponse<PlatformFeeResponse>
+        {
+            Data = data,
+            CurrentPage = request.Page,
+            PageSize = request.PageSize,
+            TotalCount = totalCount,
+            TotalPages = totalPages,
+            HasNextPage = request.Page < totalPages,
+            HasPreviousPage = request.Page > 1,
+            NextPage = request.Page < totalPages ? request.Page + 1 : request.Page,
+            PreviousPage = request.Page > 1 ? request.Page - 1 : request.Page
+        };
+    }
+
     public async Task<List<PlatformFeeResponse>> GetByCategoryIdAsync(string categoryId)
     {
         var platformFees = await _platformFeeRepository.GetByCategoryIdAsync(categoryId);
@@ -109,6 +142,38 @@ public class APlatformFeeService : IAPlatformFeeService
             UpdatedAt = pf.UpdatedAt,
             UpdatedBy = pf.UpdatedBy
         }).ToList();
+    }
+
+    public async Task<PaginationResponse<PlatformFeeResponse>> GetByCategoryIdAsync(string categoryId, AGetPlatformFeeRequest request)
+    {
+        var (platformFees, totalCount) = await _platformFeeRepository.GetByCategoryIdAsync(categoryId, request.Page, request.PageSize);
+        
+        var data = platformFees.Select(pf => new PlatformFeeResponse
+        {
+            Id = pf.Id,
+            CategoryId = pf.CategoryId,
+            Fee = pf.Fee,
+            IsActive = pf.IsActive,
+            CreatedAt = pf.CreatedAt,
+            CreatedBy = pf.CreatedBy,
+            UpdatedAt = pf.UpdatedAt,
+            UpdatedBy = pf.UpdatedBy
+        }).ToList();
+
+        var totalPages = (int)Math.Ceiling((double)totalCount / request.PageSize);
+
+        return new PaginationResponse<PlatformFeeResponse>
+        {
+            Data = data,
+            CurrentPage = request.Page,
+            PageSize = request.PageSize,
+            TotalCount = totalCount,
+            TotalPages = totalPages,
+            HasNextPage = request.Page < totalPages,
+            HasPreviousPage = request.Page > 1,
+            NextPage = request.Page < totalPages ? request.Page + 1 : request.Page,
+            PreviousPage = request.Page > 1 ? request.Page - 1 : request.Page
+        };
     }
 
     public async Task<PlatformFeeResponse> UpdateAsync(uint id, UpdatePlatformFeeRequest request)

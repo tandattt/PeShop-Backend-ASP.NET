@@ -129,6 +129,7 @@ public class JobService : IJobService
         await _redisUtil.DeleteAsync($"calculated_order_{userId}_{orderId}");
 
         await _redisUtil.DeleteAsync($"fee_shipping_{userId}_{orderId}");
+        await _redisUtil.DeleteAsync($"fee_shipping_v2_{userId}_{orderId}");
 
         await _redisUtil.DeleteAsync($"promotion_in_order_{userId}_{orderId}");
         if (isBank)

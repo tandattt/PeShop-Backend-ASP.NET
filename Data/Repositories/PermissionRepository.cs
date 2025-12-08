@@ -49,6 +49,16 @@ public class PermissionRepository : IPermissionRepository
             .ToListAsync();
     }
 
+    public async Task<List<Permission>> GetPermissionsByRoleIdsAsync(IEnumerable<string> roleIds)
+    {
+        return await _context.RolePermissions
+            .Where(rp => roleIds.Contains(rp.RoleId))
+            .Include(rp => rp.Permission)
+            .Select(rp => rp.Permission)
+            .Distinct()
+            .ToListAsync();
+    }
+
     public async Task<RolePermission?> GetRolePermissionAsync(string roleId, int permissionId)
     {
         return await _context.RolePermissions
@@ -67,5 +77,23 @@ public class PermissionRepository : IPermissionRepository
     {
         _context.RolePermissions.Remove(rolePermission);
         await _context.SaveChangesAsync();
+    }
+
+    public async Task<List<Permission>> GetByModuleAsync(string module)
+    {
+        return await _context.Permissions
+            .Where(p => p.Module == module)
+            .ToListAsync();
+    }
+
+    public async Task<Dictionary<string, List<Permission>>> GetPermissionsGroupedByModuleAsync()
+    {
+        var permissions = await _context.Permissions
+            .Where(p => p.Module != null)
+            .ToListAsync();
+
+        return permissions
+            .GroupBy(p => p.Module!)
+            .ToDictionary(g => g.Key, g => g.ToList());
     }
 }

@@ -35,6 +35,22 @@ public class TemplateCategoryRepository : ITemplateCategoryRepository
             .ToListAsync();
     }
 
+    public async Task<(List<TemplateCategory> Data, int TotalCount)> GetAllAsync(int page, int pageSize)
+    {
+        var query = _context.TemplateCategories
+            .Where(tc => tc.IsDeleted == null || tc.IsDeleted == false);
+
+        var totalCount = await query.CountAsync();
+
+        var data = await query
+            .OrderByDescending(tc => tc.CreatedAt)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+
+        return (data, totalCount);
+    }
+
     public async Task<TemplateCategory> UpdateAsync(TemplateCategory templateCategory)
     {
         _context.TemplateCategories.Update(templateCategory);

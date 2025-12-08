@@ -42,8 +42,8 @@ public class FeeShippingV2Response
     public string ShopId { get; set; } = string.Empty;
     public string ShopName { get; set; } = string.Empty;
     public int TotalFee { get; set; }
-    public int ServiceId { get; set; }
-    public string ServiceName { get; set; } = string.Empty;
+    public int ServiceTypeId { get; set; }
+    public string ServiceTypeName { get; set; } = string.Empty;
     public DateTime? ExpectedDeliveryTime { get; set; }
 }
 

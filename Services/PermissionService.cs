@@ -68,11 +68,39 @@ public class PermissionService : IPermissionService
         return permissions;
     }
 
+    public async Task<List<Permission>> GetUserPermissionEntitiesAsync(string userId)
+    {
+        // Get user's roles (entities with IDs)
+        var userRoles = await _userRepository.GetUserRoleEntitiesAsync(userId);
+        
+        if (userRoles == null || userRoles.Count == 0)
+        {
+            return [];
+        }
+
+        // Extract role IDs
+        var roleIds = userRoles.Select(r => r.Id).ToList();
+
+        // Get permissions for all roles (union of permissions)
+        var permissions = await _permissionRepository.GetPermissionsByRoleIdsAsync(roleIds) ?? new List<Permission>();
+
+        return permissions;
+    }
+
     public async Task<List<Permission>> GetAllPermissionsAsync()
     {
         return await _permissionRepository.GetAllAsync();
     }
 
+    public async Task<List<Permission>> GetPermissionsByModuleAsync(string module)
+    {
+        return await _permissionRepository.GetByModuleAsync(module);
+    }
+
+    public async Task<Dictionary<string, List<Permission>>> GetPermissionsGroupedByModuleAsync()
+    {
+        return await _permissionRepository.GetPermissionsGroupedByModuleAsync();
+    }
 
     public async Task AssignPermissionToRoleAsync(string roleId, int permissionId)
     {

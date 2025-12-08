@@ -10,7 +10,7 @@ public class ShippingRequest
     public int width { get; set; }
     public int length { get; set; }
     public int weight { get; set; }
-    public int service_id { get; set; }
+    public int service_type_id { get; set; } = 2;
     public int shop_id { get; set; }
 
 }

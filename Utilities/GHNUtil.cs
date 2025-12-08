@@ -117,10 +117,10 @@ public class GHNUtil : IGHNUtil
             from_district = request.from_district_id,
             to_district = request.to_district_id
         };
-        var response1 = await GetServiceAsync(serviceDto);
-        var service_id = response1?.data?.Where(x => x.short_name == "Hàng nhẹ").FirstOrDefault()?.service_id;
-        Console.WriteLine(service_id);
-        request.service_id = service_id ?? 0;
+        // var response1 = await GetServiceAsync(serviceDto);
+        // var service_id = response1?.data?.Where(x => x.short_name == "Hàng nhẹ").FirstOrDefault()?.service_id;
+        // Console.WriteLine(service_id);
+        // request.service_id = service_id ?? 0;
         var url = $"{_appSetting.BaseApiGHN}/v2/shipping-order/fee";
         var header = new Dictionary<string, string> { { "Token", $"{_appSetting.TokenGHN}" }, { "ShopId", $"{request.shop_id}" } };
         Console.WriteLine(header);

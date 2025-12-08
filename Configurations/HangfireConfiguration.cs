@@ -15,7 +15,8 @@ namespace PeShop.Configurations
                 .UseStorage(new MySqlStorage(connectionString, new MySqlStorageOptions
                 {
                     // TablePrefix = "Hangfire_",
-                    PrepareSchemaIfNecessary = true // ✅ Tự tạo bảng nếu chưa có
+                    PrepareSchemaIfNecessary = true, // ✅ Tự tạo bảng nếu chưa có
+                    TransactionIsolationLevel = System.Transactions.IsolationLevel.ReadCommitted
                 })));
 
             services.AddHangfireServer();

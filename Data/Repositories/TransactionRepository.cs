@@ -18,6 +18,7 @@ public class TransactionRepository : ITransactionRepository
         try
         {
             var result = await operation();
+            await _context.SaveChangesAsync(); // Save all pending changes before commit
             await transaction.CommitAsync();
             return result;
         }
@@ -34,6 +35,7 @@ public class TransactionRepository : ITransactionRepository
         try
         {
             await operation();
+            await _context.SaveChangesAsync(); // Save all pending changes before commit
             await transaction.CommitAsync();
         }
         catch

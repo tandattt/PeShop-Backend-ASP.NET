@@ -6,67 +6,94 @@ namespace PeShop.Data.Seeders;
 
 public static class PermissionSeeder
 {
+    private static readonly (string Module, string Description)[] ModuleDefinitions =
+    {
+        ("product", "sản phẩm"),
+        ("order", "đơn hàng"),
+        ("user", "người dùng"),
+        ("category", "danh mục"),
+        ("shop", "cửa hàng"),
+        ("voucher", "voucher"),
+        ("flashsale", "flash sale"),
+        ("role", "vai trò"),
+        ("permission", "quyền"),
+        ("review", "đánh giá"),
+        ("promotion", "khuyến mãi"),
+        ("platformfee", "phí nền tảng"),
+        ("templatecategory", "template danh mục")
+    };
+
+    private static readonly (string Action, string ActionDescription)[] ActionDefinitions =
+    {
+        ("view", "Quyền xem"),
+        ("manage", "Quyền tạo và sửa"),
+        ("delete", "Quyền xóa")
+    };
+
     public static async Task SeedPermissionsAsync(IServiceProvider serviceProvider)
     {
         using var scope = serviceProvider.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<PeShopDbContext>();
 
-        // Seed default permissions
-        await SeedDefaultPermissionsAsync(context);
+        // Seed granular permissions for all modules
+        await SeedGranularPermissionsAsync(context);
 
         // Seed default role-permission mappings
         await SeedDefaultRolePermissionsAsync(context);
     }
 
-    private static async Task SeedDefaultPermissionsAsync(PeShopDbContext context)
+    private static async Task SeedGranularPermissionsAsync(PeShopDbContext context)
     {
-        var defaultPermissions = new List<Permission>
-        {
-            new() { Name = "view", Description = "Quyền xem dữ liệu" },
-            new() { Name = "manage", Description = "Quyền tạo và sửa dữ liệu" },
-            new() { Name = "delete", Description = "Quyền xóa dữ liệu" }
-        };
+        var permissionsToAdd = new List<Permission>();
 
-        foreach (var permission in defaultPermissions)
+        foreach (var (module, moduleDescription) in ModuleDefinitions)
         {
-            var exists = await context.Permissions.AnyAsync(p => p.Name == permission.Name);
-            if (!exists)
+            foreach (var (action, actionDescription) in ActionDefinitions)
             {
-                permission.CreatedAt = DateTime.UtcNow;
-                context.Permissions.Add(permission);
+                // Generate permission name in format {module}_{action} (Requirement 1.1)
+                var permissionName = $"{module}_{action}";
+                var description = $"{actionDescription} {moduleDescription.ToLower()}";
+
+                var exists = await context.Permissions.AnyAsync(p => p.Name == permissionName);
+                if (!exists)
+                {
+                    // Set Module and Action fields separately (Requirement 1.2)
+                    permissionsToAdd.Add(new Permission
+                    {
+                        Name = permissionName,
+                        Module = module,
+                        Action = action,
+                        Description = description,
+                        CreatedAt = DateTime.UtcNow
+                    });
+                }
             }
         }
 
-        await context.SaveChangesAsync();
+        if (permissionsToAdd.Count > 0)
+        {
+            context.Permissions.AddRange(permissionsToAdd);
+            await context.SaveChangesAsync();
+        }
     }
 
     private static async Task SeedDefaultRolePermissionsAsync(PeShopDbContext context)
     {
-        // Get all permissions
-        var viewPermission = await context.Permissions.FirstOrDefaultAsync(p => p.Name == "view");
-        var managePermission = await context.Permissions.FirstOrDefaultAsync(p => p.Name == "manage");
-        var deletePermission = await context.Permissions.FirstOrDefaultAsync(p => p.Name == "delete");
-
-        if (viewPermission == null || managePermission == null || deletePermission == null)
-        {
-            return; // Permissions not seeded yet
-        }
-
-
-        // Get default roles
+        // Get Admin role
         var adminRole = await context.Roles.FirstOrDefaultAsync(r => r.Name == "Admin");
-        var shopRole = await context.Roles.FirstOrDefaultAsync(r => r.Name == "Shop");
-        var userRole = await context.Roles.FirstOrDefaultAsync(r => r.Name == "User");
 
-        // Admin: all permissions (view, manage, delete)
-        if (adminRole != null)
+        if (adminRole == null)
         {
-            await AssignPermissionIfNotExistsAsync(context, adminRole.Id, viewPermission.Id);
-            await AssignPermissionIfNotExistsAsync(context, adminRole.Id, managePermission.Id);
-            await AssignPermissionIfNotExistsAsync(context, adminRole.Id, deletePermission.Id);
+            return; // Admin role not seeded yet
         }
 
-      
+        // Get all granular permissions
+        var allPermissions = await context.Permissions.ToListAsync();
+
+        foreach (var permission in allPermissions)
+        {
+            await AssignPermissionIfNotExistsAsync(context, adminRole.Id, permission.Id);
+        }
 
         await context.SaveChangesAsync();
     }
@@ -85,5 +112,19 @@ public static class PermissionSeeder
                 CreatedAt = DateTime.UtcNow
             });
         }
+    }
+    public static IReadOnlyList<string> GetModules() => 
+        ModuleDefinitions.Select(m => m.Module).ToList();
+
+    public static IReadOnlyList<string> GetActions() => 
+        ActionDefinitions.Select(a => a.Action).ToList();
+
+    public static bool ValidateModulePermissions(IEnumerable<Permission> permissions, string module)
+    {
+        var modulePermissions = permissions.Where(p => p.Module == module).ToList();
+        var actions = ActionDefinitions.Select(a => a.Action).ToList();
+        
+        return actions.All(action => 
+            modulePermissions.Any(p => p.Action == action && p.Name == $"{module}_{action}"));
     }
 }

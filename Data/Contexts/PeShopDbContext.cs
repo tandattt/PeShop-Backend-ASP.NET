@@ -2131,6 +2131,12 @@ public partial class PeShopDbContext : DbContext
             entity.Property(e => e.Name)
                 .HasMaxLength(50)
                 .HasColumnName("name");
+            entity.Property(e => e.Module)
+                .HasMaxLength(255)
+                .HasColumnName("module");
+            entity.Property(e => e.Action)
+                .HasMaxLength(255)
+                .HasColumnName("action");
             entity.Property(e => e.Description)
                 .HasMaxLength(255)
                 .HasColumnName("description");

@@ -17,6 +17,30 @@ public class CategoryRepository : ICategoryRepository
             .ToListAsync();
     }
 
+    public async Task<(List<Category> Data, int TotalCount)> GetCategoriesAsync(int page, int pageSize, string? search)
+    {
+        var query = _context.Categories
+            .Where(c => c.IsDeleted == null || c.IsDeleted == false);
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            search = search.ToLower();
+            query = query.Where(c => 
+                (c.Name != null && c.Name.ToLower().Contains(search)) ||
+                (c.Type != null && c.Type.ToLower().Contains(search)));
+        }
+
+        var totalCount = await query.CountAsync();
+
+        var data = await query
+            .OrderByDescending(c => c.CreatedAt)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+
+        return (data, totalCount);
+    }
+
     public async Task<Category> CreateAsync(Category category)
     {
         _context.Categories.Add(category);

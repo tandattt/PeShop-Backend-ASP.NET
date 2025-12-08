@@ -5,8 +5,6 @@ VisualStudioVersion = 17.5.2.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PeShop", "PeShop.csproj", "{80D676C9-3984-49CD-A278-0C4F0C93080E}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PeShop.Tests", "PeShop.Tests\PeShop.Tests.csproj", "{3A019EE3-E934-46CA-A401-66A6CDB8611C}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -29,18 +27,6 @@ Global
 		{80D676C9-3984-49CD-A278-0C4F0C93080E}.Release|x64.Build.0 = Release|Any CPU
 		{80D676C9-3984-49CD-A278-0C4F0C93080E}.Release|x86.ActiveCfg = Release|Any CPU
 		{80D676C9-3984-49CD-A278-0C4F0C93080E}.Release|x86.Build.0 = Release|Any CPU
-		{3A019EE3-E934-46CA-A401-66A6CDB8611C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{3A019EE3-E934-46CA-A401-66A6CDB8611C}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{3A019EE3-E934-46CA-A401-66A6CDB8611C}.Debug|x64.ActiveCfg = Debug|Any CPU
-		{3A019EE3-E934-46CA-A401-66A6CDB8611C}.Debug|x64.Build.0 = Debug|Any CPU
-		{3A019EE3-E934-46CA-A401-66A6CDB8611C}.Debug|x86.ActiveCfg = Debug|Any CPU
-		{3A019EE3-E934-46CA-A401-66A6CDB8611C}.Debug|x86.Build.0 = Debug|Any CPU
-		{3A019EE3-E934-46CA-A401-66A6CDB8611C}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{3A019EE3-E934-46CA-A401-66A6CDB8611C}.Release|Any CPU.Build.0 = Release|Any CPU
-		{3A019EE3-E934-46CA-A401-66A6CDB8611C}.Release|x64.ActiveCfg = Release|Any CPU
-		{3A019EE3-E934-46CA-A401-66A6CDB8611C}.Release|x64.Build.0 = Release|Any CPU
-		{3A019EE3-E934-46CA-A401-66A6CDB8611C}.Release|x86.ActiveCfg = Release|Any CPU
-		{3A019EE3-E934-46CA-A401-66A6CDB8611C}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

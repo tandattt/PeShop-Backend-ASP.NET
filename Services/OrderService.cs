@@ -14,6 +14,7 @@ using Microsoft.IdentityModel.Tokens;
 using PeShop.Data.Repositories;
 using PeShop.Utilities;
 using Microsoft.AspNetCore.Hosting;
+using PeShop.Exceptions;
 public class OrderService : IOrderService
 {
     private readonly IOrderHelper _orderHelper;
@@ -111,6 +112,58 @@ public class OrderService : IOrderService
                 item.CategoryId = string.Empty; // Sẽ được fill lại
             }
 
+            // Validate số lượng sản phẩm ngay từ đầu
+            var variantIds = request.Items
+                .Where(x => x.VariantId.HasValue)
+                .Select(x => x.VariantId!.Value)
+                .Distinct()
+                .ToList();
+
+            if (variantIds.Any())
+            {
+                var variantDict = await _variantRepository.GetVariantsByIdsAsync(variantIds);
+
+                foreach (var item in request.Items)
+                {
+                    if (!item.VariantId.HasValue)
+                    {
+                        return new CreateVirtualOrderResponse
+                        {
+                            Status = false,
+                            Message = "VariantId không được để trống"
+                        };
+                    }
+
+                    if (!variantDict.TryGetValue(item.VariantId.Value, out var variant))
+                    {
+                        return new CreateVirtualOrderResponse
+                        {
+                            Status = false,
+                            Message = $"Biến thể ID {item.VariantId.Value} không tồn tại"
+                        };
+                    }
+
+                    if (variant.Status != VariantStatus.Show)
+                    {
+                        return new CreateVirtualOrderResponse
+                        {
+                            Status = false,
+                            Message = $"Biến thể sản phẩm {variant.Product?.Name ?? "N/A"} không khả dụng"
+                        };
+                    }
+
+                    if (variant.Quantity < item.Quantity)
+                    {
+                        Console.WriteLine($"[CreateVirtualOrder] Số lượng không đủ - ProductId: {item.ProductId}, VariantId: {variant.Id}, Available: {variant.Quantity}, Requested: {item.Quantity}");
+                        return new CreateVirtualOrderResponse
+                        {
+                            Status = false,
+                            Message = $"Số lượng sản phẩm không đủ. Sản phẩm: {variant.Product?.Name ?? "N/A"}, Số lượng hiện có: {variant.Quantity}, Số lượng yêu cầu: {item.Quantity}"
+                        };
+                    }
+                }
+            }
+
             // Nhóm các sản phẩm theo shop (Backend tự động check và apply FlashSale)
             var itemShops = await _orderHelper.GroupItemsByShopAsync(request.Items);
 
@@ -119,11 +172,17 @@ public class OrderService : IOrderService
 
             var userAddress = await _userAddressRepository.GetUserAddressByIdAsync(request.UserAddressId, userId);
             
+            // Check user is active
+            var user = await _userRepository.GetByIdAsync(userId);
+            if (user?.Status != UserStatus.Active)
+            {
+                throw new ForBidenException("Tài khoản đã bị khóa");
+            }
+            
             // Fallback: Nếu RecipientName trống, lấy tên từ User
             string recipientName = userAddress?.RecipientName ?? string.Empty;
             if (string.IsNullOrWhiteSpace(recipientName))
             {
-                var user = await _userRepository.GetByIdAsync(userId);
                 recipientName = user?.Name ?? user?.Username ?? "Khách hàng";
             }
             
@@ -940,7 +999,8 @@ public class OrderService : IOrderService
             if (variant.Quantity < product.Quantity)
             {
                 result.IsValid = false;
-                result.ErrorMessage = $"Số lượng sản phẩm không đủ";
+                result.ErrorMessage = $"Số lượng sản phẩm không đủ. Sản phẩm: {variant.Product?.Name ?? "N/A"}, Biến thể ID: {variant.Id}, Số lượng hiện có: {variant.Quantity}, Số lượng yêu cầu: {product.Quantity}";
+                Console.WriteLine($"[ValidateOrderProducts] Số lượng không đủ - ProductId: {product.ProductId}, VariantId: {variant.Id}, Available: {variant.Quantity}, Requested: {product.Quantity}");
                 return result;
             }
 
