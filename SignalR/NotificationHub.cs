@@ -118,5 +118,16 @@ namespace PeShop.SignalR
                 return _activeConnections.ContainsKey(key) && _activeConnections[key].Count > 0;
             }
         }
+
+        // Static method để lấy số lượng user và shop online
+        public static (int OnlineUsers, int OnlineShops) GetOnlineCount()
+        {
+            lock (_lock)
+            {
+                var onlineUsers = _activeConnections.Keys.Count(k => k.StartsWith("user:"));
+                var onlineShops = _activeConnections.Keys.Count(k => k.StartsWith("shop:"));
+                return (onlineUsers, onlineShops);
+            }
+        }
     }
 }

@@ -37,7 +37,7 @@ public class JobService : IJobService
     private readonly IWebHostEnvironment _webHostEnvironment;
     private readonly RequestCounterHelper _requestCounterHelper;
     private readonly ITrafficsService _trafficsService;
-    
+
     public JobService(IVoucherService voucherService, IRedisUtil redisUtil, AppSetting appSetting, IApiHelper apiHelper, IOrderRepository orderRepository, IUserRankRepository userRankRepository, IRankService rankService, IProductRepository productRepository, ITransactionRepository transactionRepository, IBackgroundJobClient backgroundJobClient, IWebHostEnvironment webHostEnvironment, RequestCounterHelper requestCounterHelper, ITrafficsService trafficsService)
     {
         _voucherService = voucherService;
@@ -153,7 +153,7 @@ public class JobService : IJobService
 
         var runTime = new DateTimeOffset(utcDateTime, TimeSpan.Zero);
         var delay = runTime - DateTimeOffset.UtcNow;
-        
+
         // ✅ Convert JsonElement thành string JSON để lưu vào Hangfire (tránh serialize metadata)
         // Lưu JsonData dưới dạng string để Hangfire có thể deserialize lại đúng
         if (dto.JsonData is JsonElement jsonElement)
@@ -187,7 +187,7 @@ public class JobService : IJobService
                 }
             }
         }
-        
+
         Console.WriteLine("dto.JsonData after convert: " + JsonSerializer.Serialize(dto.JsonData));
         if (!string.IsNullOrEmpty(dto.Id))
         {
@@ -330,10 +330,10 @@ public class JobService : IJobService
             { "API-KEY", $"{_appSetting.ApiKeySystem}"}
         };
         Console.WriteLine("API-KEY: " + headers["API-KEY"]);
-        
+
         // ✅ Convert JsonData thành object để gửi (không phải string JSON)
         object? requestBody = null;
-        
+
         if (dto.JsonData is string jsonString)
         {
             // Nếu là string JSON, parse thành object
@@ -389,7 +389,7 @@ public class JobService : IJobService
         {
             requestBody = dto.JsonData;
         }
-        
+
         Console.WriteLine("requestBody: " + JsonSerializer.Serialize(requestBody));
         var response = await _apiHelper.PostAsync<string>(apiUrl, requestBody, headers);
         if (!string.IsNullOrEmpty(response))
@@ -504,6 +504,21 @@ public class JobService : IJobService
             var totalRequests = (int)_requestCounterHelper.GetTotalCount();
             var processedRequests = (int)_requestCounterHelper.GetProcessedCount();
 
+            var endTime = DateTime.Now;
+            var startTime = endTime.AddHours(-1);
+
+            string url = $"{_appSetting.BaseApiBackendJava}/system/log-statistics?startDate={startTime}&endTime={endTime}";
+            var header = new Dictionary<string, string>
+            {
+                {"API-KEY" , $"{_appSetting.ApiKeySystem}"}
+            };
+
+            var totalRequestBEJava = await _apiHelper.GetAsync<TrafficJavaDto>(url, header);
+            if (totalRequestBEJava != null)
+            {
+                totalRequests += totalRequestBEJava.content;
+                Console.WriteLine("totalRequestBEJava: "+totalRequestBEJava.content);
+            }
             // Tạo record mới
             var traffic = new RequestTraffic
             {
@@ -529,5 +544,10 @@ public class JobService : IJobService
     {
         var response = await _apiHelper.GetAsync<dynamic>($"{_appSetting.BaseApiFlask}/reload_cache");
         Console.WriteLine(response);
+    }
+    private class TrafficJavaDto
+    {
+        public string error { get; set; } = string.Empty;
+        public int content { get; set; } = 0;
     }
 }
