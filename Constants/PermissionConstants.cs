@@ -83,5 +83,9 @@ public static class PermissionConstants
     public const string TemplateCategoryDelete = "templatecategory_delete";
     #endregion
 
+    #region Dashboard Permissions
+    public const string DashboardView = "dashboard_view";
+    #endregion
+
    
 }

@@ -84,7 +84,13 @@ if (app.Environment.IsProduction())
     app.UsePathBase("/dotnet-peshop");
 }
 
+// Đếm request - đặt trước rate limiter để đếm tất cả requests (bao gồm cả bị chặn)
+app.UseRequestCounter();
+
 app.UseRateLimiter();
+
+// Đếm request thực tế được xử lý - đặt sau rate limiter để chỉ đếm request đã vượt qua rate limit
+app.UseProcessedRequestCounter();
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {

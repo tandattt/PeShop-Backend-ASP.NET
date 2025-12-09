@@ -24,6 +24,7 @@ public static class PermissionHelper
     public const string PromotionModule = "promotion";
     public const string PlatformFeeModule = "platformfee";
     public const string TemplateCategoryModule = "templatecategory";
+    public const string DashboardModule = "dashboard";
 
     
     #endregion
@@ -41,7 +42,8 @@ public static class PermissionHelper
         ReviewModule,
         PromotionModule,
         PlatformFeeModule,
-        TemplateCategoryModule
+        TemplateCategoryModule,
+        DashboardModule
     ];
      #region Helper Methods
     public static string GetPermissionName(string module, string action)

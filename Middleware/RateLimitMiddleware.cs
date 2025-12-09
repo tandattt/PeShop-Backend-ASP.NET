@@ -18,7 +18,7 @@ public static class RateLimitMiddleware
                 factory: _ => new FixedWindowRateLimiterOptions
                 {
                     PermitLimit = 50,
-                    Window = TimeSpan.FromSeconds(1),
+                    Window = TimeSpan.FromSeconds(2),
                     QueueLimit = 0
                 });
         });

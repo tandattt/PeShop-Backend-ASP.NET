@@ -101,6 +101,8 @@ public partial class PeShopDbContext : DbContext
 
     public virtual DbSet<RolePermission> RolePermissions { get; set; }
 
+    public virtual DbSet<RequestTraffic> RequestTraffics { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder
@@ -2193,6 +2195,28 @@ public partial class PeShopDbContext : DbContext
                 .HasForeignKey(d => d.PermissionId)
                 .OnDelete(DeleteBehavior.Cascade)
                 .HasConstraintName("FK_role_permission_permission");
+        });
+
+        // RequestTraffic configuration
+        modelBuilder.Entity<RequestTraffic>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+
+            entity.ToTable("request_traffic");
+
+            entity.Property(e => e.Id)
+                .ValueGeneratedOnAdd()
+                .HasColumnName("id");
+            entity.Property(e => e.TotalRequests)
+                .HasDefaultValue(0)
+                .HasColumnName("total_requests");
+            entity.Property(e => e.ProcessedRequests)
+                .HasDefaultValue(0)
+                .HasColumnName("processed_requests");
+            entity.Property(e => e.CreatedAt)
+                .HasColumnType("timestamp")
+                .HasDefaultValueSql("CURRENT_TIMESTAMP")
+                .HasColumnName("created_at");
         });
     }
 

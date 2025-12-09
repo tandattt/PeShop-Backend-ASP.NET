@@ -8,6 +8,11 @@ using PeShop.Models.Entities;
 using PeShop.Dtos.API;
 using PeShop.Setting;
 using PeShop.Interfaces;
+using System.Net.Http;
+using System.IO;
+using System.Net.Http.Headers;
+using System.Text.Json;
+
 public class ProductService : IProductService
 {
     private readonly IProductRepository _productRepository;
@@ -16,7 +21,8 @@ public class ProductService : IProductService
     private readonly AppSetting _appSetting;
     private readonly IPromotionRepository _promotionRepository;
     private readonly IFlashSaleRepository _flashSaleRepository;
-    public ProductService(IProductRepository productRepository, IApiHelper apiHelper, IImageProductRepository imageProductRepository, AppSetting appSetting, IPromotionRepository promotionRepository, IFlashSaleRepository flashSaleRepository)
+    private readonly HttpClient _httpClient;
+    public ProductService(IProductRepository productRepository, IApiHelper apiHelper, IImageProductRepository imageProductRepository, AppSetting appSetting, IPromotionRepository promotionRepository, IFlashSaleRepository flashSaleRepository, HttpClient httpClient)
     {
         _productRepository = productRepository;
         _apiHelper = apiHelper;
@@ -24,6 +30,7 @@ public class ProductService : IProductService
         _appSetting = appSetting;
         _promotionRepository = promotionRepository;
         _flashSaleRepository = flashSaleRepository;
+        _httpClient = httpClient;
     }
     public async Task<ProductDetailResponse> GetProductDetailAsync(string? productId, string? slug)
     {
@@ -246,29 +253,119 @@ public class ProductService : IProductService
         {
             throw new Exception("Product not found");
         }
-        var products = await _productRepository.GetListProductByCategoryChildIdAsync(product.CategoryChildId);
-        Console.WriteLine(products.Count);
-        var productDtos = products.Select(p => new ProductDto
+
+        // Lấy hình ảnh của product
+        if (string.IsNullOrEmpty(product.ImgMain))
         {
-            Id = p.Id,
-            Name = p.Name ?? string.Empty,
-            Image = p.ImgMain ?? string.Empty,
-            ReviewCount = p.ReviewCount ?? 0,
-            ReviewPoint = p.ReviewPoint ?? 0,
-            Price = p.Price ?? 0,
-            BoughtCount = p.BoughtCount ?? 0,
-            AddressShop = p.Shop?.NewProviceId ?? string.Empty,
-            Slug = p.Slug ?? string.Empty,
-            ShopId = p.Shop?.Id ?? string.Empty,
-            ShopName = p.Shop?.Name ?? string.Empty,
-        }).ToList();
-        var request = new RecomemtProductDto
+            throw new Exception("Product image not found");
+        }
+
+        // Download hình ảnh từ URL
+        byte[] imageBytes;
+        string imageFileName;
+        string contentType = "image/jpeg"; // Mặc định
+        try
+        {
+            var imageResponse = await _httpClient.GetAsync(product.ImgMain);
+            imageResponse.EnsureSuccessStatusCode();
+            imageBytes = await imageResponse.Content.ReadAsByteArrayAsync();
+            
+            // Lấy Content-Type từ response header
+            if (imageResponse.Content.Headers.ContentType != null)
+            {
+                contentType = imageResponse.Content.Headers.ContentType.MediaType ?? "image/jpeg";
+            }
+            
+            // Lấy tên file từ URL hoặc tạo tên mặc định
+            var uri = new Uri(product.ImgMain);
+            imageFileName = Path.GetFileName(uri.LocalPath);
+            if (string.IsNullOrEmpty(imageFileName))
+            {
+                // Tạo extension dựa trên Content-Type
+                var extension = contentType.Contains("png") ? ".png" : 
+                               contentType.Contains("gif") ? ".gif" : 
+                               contentType.Contains("webp") ? ".webp" : ".jpg";
+                imageFileName = $"product_{product_id}{extension}";
+            }
+        }
+        catch (Exception ex)
+        {
+            throw new Exception($"Failed to download product image: {ex.Message}", ex);
+        }
+
+        // Tạo MultipartFormDataContent và thêm file hình ảnh
+        SimilarProductResponse? flaskResponse;
+        using (var formData = new MultipartFormDataContent())
+        using (var imageContent = new ByteArrayContent(imageBytes))
+        {
+            imageContent.Headers.ContentType = new MediaTypeHeaderValue(contentType);
+            formData.Add(imageContent, "image", imageFileName);
+
+            // Gửi request với form data và nhận response từ Flask API
+            flaskResponse = await _apiHelper.PostMultipartFormAsync<SimilarProductResponse>($"{_appSetting.BaseApiFlask}/similar/{product_id}", formData);
+        }
+        Console.WriteLine(JsonSerializer.Serialize(flaskResponse));
+        // Memory của imageBytes và các disposable objects sẽ tự động được giải phóng sau khi ra khỏi using block
+
+        if (flaskResponse == null || flaskResponse.Products == null || !flaskResponse.Products.Any())
+        {
+            return new RecomemtProductDto { Products = new List<ProductDto>() };
+        }
+
+        // Lấy danh sách product IDs từ response (giữ nguyên thứ tự)
+        var productIds = flaskResponse.Products.Select(p => p.Id).ToList();
+
+        // Query database để lấy thông tin đầy đủ của các products
+        var products = await _productRepository.GetListProductByVectorAsync(productIds);
+
+        // Tạo dictionary để map nhanh product theo ID
+        var productDict = products.ToDictionary(p => p.Id, p => p);
+
+        // Map sang ProductDto và giữ nguyên thứ tự từ response
+        var productDtos = new List<ProductDto>();
+        foreach (var similarItem in flaskResponse.Products)
+        {
+            if (productDict.TryGetValue(similarItem.Id, out var dbProduct))
+            {
+                productDtos.Add(new ProductDto
+                {
+                    Id = dbProduct.Id,
+                    Name = dbProduct.Name ?? string.Empty,
+                    Image = dbProduct.ImgMain ?? string.Empty,
+                    ReviewCount = dbProduct.ReviewCount ?? 0,
+                    ReviewPoint = dbProduct.ReviewPoint ?? 0,
+                    Price = dbProduct.Price ?? 0,
+                    BoughtCount = dbProduct.BoughtCount ?? 0,
+                    AddressShop = dbProduct.Shop?.NewProviceId ?? string.Empty,
+                    Slug = dbProduct.Slug ?? string.Empty,
+                    ShopId = dbProduct.Shop?.Id ?? string.Empty,
+                    ShopName = dbProduct.Shop?.Name ?? string.Empty,
+                });
+            }
+        }
+
+        // Lấy thông tin promotion và flash sale nếu có
+        var productIdsForPromo = productDtos.Select(p => p.Id).ToList();
+        var promotionsDict = await _promotionRepository.HasPromotionsForProductsAsync(productIdsForPromo);
+        var flashSalesDict = await _flashSaleRepository.HasFlashSalesForProductsAsync(productIdsForPromo);
+        var flashSaleDiscountsDict = await _flashSaleRepository.GetFlashSaleDiscountsForProductsAsync(productIdsForPromo);
+
+        foreach (var productDto in productDtos)
+        {
+            productDto.HasPromotion = promotionsDict.GetValueOrDefault(productDto.Id, false);
+            productDto.HasFlashSale = flashSalesDict.GetValueOrDefault(productDto.Id, false);
+            
+            // Tính giá flash sale nếu sản phẩm có flash sale
+            if (productDto.HasFlashSale == true && flashSaleDiscountsDict.TryGetValue(productDto.Id, out var percentDecrease))
+            {
+                productDto.FlashSalePrice = productDto.Price * (100 - percentDecrease) / 100;
+            }
+        }
+
+        return new RecomemtProductDto
         {
             Products = productDtos
         };
-
-        var result = await _apiHelper.PostAsync<RecomemtProductDto>($"{_appSetting.BaseApiFlask}/similar/{product_id}", request);
-        return result ?? new RecomemtProductDto { Products = new List<ProductDto>() };
     }
 
 }

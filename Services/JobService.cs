@@ -18,6 +18,7 @@ using PeShop.Exceptions;
 using System.IO;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Hosting;
+using PeShop.Helpers;
 namespace PeShop.Services;
 
 public class JobService : IJobService
@@ -34,8 +35,10 @@ public class JobService : IJobService
     private readonly ITransactionRepository _transactionRepository;
     private readonly IBackgroundJobClient _backgroundJobClient;
     private readonly IWebHostEnvironment _webHostEnvironment;
+    private readonly RequestCounterHelper _requestCounterHelper;
+    private readonly ITrafficsService _trafficsService;
     
-    public JobService(IVoucherService voucherService, IRedisUtil redisUtil, AppSetting appSetting, IApiHelper apiHelper, IOrderRepository orderRepository, IUserRankRepository userRankRepository, IRankService rankService, IProductRepository productRepository, ITransactionRepository transactionRepository, IBackgroundJobClient backgroundJobClient, IWebHostEnvironment webHostEnvironment)
+    public JobService(IVoucherService voucherService, IRedisUtil redisUtil, AppSetting appSetting, IApiHelper apiHelper, IOrderRepository orderRepository, IUserRankRepository userRankRepository, IRankService rankService, IProductRepository productRepository, ITransactionRepository transactionRepository, IBackgroundJobClient backgroundJobClient, IWebHostEnvironment webHostEnvironment, RequestCounterHelper requestCounterHelper, ITrafficsService trafficsService)
     {
         _voucherService = voucherService;
         _redisUtil = redisUtil;
@@ -48,6 +51,8 @@ public class JobService : IJobService
         _transactionRepository = transactionRepository;
         _backgroundJobClient = backgroundJobClient;
         _webHostEnvironment = webHostEnvironment;
+        _requestCounterHelper = requestCounterHelper;
+        _trafficsService = trafficsService;
     }
     public async Task UpdatePaymentStatusFailedInOrderAsync(string orderId, string userId)
     {
@@ -491,6 +496,35 @@ public class JobService : IJobService
         });
         HandleProduct.IsRunningHandleProduct = false;
     }
+    public async Task SaveTrafficDataAsync()
+    {
+        try
+        {
+            // Lấy dữ liệu từ counter
+            var totalRequests = (int)_requestCounterHelper.GetTotalCount();
+            var processedRequests = (int)_requestCounterHelper.GetProcessedCount();
+
+            // Tạo record mới
+            var traffic = new RequestTraffic
+            {
+                TotalRequests = totalRequests,
+                ProcessedRequests = processedRequests,
+                CreatedAt = DateTime.Now
+            };
+
+            // Lưu vào database
+            await _trafficsService.CreateTraffic(traffic);
+
+            // Reset counter sau khi lưu
+            _requestCounterHelper.Reset();
+        }
+        catch (Exception ex)
+        {
+            // Log error nhưng không throw để job không bị fail
+            Console.WriteLine($"Error saving traffic data: {ex.Message}");
+        }
+    }
+
     public async Task ReloadCacheFlaskAsync()
     {
         var response = await _apiHelper.GetAsync<dynamic>($"{_appSetting.BaseApiFlask}/reload_cache");

@@ -27,6 +27,12 @@ namespace PeShop.Configurations
                 "reload-cache-flask",
                 service => service.ReloadCacheFlaskAsync(),
                 "*/35 * * * *");
+            
+            // Lưu traffic data mỗi giờ vào phút 00
+            recurringJobManager.AddOrUpdate<IJobService>(
+                "save-traffic-data",
+                service => service.SaveTrafficDataAsync(),
+                "0 * * * *"); // Cron: chạy mỗi giờ vào phút 00
         }
     }
 }

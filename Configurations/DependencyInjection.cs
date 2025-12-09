@@ -115,6 +115,9 @@ namespace PeShop.Configurations
             // Đăng ký ApiHelper
             services.AddScoped<IApiHelper, ApiHelper>();
 
+            // Đăng ký RequestCounterHelper (Singleton để giữ counter qua các request)
+            services.AddSingleton<RequestCounterHelper>();
+
             //Cors - Mở full, không giới hạn domain
             services.AddCors(options =>
             {

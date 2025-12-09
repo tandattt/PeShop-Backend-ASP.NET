@@ -15,4 +15,5 @@ public interface IJobService
     Task ApproveProductJobAsync();
 
     Task ReloadCacheFlaskAsync();
+    Task SaveTrafficDataAsync();
 }

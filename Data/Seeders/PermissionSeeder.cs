@@ -20,7 +20,8 @@ public static class PermissionSeeder
         ("review", "đánh giá"),
         ("promotion", "khuyến mãi"),
         ("platformfee", "phí nền tảng"),
-        ("templatecategory", "template danh mục")
+        ("templatecategory", "template danh mục"),
+        ("dashboard", "dashboard")
     };
 
     private static readonly (string Action, string ActionDescription)[] ActionDefinitions =
