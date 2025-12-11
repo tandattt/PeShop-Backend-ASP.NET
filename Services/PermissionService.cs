@@ -102,7 +102,7 @@ public class PermissionService : IPermissionService
         return await _permissionRepository.GetPermissionsGroupedByModuleAsync();
     }
 
-    public async Task AssignPermissionToRoleAsync(string roleId, int permissionId)
+    public async Task AssignPermissionToRoleAsync(string roleId, int permissionId, string userId)
     {
         // Check if permission exists
         var permission = await _permissionRepository.GetByIdAsync(permissionId);
@@ -122,7 +122,8 @@ public class PermissionService : IPermissionService
         {
             RoleId = roleId,
             PermissionId = permissionId,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = DateTime.UtcNow,
+            CreatedBy = userId
         };
 
         await _permissionRepository.AddRolePermissionAsync(rolePermission);
@@ -131,13 +132,16 @@ public class PermissionService : IPermissionService
         InvalidateCache(roleId);
     }
 
-    public async Task RemovePermissionFromRoleAsync(string roleId, int permissionId)
+    public async Task RemovePermissionFromRoleAsync(string roleId, int permissionId, string userId)
     {
         var rolePermission = await _permissionRepository.GetRolePermissionAsync(roleId, permissionId);
         if (rolePermission == null)
         {
             throw new NotFoundException("Role-Permission mapping not found");
         }
+
+        rolePermission.UpdatedAt = DateTime.UtcNow;
+        rolePermission.UpdatedBy = userId;
 
         await _permissionRepository.RemoveRolePermissionAsync(rolePermission);
         

@@ -16,13 +16,16 @@ public class ReviewService : IReviewService
     private readonly IProductRepository _productRepository;
     private readonly AppSetting _appSetting;
     private readonly IApiHelper _apiHelper;
-    public ReviewService(IReviewRepository reviewRepository, IOrderRepository orderRepository, IProductRepository productRepository, IApiHelper apiHelper, AppSetting appSetting)
+    private readonly IShopRepository _shopRepository;
+
+    public ReviewService(IReviewRepository reviewRepository, IOrderRepository orderRepository, IProductRepository productRepository, IApiHelper apiHelper, AppSetting appSetting,IShopRepository shopRepository)
     {
         _reviewRepository = reviewRepository;
         _orderRepository = orderRepository;
         _productRepository = productRepository;
         _apiHelper = apiHelper;
         _appSetting = appSetting;
+        _shopRepository = shopRepository;
     }
     public async Task<bool> IsAllowReviewAsync(string orderId, string productId, string userId)
     {
@@ -86,6 +89,10 @@ public class ReviewService : IReviewService
     public async Task<StatusResponse> CreateReviewAsync(CreateReviewRequest request, string userId)
     {
         var isAllowReview = await IsAllowReviewAsync(request.OrderId, request.ProductId, userId);
+        if (!isAllowReview)
+        {
+            return new StatusResponse { Status = false, Message = "Bạn không có quyền đánh giá sản phẩm" };
+        }
         List<string> images = new List<string>();
         foreach (var image in request.Images)
         {
@@ -128,13 +135,11 @@ public class ReviewService : IReviewService
                 // Continue with next image instead of failing entire review
             }
         }
-        if (!isAllowReview)
-        {
-            return new StatusResponse { Status = false, Message = "Bạn không có quyền đánh giá sản phẩm" };
-        }
+        string shopId = await _shopRepository.GetShopIdByProductIdAsync(request.ProductId);
         var review = new Review
         {
             OrderId = request.OrderId,
+            ShopId = shopId,
             ProductId = request.ProductId,
             VariantId = int.Parse(request.VariantId),
             UserId = userId,

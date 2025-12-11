@@ -260,5 +260,33 @@ namespace PeShop.Data.Repositories
             await _context.SaveChangesAsync();
             return true;
         }
+
+        public async Task<(List<User> Users, int TotalCount)> GetSystemUsersAsync(int page, int pageSize, string? keyword)
+        {
+            var query = _context.Users
+                .Include(u => u.Roles)
+                .Where(u => u.Roles.Any(r => r.Name != "User" && r.Name != "Shop"))
+                .AsQueryable();
+
+            if (!string.IsNullOrWhiteSpace(keyword))
+            {
+                keyword = keyword.ToLower();
+                query = query.Where(u =>
+                    (u.Username != null && u.Username.ToLower().Contains(keyword)) ||
+                    (u.Email != null && u.Email.ToLower().Contains(keyword)) ||
+                    (u.Name != null && u.Name.ToLower().Contains(keyword)) ||
+                    (u.Phone != null && u.Phone.Contains(keyword)));
+            }
+
+            var totalCount = await query.CountAsync();
+
+            var users = await query
+                .OrderByDescending(u => u.CreatedAt)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            return (users, totalCount);
+        }
     }
 }

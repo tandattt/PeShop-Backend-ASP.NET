@@ -8,4 +8,6 @@ public interface IPayoutRepository
     Task AddPayoutAsync(Payout payout);
     Task<Payout?> GetPayoutByOrderIdAsync(string orderId);
     Task<bool> UpdatePayoutStatusAsync(string orderId, PayoutStatus status);
+    Task<List<Payout>> GetPayoutsByStatusAsync(PayoutStatus status);
+    Task<bool> UpdatePayoutStatusByIdAsync(int payoutId, PayoutStatus status);
 }

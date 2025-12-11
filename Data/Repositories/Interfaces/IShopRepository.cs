@@ -8,4 +8,5 @@ public interface IShopRepository
     Task<int> GetSearchShopsCountAsync(string keyword);
     Task<Shop?> GetShopByIdAsync(string shopId);
     Task<Shop?> GetShopByUserIdAsync(string userId);
+    Task<string?> GetShopIdByProductIdAsync(string productId);
 }

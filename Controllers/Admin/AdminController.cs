@@ -10,6 +10,8 @@ using PeShop.Services.Interfaces;
 using PeShop.Data.Repositories;
 using PeShop.Data.Repositories.Interfaces;
 using System.Security.Claims;
+using Models.Enums;
+using PeShop.Models.Enums;
 
 namespace PeShop.Controllers.Admin;
 
@@ -35,6 +37,7 @@ public class AdminController : ControllerBase
     private readonly IPermissionService _permissionService;
     private readonly IUserRepository _userRepository;
     private readonly IAUserService _userService;
+    private readonly IAOrderService _orderService;
 
     public AdminController(
         IAProductService productService,
@@ -45,7 +48,8 @@ public class AdminController : ControllerBase
         IAPlatformFeeService platformFeeService,
         IPermissionService permissionService,
         IUserRepository userRepository,
-        IAUserService userService)
+        IAUserService userService,
+        IAOrderService orderService)
     {
         _productService = productService;
         _templateCategoryService = templateCategoryService;
@@ -56,6 +60,7 @@ public class AdminController : ControllerBase
         _permissionService = permissionService;
         _userRepository = userRepository;
         _userService = userService;
+        _orderService = orderService;
     }
 
     /// <summary>
@@ -151,6 +156,115 @@ public class AdminController : ControllerBase
     public async Task<IActionResult> GetAllProducts([FromQuery] AGetProductRequest request)
     {
         return Ok(await _productService.GetProductsAsync(request));
+    }
+
+    /// <summary>
+    /// Lấy danh sách sản phẩm chờ duyệt (Unspecified hoặc Complaint) - TOKEN + Permission
+    /// </summary>
+    /// <remarks>
+    /// <para><strong>🔐 Xác thực:</strong> Bearer Token</para>
+    /// <para><strong>🛡️ Permission:</strong> <code>product.view</code></para>
+    /// <para><strong>📋 Mô tả:</strong></para>
+    /// <ul>
+    ///   <li>Trả về danh sách sản phẩm có trạng thái Unspecified (chờ duyệt) hoặc Complaint (khiếu nại)</li>
+    ///   <li>Nếu không truyền Status, sẽ lấy cả 2 loại (Unspecified và Complaint)</li>
+    ///   <li>Nếu truyền Status, chỉ được là Unspecified hoặc Complaint</li>
+    ///   <li>Hỗ trợ phân trang với Page và PageSize</li>
+    ///   <li>Hỗ trợ sắp xếp theo thời gian tạo (newest/oldest)</li>
+    ///   <li>Hỗ trợ lọc theo khoảng thời gian (DateFrom, DateTo)</li>
+    /// </ul>
+    /// 
+    /// <para><strong>📥 Query Parameters:</strong></para>
+    /// <ul>
+    ///   <li><code>Page</code>: Số trang (mặc định: 1)</li>
+    ///   <li><code>PageSize</code>: Số lượng sản phẩm mỗi trang (mặc định: 20)</li>
+    ///   <li><code>Status</code>: Trạng thái - chỉ được là Unspecified (5) hoặc Complaint (6) (optional, nếu không truyền sẽ lấy cả 2)</li>
+    ///   <li><code>SortOrder</code>: Sắp xếp - "newest" hoặc "oldest" (mặc định: "newest")</li>
+    ///   <li><code>DateFrom</code>: Lọc từ ngày (optional)</li>
+    ///   <li><code>DateTo</code>: Lọc đến ngày (optional)</li>
+    /// </ul>
+    /// 
+    /// <para><strong>📤 Response:</strong></para>
+    /// <ul>
+    ///   <li><strong>200 OK:</strong> Danh sách sản phẩm chờ duyệt với phân trang</li>
+    ///   <li><strong>400 Bad Request:</strong> Status không hợp lệ (không phải Unspecified hoặc Complaint)</li>
+    ///   <li><strong>401 Unauthorized:</strong> Token không hợp lệ hoặc hết hạn</li>
+    ///   <li><strong>403 Forbidden:</strong> Không có permission product.view</li>
+    /// </ul>
+    /// </remarks>
+    /// <param name="request">Tham số phân trang và lọc (Page, PageSize, Status, SortOrder, DateFrom, DateTo)</param>
+    /// <returns>Danh sách sản phẩm chờ duyệt với phân trang</returns>
+    [HttpGet("products-approval")]
+    [HasPermission(PermissionConstants.ProductView)]
+    [ProducesResponseType(typeof(PaginationResponse<ProductDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> GetProductsApproval([FromQuery] AGetProductRequest request)
+    {
+        // Validate status nếu có truyền vào
+        if (request.Status.HasValue)
+        {
+            if (request.Status != ProductStatus.Unspecified && request.Status != ProductStatus.Complaint)
+            {
+                return BadRequest(new StatusResponse
+                {
+                    Status = false,
+                    Message = "Status chỉ được là Unspecified (5) hoặc Complaint (6)"
+                });
+            }
+            // Nếu có status, dùng GetProductsAsync bình thường
+            return Ok(await _productService.GetProductsAsync(request));
+        }
+        else
+        {
+            // Nếu không truyền status, lấy cả Unspecified và Complaint
+            return Ok(await _productService.GetProductsApprovalAsync(request));
+        }
+    }
+
+    /// <summary>
+    /// Duyệt/Từ chối sản phẩm - TOKEN + Permission
+    /// </summary>
+    /// <remarks>
+    /// <para><strong>🔐 Xác thực:</strong> Bearer Token</para>
+    /// <para><strong>🛡️ Permission:</strong> <code>product.manage</code></para>
+    /// <para><strong>📋 Mô tả:</strong></para>
+    /// <ul>
+    ///   <li>Duyệt hoặc từ chối sản phẩm có trạng thái Unspecified hoặc Complaint</li>
+    ///   <li>Status chỉ được là Active (1) hoặc Inactive (0)</li>
+    ///   <li>Active: Duyệt sản phẩm</li>
+    ///   <li>Inactive: Từ chối sản phẩm</li>
+    /// </ul>
+    /// 
+    /// <para><strong>📥 Request Body:</strong></para>
+    /// <pre><code>{
+    ///   "productId": "product-id-123",
+    ///   "status": 1  // 1 = Active, 0 = Inactive
+    /// }</code></pre>
+    /// 
+    /// <para><strong>📤 Response:</strong></para>
+    /// <ul>
+    ///   <li><strong>200 OK:</strong> StatusResponse với Status = true nếu thành công</li>
+    ///   <li><strong>400 Bad Request:</strong> Status không hợp lệ hoặc sản phẩm không ở trạng thái Unspecified/Complaint</li>
+    ///   <li><strong>401 Unauthorized:</strong> Token không hợp lệ hoặc hết hạn</li>
+    ///   <li><strong>403 Forbidden:</strong> Không có permission product.manage</li>
+    ///   <li><strong>404 Not Found:</strong> Sản phẩm không tồn tại</li>
+    /// </ul>
+    /// </remarks>
+    /// <param name="request">Thông tin productId và status mới</param>
+    /// <returns>StatusResponse - thành công hoặc thất bại</returns>
+    [HttpPost("products-approval")]
+    [HasPermission(PermissionConstants.ProductManage)]
+    [ProducesResponseType(typeof(StatusResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<StatusResponse>> ApproveProduct([FromBody] ApproveProductRequest request)
+    {
+        var result = await _productService.ApproveProductAsync(request);
+        return Ok(result);
     }
     #endregion
 
@@ -565,6 +679,103 @@ public class AdminController : ControllerBase
     {
         var result = await _userService.UpdateUserStatusAsync(id, request);
         return Ok(result);
+    }
+    #endregion
+
+    #region Order Management
+    /// <summary>
+    /// Lấy danh sách đơn hàng (Admin) - TOKEN + Permission
+    /// </summary>
+    /// <remarks>
+    /// <para><strong>🔐 Xác thực:</strong> Bearer Token</para>
+    /// <para><strong>🛡️ Permission:</strong> <code>order.view</code></para>
+    /// <para><strong>📋 Mô tả:</strong></para>
+    /// <ul>
+    ///   <li>Trả về danh sách tất cả đơn hàng với phân trang</li>
+    ///   <li>Hỗ trợ tìm kiếm theo OrderCode</li>
+    ///   <li>Hỗ trợ lọc theo khoảng thời gian (DateFrom, DateTo)</li>
+    ///   <li>Hỗ trợ sắp xếp theo thời gian tạo (newest/oldest)</li>
+    ///   <li>Bao gồm thông tin: Shop, User, OrderDetails, Product</li>
+    /// </ul>
+    /// 
+    /// <para><strong>📥 Query Parameters:</strong></para>
+    /// <ul>
+    ///   <li><code>Page</code> (int, optional, default: 1): Số trang cần lấy
+    ///     <ul>
+    ///       <li>Giá trị tối thiểu: 1</li>
+    ///       <li>Ví dụ: <code>?Page=1</code></li>
+    ///     </ul>
+    ///   </li>
+    ///   <li><code>PageSize</code> (int, optional, default: 20): Số lượng đơn hàng mỗi trang
+    ///     <ul>
+    ///       <li>Giá trị tối thiểu: 1</li>
+    ///       <li>Giá trị tối đa: 100</li>
+    ///       <li>Ví dụ: <code>?PageSize=20</code></li>
+    ///     </ul>
+    ///   </li>
+    ///   <li><code>OrderCode</code> (string, optional): Tìm kiếm theo OrderCode
+    ///     <ul>
+    ///       <li>Hỗ trợ tìm kiếm một phần (contains)</li>
+    ///       <li>Có thể tìm theo OrderCode đầy đủ hoặc một phần</li>
+    ///       <li>Ví dụ: <code>?OrderCode=ORD000001</code> hoặc <code>?OrderCode=ORD</code></li>
+    ///     </ul>
+    ///   </li>
+    ///   <li><code>SortOrder</code> (string, optional, default: "newest"): Sắp xếp theo thời gian tạo
+    ///     <ul>
+    ///       <li>Giá trị: "newest" hoặc "oldest"</li>
+    ///       <li>"newest": Đơn hàng mới nhất trước</li>
+    ///       <li>"oldest": Đơn hàng cũ nhất trước</li>
+    ///       <li>Ví dụ: <code>?SortOrder=newest</code></li>
+    ///     </ul>
+    ///   </li>
+    ///   <li><code>DateFrom</code> (DateTime, optional): Lọc từ ngày
+    ///     <ul>
+    ///       <li>Format: ISO 8601 (yyyy-MM-dd hoặc yyyy-MM-ddTHH:mm:ss)</li>
+    ///       <li>Ví dụ: <code>?DateFrom=2024-01-01</code> hoặc <code>?DateFrom=2024-01-01T00:00:00</code></li>
+    ///     </ul>
+    ///   </li>
+    ///   <li><code>DateTo</code> (DateTime, optional): Lọc đến ngày
+    ///     <ul>
+    ///       <li>Format: ISO 8601 (yyyy-MM-dd hoặc yyyy-MM-ddTHH:mm:ss)</li>
+    ///       <li>Ví dụ: <code>?DateTo=2024-12-31</code> hoặc <code>?DateTo=2024-12-31T23:59:59</code></li>
+    ///     </ul>
+    ///   </li>
+    /// </ul>
+    /// 
+    /// <para><strong>📝 Ví dụ Request:</strong></para>
+    /// <ul>
+    ///   <li><strong>Lấy trang đầu tiên (20 đơn hàng mới nhất):</strong>
+    ///     <pre><code>GET /Admin/orders?Page=1&amp;PageSize=20</code></pre>
+    ///   </li>
+    ///   <li><strong>Tìm kiếm đơn hàng theo OrderCode:</strong>
+    ///     <pre><code>GET /Admin/orders?OrderCode=ORD000001</code></pre>
+    ///   </li>
+    ///   <li><strong>Lọc đơn hàng trong khoảng thời gian:</strong>
+    ///     <pre><code>GET /Admin/orders?DateFrom=2024-01-01&amp;DateTo=2024-12-31&amp;SortOrder=oldest</code></pre>
+    ///   </li>
+    ///   <li><strong>Kết hợp tất cả filters:</strong>
+    ///     <pre><code>GET /Admin/orders?Page=1&amp;PageSize=10&amp;OrderCode=ORD&amp;DateFrom=2024-11-01&amp;DateTo=2024-12-31&amp;SortOrder=newest</code></pre>
+    ///   </li>
+    /// </ul>
+    /// <para><strong>⚠️ Lưu ý:</strong></para>
+    /// <ul>
+    ///   <li>Nếu không truyền OrderCode, sẽ trả về tất cả đơn hàng (theo filter khác nếu có)</li>
+    ///   <li>OrderCode hỗ trợ tìm kiếm một phần, có thể tìm theo một phần của OrderCode</li>
+    ///   <li>DateFrom và DateTo nên được sử dụng cùng nhau để lọc chính xác</li>
+    ///   <li>Nếu chỉ có DateFrom, sẽ lấy từ ngày đó đến hiện tại</li>
+    ///   <li>Nếu chỉ có DateTo, sẽ lấy từ đầu đến ngày đó</li>
+    /// </ul>
+    /// </remarks>
+    /// <param name="request">Tham số phân trang và lọc (Page, PageSize, OrderCode, SortOrder, DateFrom, DateTo)</param>
+    /// <returns>Danh sách đơn hàng với phân trang</returns>
+    [HttpGet("orders")]
+    [HasPermission(PermissionConstants.OrderView)]
+    [ProducesResponseType(typeof(PaginationResponse<OrderResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> GetOrders([FromQuery] AGetOrderRequest request)
+    {
+        return Ok(await _orderService.GetOrdersAsync(request));
     }
     #endregion
 }

@@ -10,8 +10,8 @@ public interface IPermissionService
     Task<List<Permission>> GetAllPermissionsAsync();
     Task<List<Permission>> GetPermissionsByModuleAsync(string module);
     Task<Dictionary<string, List<Permission>>> GetPermissionsGroupedByModuleAsync();
-    Task AssignPermissionToRoleAsync(string roleId, int permissionId);
-    Task RemovePermissionFromRoleAsync(string roleId, int permissionId);
+    Task AssignPermissionToRoleAsync(string roleId, int permissionId, string userId);
+    Task RemovePermissionFromRoleAsync(string roleId, int permissionId, string userId);
     void InvalidateCache(string roleId);
     void InvalidateUserCache(string userId);
 }

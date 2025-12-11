@@ -65,6 +65,14 @@ public class PermissionRepository : IPermissionRepository
             .FirstOrDefaultAsync(rp => rp.RoleId == roleId && rp.PermissionId == permissionId);
     }
 
+    public async Task<List<RolePermission>> GetRolePermissionsByRoleIdAsync(string roleId)
+    {
+        return await _context.RolePermissions
+            .Where(rp => rp.RoleId == roleId)
+            .Include(rp => rp.Permission)
+            .ToListAsync();
+    }
+
     public async Task<RolePermission> AddRolePermissionAsync(RolePermission rolePermission)
     {
         rolePermission.CreatedAt = DateTime.UtcNow;
@@ -75,6 +83,10 @@ public class PermissionRepository : IPermissionRepository
 
     public async Task RemoveRolePermissionAsync(RolePermission rolePermission)
     {
+        // Update UpdatedBy and UpdatedAt before removing
+        _context.RolePermissions.Update(rolePermission);
+        await _context.SaveChangesAsync();
+        
         _context.RolePermissions.Remove(rolePermission);
         await _context.SaveChangesAsync();
     }

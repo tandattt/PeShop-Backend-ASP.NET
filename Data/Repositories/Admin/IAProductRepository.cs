@@ -5,4 +5,6 @@ public interface IAProductRepository
 {
     Task<int> GetCountProductAsync(AGetProductRequest request);
     Task<List<Product>> GetListProductAsync(AGetProductRequest request);
+    Task<int> GetCountProductApprovalAsync(AGetProductRequest request);
+    Task<List<Product>> GetListProductApprovalAsync(AGetProductRequest request);
 }

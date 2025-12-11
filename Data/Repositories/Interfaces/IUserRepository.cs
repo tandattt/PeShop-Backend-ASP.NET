@@ -26,5 +26,6 @@ namespace PeShop.Data.Repositories
         Task<List<Role>> GetUserRoleEntitiesAsync(string userId);
         Task<(List<User> Users, int TotalCount)> GetUsersAsync(int page, int pageSize, string? search);
         Task<bool> UpdateStatusAsync(string userId, UserStatus status);
+        Task<(List<User> Users, int TotalCount)> GetSystemUsersAsync(int page, int pageSize, string? keyword);
     }
 }

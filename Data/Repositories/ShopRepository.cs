@@ -1,4 +1,4 @@
-using PeShop.Data.Repositories.Interfaces;  
+using PeShop.Data.Repositories.Interfaces;
 using PeShop.Models.Entities;
 using PeShop.Data.Contexts;
 using Microsoft.EntityFrameworkCore;
@@ -35,7 +35,7 @@ public class ShopRepository : IShopRepository
         }
 
         var searchTerm = keyword.ToLower().Trim();
-        
+
         return await _context.Shops
             .Where(s => s.Name != null && s.Name.ToLower().Contains(searchTerm))
             .OrderByDescending(s => s.FollowersCount)
@@ -52,7 +52,7 @@ public class ShopRepository : IShopRepository
         }
 
         var searchTerm = keyword.ToLower().Trim();
-        
+
         return await _context.Shops
             .Where(s => s.Name != null && s.Name.ToLower().Contains(searchTerm))
             .CountAsync();
@@ -67,5 +67,13 @@ public class ShopRepository : IShopRepository
     public async Task<Shop?> GetShopByUserIdAsync(string userId)
     {
         return await _context.Shops.FirstOrDefaultAsync(s => s.UserId == userId);
+    }
+
+    public async Task<string?> GetShopIdByProductIdAsync(string productId)
+    {
+        return await _context.Products
+            .Where(x => x.Id == productId)
+            .Select(x => x.ShopId)
+            .FirstAsync();
     }
 }

@@ -33,6 +33,14 @@ namespace PeShop.Configurations
                 "save-traffic-data",
                 service => service.SaveTrafficDataAsync(),
                 "0 * * * *"); // Cron: chạy mỗi giờ vào phút 00
+            
+            // Xử lý payouts: cộng net_amount vào wallet và chuyển status thành Completed
+            recurringJobManager.AddOrUpdate<IJobService>(
+                "process-payouts-to-wallet",
+                service => service.ProcessPayoutsToWalletAsync(),
+                "*/5 * * * *"); // Cron: chạy mỗi 5 phút
+
+
         }
     }
 }

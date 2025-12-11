@@ -168,6 +168,11 @@ public class FeeShippingService : IFeeShippingService
                 throw new Exception($"Shop {itemShop.ShopName} chưa đăng ký GHN");
             }
             
+            if (itemShop.ShopDistrictId == null || itemShop.ShopDistrictId == 0)
+            {
+                throw new Exception($"Shop {itemShop.ShopName} chưa cập nhật địa chỉ quận/huyện (OldDistrictId). Vui lòng liên hệ shop để cập nhật.");
+            }
+            
             // Tính tổng weight từ products đã cache
             int totalWeight = itemShop.Products.Sum(p => (int)(p.ProductWeight ?? 200) * (int)p.Quantity);
             if (totalWeight < 1) totalWeight = 200;

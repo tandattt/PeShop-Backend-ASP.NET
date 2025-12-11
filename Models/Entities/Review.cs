@@ -30,6 +30,7 @@ public partial class Review
     public string? UpdatedBy { get; set; }
 
     public string? OrderId { get; set; }
+    public string? ShopId { get; set; }
 
     public virtual User? User { get; set; }
 
@@ -38,5 +39,6 @@ public partial class Review
     public virtual Variant? Variant { get; set; }
 
     public virtual Order? Order { get; set; }
+    public virtual Shop? Shop {get;set;}
 }
 

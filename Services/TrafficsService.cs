@@ -35,7 +35,7 @@ public class TrafficsService : ITrafficsService
         var startTime = endTime.AddHours(-24);
 
         return await context.RequestTraffics
-            .AsNoTracking()
+        .AsNoTracking()
             .Where(rt => rt.CreatedAt.HasValue && rt.CreatedAt >= startTime && rt.CreatedAt <= endTime)
             .GroupBy(rt => new { 
                 Date = rt.CreatedAt!.Value.Date, 
@@ -48,7 +48,7 @@ public class TrafficsService : ITrafficsService
                 ProcessedRequests = g.Sum(x => x.ProcessedRequests)
             })
             .OrderBy(x => x.Date)
-            .ToListAsync();
+        .ToListAsync();
     }
     private async Task<IEnumerable<TrafficStatisticsResponse>> Handle7Days(PeShopDbContext context)
     {

@@ -18,7 +18,7 @@ namespace PeShop.Controllers;
 /// <para><strong>🛡️ Phân quyền:</strong> Yêu cầu permission <code>dashboard_view</code>.</para>
 /// </remarks>
 [ApiController]
-[Route("api/[controller]")]
+[Route("[controller]")]
 [Authorize]
 public class TrafficController : ControllerBase
 {

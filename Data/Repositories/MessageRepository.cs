@@ -22,7 +22,7 @@ public class MessageRepository : IMessageRepository
     public async Task<List<Message>> GetConversationsShopAsync(string userId)
     {
         return await _context.Messages
-            .Where(m => m.UserId == userId && m.ShopId != null && m.SenderType == SenderType.Shop)
+            .Where(m => m.UserId == userId && m.ShopId != null )
             .Include(m => m.Shop)
             .Include(m => m.User)
             .OrderByDescending(m => m.CreatedAt)
@@ -31,7 +31,7 @@ public class MessageRepository : IMessageRepository
     public async Task<List<Message>> GetConversationsUserAsync(string shopId)
     {
         return await _context.Messages
-            .Where(m => m.ShopId == shopId && m.UserId != null && m.SenderType == SenderType.User)
+            .Where(m => m.ShopId == shopId && m.UserId != null)
             .Include(m => m.User)
             .Include(m => m.Shop)
             .OrderByDescending(m => m.CreatedAt)

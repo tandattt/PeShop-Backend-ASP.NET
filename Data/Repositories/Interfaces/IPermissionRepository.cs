@@ -14,5 +14,6 @@ public interface IPermissionRepository
     Task<RolePermission?> GetRolePermissionAsync(string roleId, int permissionId);
     Task<RolePermission> AddRolePermissionAsync(RolePermission rolePermission);
     Task RemoveRolePermissionAsync(RolePermission rolePermission);
+    Task<List<RolePermission>> GetRolePermissionsByRoleIdAsync(string roleId);
     Task<Dictionary<string, List<Permission>>> GetPermissionsGroupedByModuleAsync();
 }

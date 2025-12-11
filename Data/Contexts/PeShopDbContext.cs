@@ -472,7 +472,7 @@ public partial class PeShopDbContext : DbContext
                 .IsFixedLength()
                 .HasColumnName("updated_by");
             entity.Property(e => e.VariantId).HasColumnName("variant_id");
-            
+
             entity.Property(e => e.FlashSaleProductId)
                 .HasMaxLength(255)
                 .HasColumnName("flash_sale_product_id");
@@ -895,7 +895,7 @@ public partial class PeShopDbContext : DbContext
             entity.HasOne(d => d.Product).WithMany()
                 .HasForeignKey(d => d.ProductId)
                 .HasConstraintName("FK_promotion_rule_product");
-            
+
         });
 
         modelBuilder.Entity<PromotionUsage>(entity =>
@@ -1035,6 +1035,9 @@ public partial class PeShopDbContext : DbContext
             entity.Property(e => e.Name)
                 .HasMaxLength(255)
                 .HasColumnName("name");
+            entity.Property(e => e.DisplayName)
+                .HasMaxLength(255)
+                .HasColumnName("display_name");
             entity.Property(e => e.UpdatedAt)
                 .HasMaxLength(6)
                 .HasColumnName("updated_at");
@@ -1682,6 +1685,8 @@ public partial class PeShopDbContext : DbContext
                 .HasColumnName("variant_id");
             entity.Property(e => e.OrderId)
                 .HasColumnName("order_id");
+            entity.Property(e => e.ShopId)
+            .HasColumnName("shop_id");
             entity.Property(e => e.Rating)
                 .HasColumnName("rating");
             entity.Property(e => e.Content)
@@ -1717,6 +1722,9 @@ public partial class PeShopDbContext : DbContext
             entity.HasOne(d => d.Variant).WithMany()
                 .HasForeignKey(d => d.VariantId)
                 .HasConstraintName("review_ibfk_3");
+            entity.HasOne(d => d.Shop).WithMany()
+            .HasForeignKey(d => d.ShopId)
+            .HasConstraintName("review_ibfk_4");
         });
 
         modelBuilder.Entity<Rank>(entity =>

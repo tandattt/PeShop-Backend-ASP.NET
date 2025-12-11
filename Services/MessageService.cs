@@ -94,7 +94,9 @@ namespace PeShop.Services
         {
             if (userId != null)
             {
+                Console.WriteLine("userid:"+ userId);
                 var conversations = await _messageRepository.GetConversationsShopAsync(userId);
+                // Console.WriteLine(JsonSerializer.Serialize(conversations));
                 return conversations
                     .Where(c => c.Shop != null && c.User != null)
                     .Select(c => new ConversationResponse
@@ -109,10 +111,11 @@ namespace PeShop.Services
                         Seen = c.Seen,
                         CreatedAt = c.CreatedAt ?? DateTime.UtcNow,
                     })
-                .DistinctBy(m => m.UserId).ToList();
+                .DistinctBy(m => m.ShopId).ToList();
             }
             else if (shopId != null)
             {
+                Console.WriteLine("shopid:"+ shopId);
                 var conversations = await _messageRepository.GetConversationsUserAsync(shopId);
                 return conversations
                     .Where(c => c.Shop != null && c.User != null)
@@ -128,7 +131,7 @@ namespace PeShop.Services
                         Seen = c.Seen,
                         CreatedAt = c.CreatedAt ?? DateTime.UtcNow,
                     })
-                .DistinctBy(m => m.ShopId).ToList();
+                .DistinctBy(m => m.UserId).ToList();
             }
             return new List<ConversationResponse>();
         }

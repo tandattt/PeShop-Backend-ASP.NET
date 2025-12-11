@@ -47,4 +47,28 @@ public class PayoutRepository : IPayoutRepository
         var result = await _context.SaveChangesAsync();
         return result > 0;
     }
+
+    public async Task<List<Payout>> GetPayoutsByStatusAsync(PayoutStatus status)
+    {
+        return await _context.Payouts
+            .Where(p => p.Status == status)
+            .ToListAsync();
+    }
+
+    public async Task<bool> UpdatePayoutStatusByIdAsync(int payoutId, PayoutStatus status)
+    {
+        var payout = await _context.Payouts
+            .FirstOrDefaultAsync(p => p.Id == payoutId);
+        
+        if (payout == null)
+        {
+            return false;
+        }
+
+        payout.Status = status;
+        payout.UpdatedAt = DateTime.UtcNow;
+        
+        // Không gọi SaveChangesAsync để cho phép transaction commit sau
+        return true;
+    }
 }   

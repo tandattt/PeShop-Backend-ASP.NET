@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using PeShop.Authorization;
 using PeShop.Constants;
 using PeShop.Dtos.Shared;
+using System.Security.Claims;
 using PeShop.Services.Interfaces;
 
 namespace PeShop.Controllers.Admin;
@@ -102,7 +103,8 @@ public class AdminRoleController : ControllerBase
     [HasPermission(PermissionConstants.RoleManage)]
     public async Task<ActionResult<RoleDto>> CreateRole([FromBody] CreateRoleRequest request)
     {
-        var role = await _roleService.CreateRoleAsync(request.Name);
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        var role = await _roleService.CreateRoleAsync(request.Name, request.DisplayName,userId!);
         return CreatedAtAction(nameof(GetRoleById), new { id = role.Id }, role);
     }
 
@@ -119,7 +121,8 @@ public class AdminRoleController : ControllerBase
     [HasPermission(PermissionConstants.RoleManage)]
     public async Task<ActionResult<RoleDto>> UpdateRole(string id, [FromBody] UpdateRoleRequest request)
     {
-        var role = await _roleService.UpdateRoleAsync(id, request.Name);
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        var role = await _roleService.UpdateRoleAsync(id, request.Name,request.DisplayName,userId!);
         return Ok(role);
     }
 
@@ -135,7 +138,8 @@ public class AdminRoleController : ControllerBase
     [HttpDelete("{id}")]
     [HasPermission(PermissionConstants.RoleDelete)]
     public async Task<IActionResult> DeleteRole(string id)
-    {
+    {                                       
+        
         await _roleService.DeleteRoleAsync(id);
         return NoContent();
     }
@@ -145,15 +149,15 @@ public class AdminRoleController : ControllerBase
     /// </summary>
     /// <remarks>
     /// <para><strong>🛡️ Permission:</strong> <code>role.view</code></para>
-    /// <para><strong>📋 Mô tả:</strong> Trả về danh sách tên permissions đã gán cho role.</para>
+    /// <para><strong>📋 Mô tả:</strong> Trả về danh sách permissions đã gán cho role kèm thông tin người tạo và người cập nhật.</para>
     /// </remarks>
     /// <param name="roleId">ID role</param>
-    /// <returns>Danh sách permission names</returns>
+    /// <returns>Danh sách permissions với thông tin chi tiết</returns>
     [HttpGet("{roleId}/permissions")]
     [HasPermission(PermissionConstants.RoleView)]
-    public async Task<ActionResult<List<string>>> GetRolePermissions(string roleId)
+    public async Task<ActionResult<List<RolePermissionDto>>> GetRolePermissions(string roleId)
     {
-        var permissions = await _roleService.GetRolePermissionsAsync(roleId);
+        var permissions = await _roleService.GetRolePermissionsWithDetailsAsync(roleId);
         return Ok(permissions);
     }
 
@@ -175,7 +179,8 @@ public class AdminRoleController : ControllerBase
     [HasPermission(PermissionConstants.RoleManage)]
     public async Task<IActionResult> AssignPermissionToRole(string roleId, int permissionId)
     {
-        await _roleService.AssignPermissionToRoleAsync(roleId, permissionId);
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        await _roleService.AssignPermissionToRoleAsync(roleId, permissionId, userId!);
         return Ok(new { message = "Permission assigned successfully" });
     }
 
@@ -193,25 +198,24 @@ public class AdminRoleController : ControllerBase
     [HasPermission(PermissionConstants.RoleManage)]
     public async Task<IActionResult> RemovePermissionFromRole(string roleId, int permissionId)
     {
-        await _roleService.RemovePermissionFromRoleAsync(roleId, permissionId);
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        await _roleService.RemovePermissionFromRoleAsync(roleId, permissionId, userId!);
         return Ok(new { message = "Permission removed successfully" });
     }
 }
 
-/// <summary>
 /// Request tạo role mới
-/// </summary>
 public class CreateRoleRequest
 {
     /// <summary>Tên role</summary>
     public string Name { get; set; } = null!;
+    public string DisplayName {get;set;} = null!;
 }
 
-/// <summary>
 /// Request cập nhật role
-/// </summary>
 public class UpdateRoleRequest
 {
     /// <summary>Tên role mới</summary>
+    public string DisplayName {get;set;} = null!;
     public string Name { get; set; } = null!;
 }

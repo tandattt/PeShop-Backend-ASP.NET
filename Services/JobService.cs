@@ -19,6 +19,8 @@ using System.IO;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Hosting;
 using PeShop.Helpers;
+using PeShop.Data.Contexts;
+using Microsoft.EntityFrameworkCore;
 namespace PeShop.Services;
 
 public class JobService : IJobService
@@ -37,8 +39,10 @@ public class JobService : IJobService
     private readonly IWebHostEnvironment _webHostEnvironment;
     private readonly RequestCounterHelper _requestCounterHelper;
     private readonly ITrafficsService _trafficsService;
-
-    public JobService(IVoucherService voucherService, IRedisUtil redisUtil, AppSetting appSetting, IApiHelper apiHelper, IOrderRepository orderRepository, IUserRankRepository userRankRepository, IRankService rankService, IProductRepository productRepository, ITransactionRepository transactionRepository, IBackgroundJobClient backgroundJobClient, IWebHostEnvironment webHostEnvironment, RequestCounterHelper requestCounterHelper, ITrafficsService trafficsService)
+    private readonly IPayoutRepository _payoutRepository;
+    private readonly PeShopDbContext _context;
+    
+    public JobService(IVoucherService voucherService, IRedisUtil redisUtil, AppSetting appSetting, IApiHelper apiHelper, IOrderRepository orderRepository, IUserRankRepository userRankRepository, IRankService rankService, IProductRepository productRepository, ITransactionRepository transactionRepository, IBackgroundJobClient backgroundJobClient, IWebHostEnvironment webHostEnvironment, RequestCounterHelper requestCounterHelper, ITrafficsService trafficsService, IPayoutRepository payoutRepository, PeShopDbContext context)
     {
         _voucherService = voucherService;
         _redisUtil = redisUtil;
@@ -53,6 +57,8 @@ public class JobService : IJobService
         _webHostEnvironment = webHostEnvironment;
         _requestCounterHelper = requestCounterHelper;
         _trafficsService = trafficsService;
+        _payoutRepository = payoutRepository;
+        _context = context;
     }
     public async Task UpdatePaymentStatusFailedInOrderAsync(string orderId, string userId)
     {
@@ -153,7 +159,7 @@ public class JobService : IJobService
 
         var runTime = new DateTimeOffset(utcDateTime, TimeSpan.Zero);
         var delay = runTime - DateTimeOffset.UtcNow;
-
+        
         // ✅ Convert JsonElement thành string JSON để lưu vào Hangfire (tránh serialize metadata)
         // Lưu JsonData dưới dạng string để Hangfire có thể deserialize lại đúng
         if (dto.JsonData is JsonElement jsonElement)
@@ -187,7 +193,7 @@ public class JobService : IJobService
                 }
             }
         }
-
+        
         Console.WriteLine("dto.JsonData after convert: " + JsonSerializer.Serialize(dto.JsonData));
         if (!string.IsNullOrEmpty(dto.Id))
         {
@@ -330,10 +336,10 @@ public class JobService : IJobService
             { "API-KEY", $"{_appSetting.ApiKeySystem}"}
         };
         Console.WriteLine("API-KEY: " + headers["API-KEY"]);
-
+        
         // ✅ Convert JsonData thành object để gửi (không phải string JSON)
         object? requestBody = null;
-
+        
         if (dto.JsonData is string jsonString)
         {
             // Nếu là string JSON, parse thành object
@@ -389,7 +395,7 @@ public class JobService : IJobService
         {
             requestBody = dto.JsonData;
         }
-
+        
         Console.WriteLine("requestBody: " + JsonSerializer.Serialize(requestBody));
         var response = await _apiHelper.PostAsync<string>(apiUrl, requestBody, headers);
         if (!string.IsNullOrEmpty(response))
@@ -506,8 +512,8 @@ public class JobService : IJobService
 
             var endTime = DateTime.Now;
             var startTime = endTime.AddHours(-1);
-
-            string url = $"{_appSetting.BaseApiBackendJava}/system/log-statistics?startDate={startTime}&endTime={endTime}";
+            string format = "yyyy-MM-ddTHH:mm:ss";
+            string url = $"{_appSetting.BaseApiBackendJava}/system/log-statistics"+$"?startDate={startTime.ToString(format)}&endDate={endTime.ToString(format)}";
             var header = new Dictionary<string, string>
             {
                 {"API-KEY" , $"{_appSetting.ApiKeySystem}"}
@@ -545,6 +551,70 @@ public class JobService : IJobService
         var response = await _apiHelper.GetAsync<dynamic>($"{_appSetting.BaseApiFlask}/reload_cache");
         Console.WriteLine(response);
     }
+
+    /// Xử lý payouts có status = Processing (3): cộng net_amount vào wallet balance và chuyển status thành Completed
+    /// Tất cả trong 1 transaction để đảm bảo atomicity
+    public async Task ProcessPayoutsToWalletAsync()
+    {
+        try
+        {
+            // Lấy tất cả payouts có status = Processing (3)
+            var payouts = await _payoutRepository.GetPayoutsByStatusAsync(PayoutStatus.Processing);
+            
+            // Nếu không có payout nào cần xử lý, return sớm để tránh tạo transaction không cần thiết
+            if (payouts.Count == 0)
+            {
+                return;
+            }
+
+            await _transactionRepository.ExecuteInTransactionAsync(async () =>
+            {
+                foreach (var payout in payouts)
+                {
+                    if (payout.NetAmount == null || payout.NetAmount <= 0)
+                    {
+                        Console.WriteLine($"Payout {payout.Id} có NetAmount không hợp lệ: {payout.NetAmount}");
+                        continue;
+                    }
+
+                    if (string.IsNullOrEmpty(payout.ShopId))
+                    {
+                        Console.WriteLine($"Payout {payout.Id} không có ShopId");
+                        continue;
+                    }
+
+                    // Tìm wallet của shop
+                    var wallet = await _context.Wallets
+                        .FirstOrDefaultAsync(w => w.ShopId == payout.ShopId);
+
+                    if (wallet == null)
+                    {
+                        Console.WriteLine($"Không tìm thấy wallet cho shop {payout.ShopId}");
+                        continue;
+                    }
+
+                    // Cộng net_amount vào balance
+                    wallet.Balance = (wallet.Balance ?? 0) + payout.NetAmount.Value;
+                    wallet.UpdatedAt = DateTime.UtcNow;
+
+                    // Update payout status thành Completed (1)
+                    await _payoutRepository.UpdatePayoutStatusByIdAsync(payout.Id, PayoutStatus.Completed);
+                    payout.PaidAt = DateTime.UtcNow;
+
+                    Console.WriteLine($"Đã xử lý payout {payout.Id}: +{payout.NetAmount} vào wallet shop {payout.ShopId}");
+                }
+
+                // SaveChangesAsync sẽ được gọi tự động trong ExecuteInTransactionAsync
+            });
+        }
+        catch (Exception ex)
+        {
+            // Log error nhưng không throw để job không bị fail
+            Console.WriteLine($"Error processing payouts to wallet: {ex.Message}");
+            Console.WriteLine($"Stack trace: {ex.StackTrace}");
+        }
+    }
+
     private class TrafficJavaDto
     {
         public string error { get; set; } = string.Empty;

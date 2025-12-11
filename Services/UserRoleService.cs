@@ -41,7 +41,7 @@ public class UserRoleService : IUserRoleService
                 Id = role.Id,
                 Name = role.Name,
                 CreatedAt = role.CreatedAt,
-                Permissions = permissions.Select(p => p.Name).ToList()
+                ListPermission = permissions.Select(p => p.Name).ToList()
             });
         }
 

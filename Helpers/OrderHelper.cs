@@ -54,9 +54,16 @@ public class OrderHelper : IOrderHelper
     {
         var shopGroups = new Dictionary<string, List<OrderRequest>>();
         
+        // Batch lấy thông tin product để xác định ShopId
+        var productIds = items.Select(i => i.ProductId).Distinct().ToList();
+        var products = await _productRepository.GetListProductByVectorAsync(productIds);
+        var productShopMap = products.ToDictionary(p => p.Id, p => p.ShopId ?? string.Empty);
+        
         foreach (var item in items)
         {
-            string shopId = item.ShopId;
+            // Lấy ShopId từ Product thay vì từ request
+            string shopId = productShopMap.TryGetValue(item.ProductId, out var sid) ? sid : item.ShopId;
+            item.ShopId = shopId; // Cập nhật lại ShopId cho item
             
             if (!shopGroups.ContainsKey(shopId))
             {
@@ -66,8 +73,7 @@ public class OrderHelper : IOrderHelper
             shopGroups[shopId].Add(item);
         }
         
-        // Batch check FlashSale cho tất cả products
-        var productIds = items.Select(i => i.ProductId).Distinct().ToList();
+        // Batch check FlashSale cho tất cả products (reuse productIds đã có)
         var flashSaleStatuses = await _flashSaleRepository.HasFlashSalesForProductsAsync(productIds);
         var flashSaleDiscounts = await _flashSaleRepository.GetFlashSaleDiscountsForProductsAsync(productIds);
         var activeFlashSales = await _flashSaleRepository.GetActiveFlashSaleProductsAsync(productIds);
@@ -137,7 +143,7 @@ public class OrderHelper : IOrderHelper
                 // Shop info for GHN shipping
                 ShopGHNId = shop?.GHNId,
                 ShopPhone = shop?.User?.Phone,
-                ShopAddress = shop?.FullNewAddress,
+                ShopAddress = shop?.FullOldAddress,
                 ShopDistrictId = !string.IsNullOrEmpty(shop?.OldDistrictId) ? int.Parse(shop.OldDistrictId) : null
             });
         }
