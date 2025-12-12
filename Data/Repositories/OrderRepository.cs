@@ -37,6 +37,7 @@ public class OrderRepository : IOrderRepository
         }
         return await _context.Orders
             .Where(o => orderIds.Contains(o.Id) && o.UserId == userId)
+            .AsNoTracking()
             .ToListAsync();
     }
     public async Task<Order?> GetOrderDetailAsync(string orderId, string userId)
@@ -48,6 +49,7 @@ public class OrderRepository : IOrderRepository
         .ThenInclude(od => od.Variant)
         .ThenInclude(v => v.VariantValues)
         .ThenInclude(vv => vv.PropertyValue)
+        .AsNoTracking()
         .FirstOrDefaultAsync(o => o.Id == orderId && o.UserId == userId);
     }
     public async Task<List<Order>> GetOrderByUserIdAsync(string userId)
@@ -61,6 +63,7 @@ public class OrderRepository : IOrderRepository
         .ThenInclude(v => v.VariantValues)
         .ThenInclude(vv => vv.PropertyValue)
         .Where(o => o.UserId == userId)
+        .AsNoTracking()
         .ToListAsync();
     }
     public async Task<bool> UpdatePaymentStatusInOrderAsync(Order order)

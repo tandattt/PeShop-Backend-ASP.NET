@@ -12,7 +12,7 @@ public class UserRankRepository : IUserRankRepository
     }
     public async Task<UserRank?> GetUserRankByIdAsync(string userId)
     {
-        return await _context.UserRanks.FirstOrDefaultAsync(x => x.UserId == userId);
+        return await _context.UserRanks.AsNoTracking().FirstOrDefaultAsync(x => x.UserId == userId);
     }
     
     public async Task<UserRank?> UpdateUserRankAsync(UserRank userRank)

@@ -117,7 +117,8 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 
-app.MapControllers().RequireRateLimiting(PolicyConstants.IpPolicy);
+app.MapControllers();
+// .RequireRateLimiting(PolicyConstants.IpPolicy);
 
 // Map MVC routes - tất cả routes MVC nằm dưới /manage
 app.MapControllerRoute(

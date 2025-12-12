@@ -22,6 +22,7 @@ public class PromotionRepository : IPromotionRepository
             && p.Promotion!.ShopId == shopId
             && p.Product!.Status == ProductStatus.Active
             && p.Promotion!.Status == PromotionStatus.Active)
+        .AsNoTracking()
         .ToListAsync();
         return products.Select(p => p.Product).Where(p => p != null).ToList();
     }
@@ -34,6 +35,7 @@ public class PromotionRepository : IPromotionRepository
             .ThenInclude(g => g.Product)
         .Where(p => p.Status == PromotionStatus.Active)
         .Where(p => p.PromotionRules.Any(r => r.ProductId == productId && r.Product != null && r.Product.Status == ProductStatus.Active))
+        .AsNoTracking()
         .ToListAsync();
         Console.WriteLine(string.Join(", ", promotions.Select(p => p.Id)));
         return promotions.Cast<Promotion?>().ToList();
@@ -70,6 +72,7 @@ public class PromotionRepository : IPromotionRepository
                         && r.Promotion != null && r.Promotion.Status == PromotionStatus.Active)
             .Select(r => r.ProductId!)
             .Distinct()
+            .AsNoTracking()
             .ToListAsync();
 
         // Tạo dictionary với tất cả productIds, mặc định false

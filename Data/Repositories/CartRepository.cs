@@ -24,6 +24,7 @@ namespace PeShop.Data.Repositories
                         .ThenInclude(vv => vv!.PropertyValue)
                             .ThenInclude(pv => pv!.PropertyProduct)
                 .Where(x => x.UserId == userId)
+                .AsNoTracking()
                 .ToListAsync();
         }
         public async Task<Cart?> AddCartAsync(Cart cart,string userId)

@@ -15,6 +15,7 @@ public class CategoryChildRepository : ICategoryChildRepository
     {
         return await _context.CategoryChildren
             .Where(cc => cc.CategoryId == categoryId && (cc.IsDeleted == null || cc.IsDeleted == false))
+            .AsNoTracking()
             .ToListAsync();
     }
 
@@ -29,6 +30,7 @@ public class CategoryChildRepository : ICategoryChildRepository
     {
         return await _context.CategoryChildren
             .Where(cc => cc.Id == id && (cc.IsDeleted == null || cc.IsDeleted == false))
+            .AsNoTracking()
             .FirstOrDefaultAsync();
     }
 
@@ -36,6 +38,7 @@ public class CategoryChildRepository : ICategoryChildRepository
     {
         return await _context.CategoryChildren
             .Where(cc => cc.IsDeleted == null || cc.IsDeleted == false)
+            .AsNoTracking()
             .ToListAsync();
     }
 
@@ -58,6 +61,7 @@ public class CategoryChildRepository : ICategoryChildRepository
             .OrderByDescending(cc => cc.CreatedAt)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
+            .AsNoTracking()
             .ToListAsync();
 
         return (data, totalCount);

@@ -21,6 +21,7 @@ namespace PeShop.Data.Repositories
                 .Include(u => u.Roles)
                 .Include(u => u.UserRanks)
                     .ThenInclude(ur => ur.Rank)
+                .AsNoTracking()
                 .FirstOrDefaultAsync(u => u.Id == id);
         }
 
@@ -28,6 +29,7 @@ namespace PeShop.Data.Repositories
         {
             return await _context.Users
                 .Include(u => u.Roles)
+                .AsNoTracking()
                 .FirstOrDefaultAsync(u => u.Email == email);
         }
 
@@ -35,6 +37,7 @@ namespace PeShop.Data.Repositories
         {
             return await _context.Users
                 .Include(u => u.Roles)
+                .AsNoTracking()
                 .FirstOrDefaultAsync(u => u.Username == username);
         }
 
@@ -42,6 +45,7 @@ namespace PeShop.Data.Repositories
         {
             return await _context.Users
                 .Include(u => u.Roles)
+                .AsNoTracking()
                 .FirstOrDefaultAsync(u => u.Email == emailOrUsername ||
                                         u.Username == emailOrUsername);
         }
@@ -84,6 +88,7 @@ namespace PeShop.Data.Repositories
         {
             var user = await _context.Users
                 .Include(u => u.Roles)
+                .AsNoTracking()
                 .FirstOrDefaultAsync(u => u.Id == userId);
 
             if (user == null) return new List<string> { "User" };
@@ -94,6 +99,7 @@ namespace PeShop.Data.Repositories
         public async Task<string?> GetUserShopIdAsync(string userId)
         {
             var shop = await _context.Shops
+                .AsNoTracking()
                 .FirstOrDefaultAsync(s => s.UserId == userId);
 
             return shop?.Id;
@@ -144,6 +150,7 @@ namespace PeShop.Data.Repositories
             var endDate = dateOnly?.ToDateTime(TimeOnly.MaxValue);
             return await _context.UserViewProducts
                 .Where(v => v.ProductId == product_id && v.UserId == userId && v.CreatedAt >= startDate && v.CreatedAt <= endDate)
+                .AsNoTracking()
                 .ToListAsync();
         }
         public async Task<bool> CreateUserViewShopAsync(string shop_id, string userId)
@@ -206,6 +213,7 @@ namespace PeShop.Data.Repositories
         {
             var user = await _context.Users
                 .Include(u => u.Roles)
+                .AsNoTracking()
                 .FirstOrDefaultAsync(u => u.Id == userId);
 
             return user?.Roles.ToList() ?? [];
@@ -233,6 +241,7 @@ namespace PeShop.Data.Repositories
                 .OrderByDescending(u => u.CreatedAt)
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
+                .AsNoTracking()
                 .ToListAsync();
 
             return (users, totalCount);
@@ -284,6 +293,7 @@ namespace PeShop.Data.Repositories
                 .OrderByDescending(u => u.CreatedAt)
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
+                .AsNoTracking()
                 .ToListAsync();
 
             return (users, totalCount);

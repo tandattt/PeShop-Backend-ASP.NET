@@ -1,3 +1,5 @@
+using Models.Enums;
+
 namespace PeShop.Dtos.Shared
 {
     public class ProductDto
@@ -16,5 +18,6 @@ namespace PeShop.Dtos.Shared
         public bool? HasPromotion { get; set; }
         public bool? HasFlashSale { get; set; }
         public decimal? FlashSalePrice { get; set; }
+        public ProductStatus? Status { get; set; }
     }
 }

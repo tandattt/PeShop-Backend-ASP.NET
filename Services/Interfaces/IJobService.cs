@@ -17,4 +17,5 @@ public interface IJobService
     Task ReloadCacheFlaskAsync();
     Task SaveTrafficDataAsync();
     Task ProcessPayoutsToWalletAsync();
+    Task CreateSystemLogAsync(string userId, string content);
 }

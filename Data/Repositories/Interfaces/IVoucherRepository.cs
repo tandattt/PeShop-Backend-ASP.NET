@@ -1,4 +1,5 @@
 using PeShop.Models.Entities;
+using PeShop.Dtos.Requests;
 namespace PeShop.Data.Repositories.Interfaces;
 public interface IVoucherRepository
 {
@@ -16,4 +17,10 @@ public interface IVoucherRepository
     Task<bool> UpdateUserVoucherSystemAsync(UserVoucherSystem userVoucherSystem);
     Task<bool> CreateUserVoucherSystemAsync(UserVoucherSystem userVoucherSystem);
     Task<bool> CreateUserVoucherShopAsync(UserVoucherShop userVoucherShop);
+    
+    // Admin methods
+    Task<int> GetCountVoucherSystemAsync(AGetVoucherRequest request);
+    Task<List<VoucherSystem>> GetListVoucherSystemAsync(AGetVoucherRequest request);
+    Task<VoucherSystem> CreateVoucherSystemAsync(VoucherSystem voucherSystem);
+    Task<bool> DeleteVoucherSystemAsync(string voucherId);
 }

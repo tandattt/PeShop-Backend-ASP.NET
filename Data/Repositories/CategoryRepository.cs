@@ -14,6 +14,7 @@ public class CategoryRepository : ICategoryRepository
     {
         return await _context.Categories
             .Where(c => c.IsDeleted == null || c.IsDeleted == false)
+            .AsNoTracking()
             .ToListAsync();
     }
 
@@ -36,6 +37,7 @@ public class CategoryRepository : ICategoryRepository
             .OrderByDescending(c => c.CreatedAt)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
+            .AsNoTracking()
             .ToListAsync();
 
         return (data, totalCount);
@@ -52,6 +54,7 @@ public class CategoryRepository : ICategoryRepository
     {
         return await _context.Categories
             .Where(c => c.Id == id && (c.IsDeleted == null || c.IsDeleted == false))
+            .AsNoTracking()
             .FirstOrDefaultAsync();
     }
 

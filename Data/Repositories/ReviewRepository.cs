@@ -30,6 +30,7 @@ public class ReviewRepository : IReviewRepository
             .Include(x => x.Product)
             .ThenInclude(x => x.Shop)
             .Where(x => x.ProductId == productId)
+            .AsNoTracking()
             .ToListAsync();
     }
     public async Task<HashSet<(string OrderId, string ProductId)>> GetExistingReviewsBatchAsync(List<(string OrderId, string ProductId)> items, string userId)
@@ -54,6 +55,7 @@ public class ReviewRepository : IReviewRepository
                 && orderIds.Contains(x.OrderId) 
                 && productIds.Contains(x.ProductId))
             .Select(x => new { OrderId = x.OrderId!, ProductId = x.ProductId! })
+            .AsNoTracking()
             .ToListAsync();
 
         return existingReviews.Select(x => (x.OrderId, x.ProductId)).ToHashSet();

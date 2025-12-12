@@ -32,6 +32,11 @@ namespace PeShop.Configurations
                 {
                     // Disable retry strategy to allow manual transactions
                     mySqlOptions.CommandTimeout(30);
+                    mySqlOptions.EnableRetryOnFailure(
+                    maxRetryCount: 5,
+                    maxRetryDelay: TimeSpan.FromSeconds(10),
+                    errorNumbersToAdd: null
+                );
                 });
                 options.EnableSensitiveDataLogging(environment.IsDevelopment());
                 options.EnableDetailedErrors(environment.IsDevelopment());

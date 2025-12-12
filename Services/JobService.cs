@@ -8,6 +8,7 @@ using PeShop.Dtos.Shared;
 using PeShop.Dtos.Job;
 using PeShop.Setting;
 using PeShop.Data.Repositories.Interfaces;
+using PeShop.Data.Repositories;
 using PeShop.Models.Entities;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -41,8 +42,10 @@ public class JobService : IJobService
     private readonly ITrafficsService _trafficsService;
     private readonly IPayoutRepository _payoutRepository;
     private readonly PeShopDbContext _context;
+    private readonly ILogRepository _logRepository;
+    private readonly IUserRepository _userRepository;
     
-    public JobService(IVoucherService voucherService, IRedisUtil redisUtil, AppSetting appSetting, IApiHelper apiHelper, IOrderRepository orderRepository, IUserRankRepository userRankRepository, IRankService rankService, IProductRepository productRepository, ITransactionRepository transactionRepository, IBackgroundJobClient backgroundJobClient, IWebHostEnvironment webHostEnvironment, RequestCounterHelper requestCounterHelper, ITrafficsService trafficsService, IPayoutRepository payoutRepository, PeShopDbContext context)
+    public JobService(IVoucherService voucherService, IRedisUtil redisUtil, AppSetting appSetting, IApiHelper apiHelper, IOrderRepository orderRepository, IUserRankRepository userRankRepository, IRankService rankService, IProductRepository productRepository, ITransactionRepository transactionRepository, IBackgroundJobClient backgroundJobClient, IWebHostEnvironment webHostEnvironment, RequestCounterHelper requestCounterHelper, ITrafficsService trafficsService, IPayoutRepository payoutRepository, PeShopDbContext context, ILogRepository logRepository, IUserRepository userRepository)
     {
         _voucherService = voucherService;
         _redisUtil = redisUtil;
@@ -59,6 +62,8 @@ public class JobService : IJobService
         _trafficsService = trafficsService;
         _payoutRepository = payoutRepository;
         _context = context;
+        _logRepository = logRepository;
+        _userRepository = userRepository;
     }
     public async Task UpdatePaymentStatusFailedInOrderAsync(string orderId, string userId)
     {
@@ -613,6 +618,19 @@ public class JobService : IJobService
             Console.WriteLine($"Error processing payouts to wallet: {ex.Message}");
             Console.WriteLine($"Stack trace: {ex.StackTrace}");
         }
+    }
+
+    public async Task CreateSystemLogAsync(string userId, string content)
+    {
+        // Lấy thông tin user để lấy tên
+        var user = await _userRepository.GetByIdAsync(userId);
+        var userName = user?.Name ?? "Unknown";
+        
+        // Ghép userName với content
+        var fullContent = $"{userName}: {content}";
+        
+        // Gọi log repository để lưu
+        await _logRepository.CreateLogAsync(fullContent);
     }
 
     private class TrafficJavaDto

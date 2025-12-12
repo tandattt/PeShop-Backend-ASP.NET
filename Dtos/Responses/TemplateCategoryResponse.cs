@@ -5,6 +5,7 @@ public class TemplateCategoryResponse
     public int Id { get; set; }
     public string? Name { get; set; }
     public string? CategoryId { get; set; }
+    public string? CategoryName{get;set;}
     public bool? IsDeleted { get; set; }
     public DateTime? CreatedAt { get; set; }
     public string? CreatedBy { get; set; }

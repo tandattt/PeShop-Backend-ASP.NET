@@ -47,7 +47,8 @@ public class AProductService : IAProductService
             Slug = p.Slug ?? string.Empty,
             ShopId = p.Shop?.Id ?? string.Empty,
             ShopName = p.Shop?.Name ?? string.Empty,
-            HasPromotion = null
+            HasPromotion = null,
+            Status = p.Status
         }).ToList();
         
         // Batch query tất cả promotions một lần thay vì N queries
@@ -80,7 +81,7 @@ public class AProductService : IAProductService
     
     public async Task<PaginationResponse<ProductDto>> GetProductsApprovalAsync(AGetProductRequest request)
     {
-        // Lấy cả Unspecified và Complaint khi không truyền status
+        // Lấy cả Pending, Unspecified và Complaint khi không truyền status
         var products = await _productRepository.GetListProductApprovalAsync(request);
         var totalCount = await _productRepository.GetCountProductApprovalAsync(request);
         
@@ -97,7 +98,8 @@ public class AProductService : IAProductService
             Slug = p.Slug ?? string.Empty,
             ShopId = p.Shop?.Id ?? string.Empty,
             ShopName = p.Shop?.Name ?? string.Empty,
-            HasPromotion = null
+            HasPromotion = null,
+            Status = p.Status
         }).ToList();
         
         // Batch query tất cả promotions một lần thay vì N queries
@@ -145,10 +147,10 @@ public class AProductService : IAProductService
             throw new NotFoundException("Sản phẩm không tồn tại");
         }
         
-        // Kiểm tra product có status là Unspecified hoặc Complaint không
-        if (product.Status != ProductStatus.Unspecified && product.Status != ProductStatus.Complaint)
+        // Kiểm tra product có status là Pending, Unspecified hoặc Complaint không
+        if (product.Status != ProductStatus.Pending && product.Status != ProductStatus.Unspecified && product.Status != ProductStatus.Complaint)
         {
-            throw new BadRequestException("Chỉ có thể duyệt sản phẩm có trạng thái Unspecified hoặc Complaint");
+            throw new BadRequestException("Chỉ có thể duyệt sản phẩm có trạng thái Pending, Unspecified hoặc Complaint");
         }
         
         // Update status

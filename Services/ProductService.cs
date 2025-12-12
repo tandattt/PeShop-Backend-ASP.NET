@@ -132,55 +132,57 @@ public class ProductService : IProductService
                          request.MaxPrice.HasValue ||
                          request.ReviewPoint.HasValue;
 
+        // Lấy products và count (tuần tự vì dùng chung DbContext)
         List<Product> products;
         int totalCount;
+        
         if (hasFilters)
         {
-            // Get filtered products
             products = await _productRepository.GetListProductByAsync(request);
             totalCount = await _productRepository.GetCountProductByAsync(request);
         }
         else
         {
             products = await _productRepository.GetListProductAsync(request.Page, request.PageSize);
-
             totalCount = await _productRepository.GetCountProductAsync();
         }
+        
         if (totalCount > request.PageSize * 10) totalCount = request.PageSize * 10;
-        var productDtos = products.Select(p => new ProductDto
-        {
-            Id = p.Id,
-            Name = p.Name ?? string.Empty,
-            Image = p.ImgMain ?? string.Empty,
-            ReviewCount = p.ReviewCount ?? 0,
-            ReviewPoint = p.ReviewPoint ?? 0,
-            Price = p.Price ?? 0,
-            BoughtCount = p.BoughtCount ?? 0,
-            AddressShop = p.Shop?.NewProviceId ?? string.Empty,
-            Slug = p.Slug ?? string.Empty,
-            ShopId = p.Shop?.Id ?? string.Empty,
-            ShopName = p.Shop?.Name ?? string.Empty,
-            HasPromotion = null,
-            HasFlashSale = null,
-            FlashSalePrice = null
+        
+        var productIds = products.Select(p => p.Id).ToList();
+        
+        // Lấy promotions và flash sales (tuần tự)
+        var promotionsDict = await _promotionRepository.HasPromotionsForProductsAsync(productIds);
+        var flashSaleDiscountsDict = await _flashSaleRepository.GetFlashSaleDiscountsForProductsAsync(productIds);
+        
+        // Map products to DTOs với promotion/flash sale info
+        var productDtos = products.Select(p => {
+            var hasFlashSale = flashSaleDiscountsDict.ContainsKey(p.Id);
+            decimal? flashSalePrice = null;
+            if (hasFlashSale && flashSaleDiscountsDict.TryGetValue(p.Id, out var percentDecrease))
+            {
+                flashSalePrice = (p.Price ?? 0) * (100 - percentDecrease) / 100;
+            }
+            
+            return new ProductDto
+            {
+                Id = p.Id,
+                Name = p.Name ?? string.Empty,
+                Image = p.ImgMain ?? string.Empty,
+                ReviewCount = p.ReviewCount ?? 0,
+                ReviewPoint = p.ReviewPoint ?? 0,
+                Price = p.Price ?? 0,
+                BoughtCount = p.BoughtCount ?? 0,
+                AddressShop = p.Shop?.NewProviceId ?? string.Empty,
+                Slug = p.Slug ?? string.Empty,
+                ShopId = p.Shop?.Id ?? string.Empty,
+                ShopName = p.Shop?.Name ?? string.Empty,
+                HasPromotion = promotionsDict.GetValueOrDefault(p.Id, false),
+                HasFlashSale = hasFlashSale,
+                FlashSalePrice = flashSalePrice
+            };
         }).ToList();
 
-        var productIds = productDtos.Select(p => p.Id).ToList();
-        var promotionsDict = await _promotionRepository.HasPromotionsForProductsAsync(productIds);
-        var flashSalesDict = await _flashSaleRepository.HasFlashSalesForProductsAsync(productIds);
-        var flashSaleDiscountsDict = await _flashSaleRepository.GetFlashSaleDiscountsForProductsAsync(productIds);
-
-        foreach (var productDto in productDtos)
-        {
-            productDto.HasPromotion = promotionsDict.GetValueOrDefault(productDto.Id, false);
-            productDto.HasFlashSale = flashSalesDict.GetValueOrDefault(productDto.Id, false);
-            
-            // Tính giá flash sale nếu sản phẩm có flash sale
-            if (productDto.HasFlashSale == true && flashSaleDiscountsDict.TryGetValue(productDto.Id, out var percentDecrease))
-            {
-                productDto.FlashSalePrice = productDto.Price * (100 - percentDecrease) / 100;
-            }
-        }
         // Calculate pagination info
         var totalPages = (int)Math.Ceiling((double)totalCount / request.PageSize);
         var hasNextPage = request.Page < totalPages;

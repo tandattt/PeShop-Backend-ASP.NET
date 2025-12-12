@@ -5,7 +5,9 @@ using PeShop.Constants;
 using PeShop.Dtos.Requests;
 using PeShop.Dtos.Responses;
 using PeShop.Services.Admin.Interfaces;
+using PeShop.Services.Interfaces;
 using System.Security.Claims;
+using Hangfire;
 
 namespace PeShop.Controllers.Admin;
 
@@ -27,10 +29,12 @@ namespace PeShop.Controllers.Admin;
 public class AdminUserSystemController : ControllerBase
 {
     private readonly ISystemUserService _systemUserService;
+    private readonly IBackgroundJobClient _backgroundJobClient;
 
-    public AdminUserSystemController(ISystemUserService systemUserService)
+    public AdminUserSystemController(ISystemUserService systemUserService, IBackgroundJobClient backgroundJobClient)
     {
         _systemUserService = systemUserService;
+        _backgroundJobClient = backgroundJobClient;
     }
 
     /// <summary>
@@ -97,6 +101,54 @@ public class AdminUserSystemController : ControllerBase
     }
 
     /// <summary>
+    /// Tạo System User mới - TOKEN + Permission
+    /// </summary>
+    /// <remarks>
+    /// <para><strong>🔐 Xác thực:</strong> Bearer Token</para>
+    /// <para><strong>🛡️ Permission:</strong> <code>user.manage</code></para>
+    /// <para><strong>📋 Mô tả:</strong></para>
+    /// <ul>
+    ///   <li>Tạo system user mới với role(s) được chỉ định</li>
+    ///   <li>RoleIds phải là danh sách role ID hợp lệ (không được là User hoặc Shop)</li>
+    ///   <li>Username, Email, Password và RoleIds là bắt buộc</li>
+    /// </ul>
+    /// 
+    /// <para><strong>📥 Request Body:</strong></para>
+    /// <pre><code>{
+    ///   "username": "admin01",
+    ///   "email": "admin@example.com",
+    ///   "name": "Admin User",
+    ///   "phone": "0123456789",
+    ///   "avatar": "https://example.com/avatar.jpg",
+    ///   "password": "password123",
+    ///   "roleIds": ["role-id-1", "role-id-2"]
+    /// }</code></pre>
+    /// 
+    /// <para><strong>📤 Response:</strong></para>
+    /// <ul>
+    ///   <li><strong>200 OK:</strong> Thông tin system user sau khi tạo</li>
+    ///   <li><strong>400 Bad Request:</strong> Username/Email đã tồn tại, Role không hợp lệ, hoặc validation lỗi</li>
+    ///   <li><strong>401 Unauthorized:</strong> Token không hợp lệ hoặc hết hạn</li>
+    ///   <li><strong>403 Forbidden:</strong> Không có permission user.manage</li>
+    /// </ul>
+    /// </remarks>
+    /// <param name="request">Thông tin system user cần tạo</param>
+    /// <returns>Thông tin system user sau khi tạo</returns>
+    [HttpPost]
+    [HasPermission(PermissionConstants.UserManage)]
+    [ProducesResponseType(typeof(SystemUserResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<ActionResult<SystemUserResponse>> CreateSystemUser([FromBody] CreateSystemUserRequest request)
+    {
+        var createdBy = User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? string.Empty;
+        var result = await _systemUserService.CreateSystemUserAsync(request, createdBy);
+        _backgroundJobClient.Enqueue<IJobService>(x => x.CreateSystemLogAsync(createdBy, $"Đã tạo System User mới: {request.Username} - Email: {request.Email}"));
+        return Ok(result);
+    }
+
+    /// <summary>
     /// Cập nhật thông tin System User - TOKEN + Permission
     /// </summary>
     /// <remarks>
@@ -139,6 +191,7 @@ public class AdminUserSystemController : ControllerBase
     {
         var updatedBy = User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? string.Empty;
         var result = await _systemUserService.UpdateSystemUserAsync(id, request, updatedBy);
+        _backgroundJobClient.Enqueue<IJobService>(x => x.CreateSystemLogAsync(updatedBy, $"Đã cập nhật System User ID: {id}"));
         return Ok(result);
     }
 
@@ -179,6 +232,8 @@ public class AdminUserSystemController : ControllerBase
     {
         var updatedBy = User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? string.Empty;
         var result = await _systemUserService.ChangePasswordAsync(id, request, updatedBy);
+        _backgroundJobClient.Enqueue<IJobService>(x => x.CreateSystemLogAsync(updatedBy, $"Đã đổi mật khẩu cho System User ID: {id}"));
         return Ok(result);
     }
+    
 }

@@ -14,7 +14,7 @@ namespace PeShop.Data.Repositories
         }
         public async Task<List<ImageProduct>> GetListImageProductByProductIdAsync(string productId)
         {
-            return await _context.ImageProducts.Where(x => x.ProductId == productId).OrderBy(x => x.SortOrder).ToListAsync();
+            return await _context.ImageProducts.Where(x => x.ProductId == productId).OrderBy(x => x.SortOrder).AsNoTracking().ToListAsync();
         }
     }
 }

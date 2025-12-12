@@ -12,6 +12,7 @@ using PeShop.Data.Repositories.Interfaces;
 using System.Security.Claims;
 using Models.Enums;
 using PeShop.Models.Enums;
+using Hangfire;
 
 namespace PeShop.Controllers.Admin;
 
@@ -38,6 +39,8 @@ public class AdminController : ControllerBase
     private readonly IUserRepository _userRepository;
     private readonly IAUserService _userService;
     private readonly IAOrderService _orderService;
+    private readonly IAVoucherService _voucherService;
+    private readonly IBackgroundJobClient _backgroundJobClient;
 
     public AdminController(
         IAProductService productService,
@@ -49,7 +52,9 @@ public class AdminController : ControllerBase
         IPermissionService permissionService,
         IUserRepository userRepository,
         IAUserService userService,
-        IAOrderService orderService)
+        IAOrderService orderService,
+        IAVoucherService voucherService,
+        IBackgroundJobClient backgroundJobClient)
     {
         _productService = productService;
         _templateCategoryService = templateCategoryService;
@@ -61,6 +66,8 @@ public class AdminController : ControllerBase
         _userRepository = userRepository;
         _userService = userService;
         _orderService = orderService;
+        _voucherService = voucherService;
+        _backgroundJobClient = backgroundJobClient;
     }
 
     /// <summary>
@@ -178,7 +185,7 @@ public class AdminController : ControllerBase
     /// <ul>
     ///   <li><code>Page</code>: Số trang (mặc định: 1)</li>
     ///   <li><code>PageSize</code>: Số lượng sản phẩm mỗi trang (mặc định: 20)</li>
-    ///   <li><code>Status</code>: Trạng thái - chỉ được là Unspecified (5) hoặc Complaint (6) (optional, nếu không truyền sẽ lấy cả 2)</li>
+    ///   <li><code>Status</code>: Trạng thái - chỉ được là Pending (4), Unspecified (5) hoặc Complaint (6) (optional, nếu không truyền sẽ lấy cả 3)</li>
     ///   <li><code>SortOrder</code>: Sắp xếp - "newest" hoặc "oldest" (mặc định: "newest")</li>
     ///   <li><code>DateFrom</code>: Lọc từ ngày (optional)</li>
     ///   <li><code>DateTo</code>: Lọc đến ngày (optional)</li>
@@ -187,7 +194,7 @@ public class AdminController : ControllerBase
     /// <para><strong>📤 Response:</strong></para>
     /// <ul>
     ///   <li><strong>200 OK:</strong> Danh sách sản phẩm chờ duyệt với phân trang</li>
-    ///   <li><strong>400 Bad Request:</strong> Status không hợp lệ (không phải Unspecified hoặc Complaint)</li>
+    ///   <li><strong>400 Bad Request:</strong> Status không hợp lệ (không phải Pending, Unspecified hoặc Complaint)</li>
     ///   <li><strong>401 Unauthorized:</strong> Token không hợp lệ hoặc hết hạn</li>
     ///   <li><strong>403 Forbidden:</strong> Không có permission product.view</li>
     /// </ul>
@@ -205,12 +212,12 @@ public class AdminController : ControllerBase
         // Validate status nếu có truyền vào
         if (request.Status.HasValue)
         {
-            if (request.Status != ProductStatus.Unspecified && request.Status != ProductStatus.Complaint)
+            if (request.Status != ProductStatus.Unspecified && request.Status != ProductStatus.Complaint && request.Status != ProductStatus.Pending)
             {
                 return BadRequest(new StatusResponse
                 {
                     Status = false,
-                    Message = "Status chỉ được là Unspecified (5) hoặc Complaint (6)"
+                    Message = "Status chỉ được là Pending (4), Unspecified (5) hoặc Complaint (6)"
                 });
             }
             // Nếu có status, dùng GetProductsAsync bình thường
@@ -218,7 +225,7 @@ public class AdminController : ControllerBase
         }
         else
         {
-            // Nếu không truyền status, lấy cả Unspecified và Complaint
+            // Nếu không truyền status, lấy cả Pending, Unspecified và Complaint
             return Ok(await _productService.GetProductsApprovalAsync(request));
         }
     }
@@ -263,7 +270,10 @@ public class AdminController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<StatusResponse>> ApproveProduct([FromBody] ApproveProductRequest request)
     {
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? string.Empty;
         var result = await _productService.ApproveProductAsync(request);
+        var statusText = request.Status == ProductStatus.Active ? "duyệt" : "từ chối";
+        _backgroundJobClient.Enqueue<IJobService>(x => x.CreateSystemLogAsync(userId, $"Đã {statusText} sản phẩm ID: {request.ProductId}"));
         return Ok(result);
     }
     #endregion
@@ -281,7 +291,9 @@ public class AdminController : ControllerBase
     [HasPermission(PermissionConstants.TemplateCategoryManage)]
     public async Task<ActionResult<TemplateCategoryResponse>> CreateTemplateCategory([FromBody] CreateTemplateCategoryRequest request)
     {
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? string.Empty;
         var result = await _templateCategoryService.CreateAsync(request);
+        _backgroundJobClient.Enqueue<IJobService>(x => x.CreateSystemLogAsync(userId, $"Đã tạo Template Category mới: {request.Name}"));
         return Ok(result);
     }
 
@@ -323,7 +335,9 @@ public class AdminController : ControllerBase
     [HasPermission(PermissionConstants.TemplateCategoryManage)]
     public async Task<ActionResult<TemplateCategoryResponse>> UpdateTemplateCategory(int id, [FromBody] UpdateTemplateCategoryRequest request)
     {
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? string.Empty;
         var result = await _templateCategoryService.UpdateAsync(id, request);
+        _backgroundJobClient.Enqueue<IJobService>(x => x.CreateSystemLogAsync(userId, $"Đã cập nhật Template Category ID: {id}"));
         return Ok(result);
     }
 
@@ -337,7 +351,9 @@ public class AdminController : ControllerBase
     [HasPermission(PermissionConstants.TemplateCategoryDelete)]
     public async Task<ActionResult<StatusResponse>> DeleteTemplateCategory(int id)
     {
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? string.Empty;
         var result = await _templateCategoryService.DeleteAsync(id);
+        _backgroundJobClient.Enqueue<IJobService>(x => x.CreateSystemLogAsync(userId, $"Đã xóa Template Category ID: {id}"));
         return Ok(result);
     }
     #endregion
@@ -353,7 +369,9 @@ public class AdminController : ControllerBase
     [HasPermission(PermissionConstants.TemplateCategoryManage)]
     public async Task<ActionResult<TemplateCategoryChildResponse>> CreateTemplateCategoryChild([FromBody] CreateTemplateCategoryChildRequest request)
     {
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? string.Empty;
         var result = await _templateCategoryChildService.CreateAsync(request);
+        _backgroundJobClient.Enqueue<IJobService>(x => x.CreateSystemLogAsync(userId, $"Đã tạo Template Category Child mới: {request.Name}"));
         return Ok(result);
     }
 
@@ -395,7 +413,9 @@ public class AdminController : ControllerBase
     [HasPermission(PermissionConstants.TemplateCategoryManage)]
     public async Task<ActionResult<TemplateCategoryChildResponse>> UpdateTemplateCategoryChild(int id, [FromBody] UpdateTemplateCategoryChildRequest request)
     {
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? string.Empty;
         var result = await _templateCategoryChildService.UpdateAsync(id, request);
+        _backgroundJobClient.Enqueue<IJobService>(x => x.CreateSystemLogAsync(userId, $"Đã cập nhật Template Category Child ID: {id}"));
         return Ok(result);
     }
 
@@ -409,7 +429,9 @@ public class AdminController : ControllerBase
     [HasPermission(PermissionConstants.TemplateCategoryDelete)]
     public async Task<ActionResult<StatusResponse>> DeleteTemplateCategoryChild(int id)
     {
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? string.Empty;
         var result = await _templateCategoryChildService.DeleteAsync(id);
+        _backgroundJobClient.Enqueue<IJobService>(x => x.CreateSystemLogAsync(userId, $"Đã xóa Template Category Child ID: {id}"));
         return Ok(result);
     }
     #endregion
@@ -425,7 +447,9 @@ public class AdminController : ControllerBase
     [HasPermission(PermissionConstants.CategoryManage)]
     public async Task<ActionResult<CategoryResponse>> CreateCategory([FromBody] CreateCategoryRequest request)
     {
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? string.Empty;
         var result = await _categoryService.CreateAsync(request);
+        _backgroundJobClient.Enqueue<IJobService>(x => x.CreateSystemLogAsync(userId, $"Đã tạo Category mới: {request.Name}"));
         return Ok(result);
     }
 
@@ -467,7 +491,9 @@ public class AdminController : ControllerBase
     [HasPermission(PermissionConstants.CategoryManage)]
     public async Task<ActionResult<CategoryResponse>> UpdateCategory(string id, [FromBody] UpdateCategoryRequest request)
     {
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? string.Empty;
         var result = await _categoryService.UpdateAsync(id, request);
+        _backgroundJobClient.Enqueue<IJobService>(x => x.CreateSystemLogAsync(userId, $"Đã cập nhật Category ID: {id}"));
         return Ok(result);
     }
 
@@ -481,7 +507,9 @@ public class AdminController : ControllerBase
     [HasPermission(PermissionConstants.CategoryDelete)]
     public async Task<ActionResult<StatusResponse>> DeleteCategory(string id)
     {
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? string.Empty;
         var result = await _categoryService.DeleteAsync(id);
+        _backgroundJobClient.Enqueue<IJobService>(x => x.CreateSystemLogAsync(userId, $"Đã xóa Category ID: {id}"));
         return Ok(result);
     }
     #endregion
@@ -497,7 +525,9 @@ public class AdminController : ControllerBase
     [HasPermission(PermissionConstants.CategoryManage)]
     public async Task<ActionResult<CategoryChildResponse>> CreateCategoryChild([FromBody] CreateCategoryChildRequest request)
     {
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? string.Empty;
         var result = await _categoryChildService.CreateAsync(request);
+        _backgroundJobClient.Enqueue<IJobService>(x => x.CreateSystemLogAsync(userId, $"Đã tạo Category Child mới: {request.Name}"));
         return Ok(result);
     }
 
@@ -539,7 +569,9 @@ public class AdminController : ControllerBase
     [HasPermission(PermissionConstants.CategoryManage)]
     public async Task<ActionResult<CategoryChildResponse>> UpdateCategoryChild(string id, [FromBody] UpdateCategoryChildRequest request)
     {
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? string.Empty;
         var result = await _categoryChildService.UpdateAsync(id, request);
+        _backgroundJobClient.Enqueue<IJobService>(x => x.CreateSystemLogAsync(userId, $"Đã cập nhật Category Child ID: {id}"));
         return Ok(result);
     }
 
@@ -553,7 +585,9 @@ public class AdminController : ControllerBase
     [HasPermission(PermissionConstants.CategoryDelete)]
     public async Task<ActionResult<StatusResponse>> DeleteCategoryChild(string id)
     {
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? string.Empty;
         var result = await _categoryChildService.DeleteAsync(id);
+        _backgroundJobClient.Enqueue<IJobService>(x => x.CreateSystemLogAsync(userId, $"Đã xóa Category Child ID: {id}"));
         return Ok(result);
     }
     #endregion
@@ -570,7 +604,9 @@ public class AdminController : ControllerBase
     [HasPermission(PermissionConstants.PlatformFeeManage)]
     public async Task<ActionResult<PlatformFeeResponse>> CreatePlatformFee([FromBody] CreatePlatformFeeRequest request)
     {
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? string.Empty;
         var result = await _platformFeeService.CreateAsync(request);
+        _backgroundJobClient.Enqueue<IJobService>(x => x.CreateSystemLogAsync(userId, $"Đã tạo Platform Fee mới cho Category: {request.CategoryId}"));
         return Ok(result);
     }
 
@@ -626,7 +662,9 @@ public class AdminController : ControllerBase
     [HasPermission(PermissionConstants.PlatformFeeManage)]
     public async Task<ActionResult<PlatformFeeResponse>> UpdatePlatformFee(uint id, [FromBody] UpdatePlatformFeeRequest request)
     {
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? string.Empty;
         var result = await _platformFeeService.UpdateAsync(id, request);
+        _backgroundJobClient.Enqueue<IJobService>(x => x.CreateSystemLogAsync(userId, $"Đã cập nhật Platform Fee ID: {id}"));
         return Ok(result);
     }
     #endregion
@@ -677,9 +715,321 @@ public class AdminController : ControllerBase
     [HasPermission(PermissionConstants.UserManage)]
     public async Task<ActionResult<StatusResponse>> UpdateUserStatus(string id, [FromBody] AUpdateUserStatusRequest request)
     {
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? string.Empty;
         var result = await _userService.UpdateUserStatusAsync(id, request);
+        _backgroundJobClient.Enqueue<IJobService>(x => x.CreateSystemLogAsync(userId, $"Đã cập nhật trạng thái User ID: {id} thành {request.Status}"));
         return Ok(result);
     }
+    #endregion
+
+    #region Voucher Management
+    /// <summary>
+    /// Lấy danh sách voucher hệ thống (Admin) - TOKEN + Permission
+    /// </summary>
+    /// <remarks>
+    /// <para><strong>🔐 Xác thực:</strong> Bearer Token</para>
+    /// <para><strong>🛡️ Permission:</strong> <code>voucher.view</code></para>
+    /// <para><strong>📋 Mô tả:</strong></para>
+    /// <ul>
+    ///   <li>Trả về danh sách tất cả voucher hệ thống với phân trang</li>
+    ///   <li>Hỗ trợ tìm kiếm theo mã voucher (Code)</li>
+    ///   <li>Hỗ trợ lọc theo loại voucher (Type): Phần trăm (Percentage) hoặc Tiền (FixedAmount)</li>
+    ///   <li>Hỗ trợ lọc theo trạng thái (Status): Active, Inactive, Expired</li>
+    ///   <li>Hỗ trợ sắp xếp theo thời gian tạo (newest/oldest)</li>
+    ///   <li>Hỗ trợ lọc theo khoảng thời gian (DateFrom, DateTo)</li>
+    /// </ul>
+    /// 
+    /// <para><strong>📥 Query Parameters:</strong></para>
+    /// <ul>
+    ///   <li><code>Page</code> (int, optional, default: 1): Số trang cần lấy
+    ///     <ul>
+    ///       <li>Giá trị tối thiểu: 1</li>
+    ///       <li>Ví dụ: <code>?Page=1</code></li>
+    ///     </ul>
+    ///   </li>
+    ///   <li><code>PageSize</code> (int, optional, default: 20): Số lượng voucher mỗi trang
+    ///     <ul>
+    ///       <li>Giá trị tối thiểu: 1</li>
+    ///       <li>Giá trị tối đa: 100</li>
+    ///       <li>Ví dụ: <code>?PageSize=20</code></li>
+    ///     </ul>
+    ///   </li>
+    ///   <li><code>Code</code> (string, optional): Tìm kiếm theo mã voucher
+    ///     <ul>
+    ///       <li>Hỗ trợ tìm kiếm một phần (contains)</li>
+    ///       <li>Ví dụ: <code>?Code=SUMMER2024</code> hoặc <code>?Code=SUMMER</code></li>
+    ///     </ul>
+    ///   </li>
+    ///   <li><code>Type</code> (int, optional): Lọc theo loại voucher
+    ///     <ul>
+    ///       <li>1 = FixedAmount (Giảm tiền)</li>
+    ///       <li>2 = Percentage (Giảm phần trăm)</li>
+    ///       <li>Ví dụ: <code>?Type=2</code> để lấy voucher giảm phần trăm</li>
+    ///     </ul>
+    ///   </li>
+    ///   <li><code>Status</code> (int, optional): Lọc theo trạng thái
+    ///     <ul>
+    ///       <li>0 = Inactive (Không hoạt động)</li>
+    ///       <li>1 = Active (Đang hoạt động)</li>
+    ///       <li>2 = Expired (Hết hạn)</li>
+    ///       <li>Ví dụ: <code>?Status=1</code> để lấy voucher đang hoạt động</li>
+    ///     </ul>
+    ///   </li>
+    ///   <li><code>SortOrder</code> (string, optional, default: "newest"): Sắp xếp theo thời gian tạo
+    ///     <ul>
+    ///       <li>Giá trị: "newest" hoặc "oldest"</li>
+    ///       <li>"newest": Voucher mới nhất trước</li>
+    ///       <li>"oldest": Voucher cũ nhất trước</li>
+    ///       <li>Ví dụ: <code>?SortOrder=newest</code></li>
+    ///     </ul>
+    ///   </li>
+    ///   <li><code>DateFrom</code> (DateTime, optional): Lọc từ ngày
+    ///     <ul>
+    ///       <li>Format: ISO 8601 (yyyy-MM-dd hoặc yyyy-MM-ddTHH:mm:ss)</li>
+    ///       <li>Ví dụ: <code>?DateFrom=2024-01-01</code></li>
+    ///     </ul>
+    ///   </li>
+    ///   <li><code>DateTo</code> (DateTime, optional): Lọc đến ngày
+    ///     <ul>
+    ///       <li>Format: ISO 8601 (yyyy-MM-dd hoặc yyyy-MM-ddTHH:mm:ss)</li>
+    ///       <li>Ví dụ: <code>?DateTo=2024-12-31</code></li>
+    ///     </ul>
+    ///   </li>
+    /// </ul>
+    /// 
+    /// <para><strong>📝 Ví dụ Request:</strong></para>
+    /// <ul>
+    ///   <li><strong>Lấy trang đầu tiên (20 voucher mới nhất):</strong>
+    ///     <pre><code>GET /Admin/vouchers?Page=1&amp;PageSize=20</code></pre>
+    ///   </li>
+    ///   <li><strong>Tìm kiếm voucher theo mã:</strong>
+    ///     <pre><code>GET /Admin/vouchers?Code=SUMMER2024</code></pre>
+    ///   </li>
+    ///   <li><strong>Lọc voucher giảm phần trăm đang hoạt động:</strong>
+    ///     <pre><code>GET /Admin/vouchers?Type=2&amp;Status=1</code></pre>
+    ///   </li>
+    ///   <li><strong>Kết hợp tất cả filters:</strong>
+    ///     <pre><code>GET /Admin/vouchers?Page=1&amp;PageSize=10&amp;Code=SUMMER&amp;Type=2&amp;Status=1&amp;DateFrom=2024-11-01&amp;DateTo=2024-12-31&amp;SortOrder=newest</code></pre>
+    ///   </li>
+    /// </ul>
+    /// 
+    /// <para><strong>📤 Response:</strong></para>
+    /// <ul>
+    ///   <li><strong>200 OK:</strong> Danh sách voucher với phân trang, bao gồm:
+    ///     <ul>
+    ///       <li><code>Code</code>: Mã voucher</li>
+    ///       <li><code>Name</code>: Tên voucher</li>
+    ///       <li><code>Type</code>: Loại voucher (1 = Tiền, 2 = Phần trăm)</li>
+    ///       <li><code>TypeName</code>: Tên loại ("Tiền" hoặc "Phần trăm")</li>
+    ///       <li><code>MiniumOrderValue</code>: Đơn tối thiểu</li>
+    ///       <li><code>QuantityUsed</code>: Đã dùng</li>
+    ///       <li><code>Quantity</code>: Tổng số lượng</li>
+    ///       <li><code>EndTime</code>: Hết hạn</li>
+    ///       <li><code>Status</code>: Trạng thái (0 = Inactive, 1 = Active, 2 = Expired)</li>
+    ///       <li><code>StatusName</code>: Tên trạng thái</li>
+    ///     </ul>
+    ///   </li>
+    ///   <li><strong>401 Unauthorized:</strong> Token không hợp lệ hoặc hết hạn</li>
+    ///   <li><strong>403 Forbidden:</strong> Không có permission voucher.view</li>
+    /// </ul>
+    /// </remarks>
+    /// <param name="request">Tham số phân trang và lọc (Page, PageSize, Code, Type, Status, SortOrder, DateFrom, DateTo)</param>
+    /// <returns>Danh sách voucher với phân trang</returns>
+    [HttpGet("vouchers")]
+    [HasPermission(PermissionConstants.VoucherView)]
+    [ProducesResponseType(typeof(PaginationResponse<AVoucherResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> GetVouchers([FromQuery] AGetVoucherRequest request)
+    {
+        return Ok(await _voucherService.GetVouchersAsync(request));
+    }
+
+    /// <summary>
+    /// Tạo voucher hệ thống mới - TOKEN + Permission
+    /// </summary>
+    /// <remarks>
+    /// <para><strong>🔐 Xác thực:</strong> Bearer Token</para>
+    /// <para><strong>🛡️ Permission:</strong> <code>voucher.manage</code></para>
+    /// <para><strong>📋 Mô tả:</strong></para>
+    /// <ul>
+    ///   <li>Tạo voucher hệ thống mới với các thông tin được cung cấp</li>
+    ///   <li>Validate ngày bắt đầu phải nhỏ hơn ngày kết thúc</li>
+    ///   <li>Validate ngày kết thúc phải lớn hơn thời điểm hiện tại</li>
+    ///   <li>Nếu StartTime đã qua thì set status = Active ngay, không dùng Hangfire</li>
+    ///   <li>Nếu StartTime ở tương lai thì set status = Inactive và schedule 2 jobs:
+    ///     <ul>
+    ///       <li>Job khi đến StartTime: set status = Active</li>
+    ///       <li>Job khi đến EndTime: set status = Expired</li>
+    ///     </ul>
+    ///   </li>
+    /// </ul>
+    /// 
+    /// <para><strong>📥 Request Body:</strong></para>
+    /// <pre><code>{
+    ///   "code": "SUMMER2024",
+    ///   "name": "Voucher mùa hè 2024",
+    ///   "type": 2,
+    ///   "discountValue": 20,
+    ///   "maxdiscountAmount": 50000,
+    ///   "miniumOrderValue": 100000,
+    ///   "quantity": 1000,
+    ///   "limitForUser": 1,
+    ///   "startTime": "2024-12-01T00:00:00Z",
+    ///   "endTime": "2024-12-31T23:59:59Z"
+    /// }</code></pre>
+    /// 
+    /// <para><strong>📤 Response:</strong></para>
+    /// <ul>
+    ///   <li><strong>200 OK:</strong> Thông tin voucher sau khi tạo</li>
+    ///   <li><strong>400 Bad Request:</strong> Validation lỗi (ngày không hợp lệ)</li>
+    ///   <li><strong>401 Unauthorized:</strong> Token không hợp lệ hoặc hết hạn</li>
+    ///   <li><strong>403 Forbidden:</strong> Không có permission voucher.manage</li>
+    /// </ul>
+    /// </remarks>
+    /// <param name="request">Thông tin voucher cần tạo</param>
+    /// <returns>Thông tin voucher sau khi tạo</returns>
+    [HttpPost("vouchers")]
+    [HasPermission(PermissionConstants.VoucherManage)]
+    [ProducesResponseType(typeof(StatusResponse<AVoucherResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<ActionResult<StatusResponse<AVoucherResponse>>> CreateVoucher([FromBody] ACreateVoucherRequest request)
+    {
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? string.Empty;
+        var result = await _voucherService.CreateAsync(request, userId);
+        _backgroundJobClient.Enqueue<IJobService>(x => x.CreateSystemLogAsync(userId, $"Đã tạo Voucher mới: {request.Code} - {request.Name}"));
+        return Ok(result);
+    }
+
+    /// <summary>
+    /// Cập nhật thời gian voucher hệ thống - TOKEN + Permission
+    /// </summary>
+    /// <remarks>
+    /// <para><strong>🔐 Xác thực:</strong> Bearer Token</para>
+    /// <para><strong>🛡️ Permission:</strong> <code>voucher.manage</code></para>
+    /// <para><strong>📋 Mô tả:</strong></para>
+    /// <ul>
+    ///   <li>Cập nhật StartTime và EndTime cho voucher</li>
+    ///   <li>Chỉ có thể update voucher có status = Inactive</li>
+    ///   <li>Không thể update voucher có status = Active hoặc Expired</li>
+    ///   <li>Validate ngày bắt đầu phải nhỏ hơn ngày kết thúc</li>
+    ///   <li>Validate ngày kết thúc phải lớn hơn thời điểm hiện tại</li>
+    ///   <li>Nếu StartTime đã qua thì set status = Active ngay và schedule job cho EndTime</li>
+    ///   <li>Nếu StartTime ở tương lai thì xóa jobs cũ, set status = Inactive và schedule 2 jobs mới</li>
+    /// </ul>
+    /// 
+    /// <para><strong>📥 Request Body:</strong></para>
+    /// <pre><code>{
+    ///   "startTime": "2024-12-01T00:00:00Z",
+    ///   "endTime": "2024-12-31T23:59:59Z"
+    /// }</code></pre>
+    /// 
+    /// <para><strong>📤 Response:</strong></para>
+    /// <ul>
+    ///   <li><strong>200 OK:</strong> Thông tin voucher sau khi cập nhật</li>
+    ///   <li><strong>400 Bad Request:</strong> Validation lỗi hoặc voucher có status Active/Expired</li>
+    ///   <li><strong>401 Unauthorized:</strong> Token không hợp lệ hoặc hết hạn</li>
+    ///   <li><strong>403 Forbidden:</strong> Không có permission voucher.manage</li>
+    ///   <li><strong>404 Not Found:</strong> Voucher không tồn tại</li>
+    /// </ul>
+    /// </remarks>
+    /// <param name="id">ID của voucher cần cập nhật</param>
+    /// <param name="request">Thông tin thời gian mới (StartTime, EndTime)</param>
+    /// <returns>Thông tin voucher sau khi cập nhật</returns>
+    [HttpPut("vouchers/{id}")]
+    [HasPermission(PermissionConstants.VoucherManage)]
+    [ProducesResponseType(typeof(StatusResponse<AVoucherResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<StatusResponse<AVoucherResponse>>> UpdateVoucher(string id, [FromBody] AUpdateVoucherRequest request)
+    {
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? string.Empty;
+        var result = await _voucherService.UpdateAsync(id, request, userId);
+        _backgroundJobClient.Enqueue<IJobService>(x => x.CreateSystemLogAsync(userId, $"Đã cập nhật Voucher ID: {id}"));
+        return Ok(result);
+    }
+
+    /// <summary>
+    /// Xóa voucher hệ thống - TOKEN + Permission
+    /// </summary>
+    /// <remarks>
+    /// <para><strong>🔐 Xác thực:</strong> Bearer Token</para>
+    /// <para><strong>🛡️ Permission:</strong> <code>voucher.delete</code></para>
+    /// <para><strong>📋 Mô tả:</strong></para>
+    /// <ul>
+    ///   <li>Xóa voucher khỏi hệ thống</li>
+    ///   <li>Nếu voucher đã có người sử dụng (có foreign key constraint), sẽ trả về lỗi và gợi ý set status = Expired thay vì xóa</li>
+    ///   <li>Tự động xóa các jobs liên quan (voucherStartDate và voucherEndDate) trước khi xóa voucher</li>
+    /// </ul>
+    /// 
+    /// <para><strong>📤 Response:</strong></para>
+    /// <ul>
+    ///   <li><strong>200 OK:</strong> Voucher đã được xóa thành công</li>
+    ///   <li><strong>400 Bad Request:</strong> Không thể xóa voucher vì đã có người sử dụng</li>
+    ///   <li><strong>401 Unauthorized:</strong> Token không hợp lệ hoặc hết hạn</li>
+    ///   <li><strong>403 Forbidden:</strong> Không có permission voucher.delete</li>
+    ///   <li><strong>404 Not Found:</strong> Voucher không tồn tại</li>
+    /// </ul>
+    /// </remarks>
+    /// <param name="id">ID của voucher cần xóa</param>
+    /// <returns>StatusResponse - thành công hoặc thất bại</returns>
+    [HttpDelete("vouchers/{id}")]
+    [HasPermission(PermissionConstants.VoucherDelete)]
+    [ProducesResponseType(typeof(StatusResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<StatusResponse>> DeleteVoucher(string id)
+    {
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? string.Empty;
+        var result = await _voucherService.DeleteAsync(id);
+        _backgroundJobClient.Enqueue<IJobService>(x => x.CreateSystemLogAsync(userId, $"Đã xóa Voucher ID: {id}"));
+        return Ok(result);
+    }
+
+    /// <summary>
+    /// Kết thúc voucher (set status = Expired) - TOKEN + Permission
+    /// </summary>
+    /// <remarks>
+    /// <para><strong>🔐 Xác thực:</strong> Bearer Token</para>
+    /// <para><strong>🛡️ Permission:</strong> <code>voucher.manage</code></para>
+    /// <para><strong>📋 Mô tả:</strong></para>
+    /// <ul>
+    ///   <li>Set status của voucher thành Expired (hết hạn)</li>
+    ///   <li>Tự động xóa các jobs liên quan (voucherStartDate và voucherEndDate)</li>
+    ///   <li>Voucher sẽ không còn hiển thị hoặc có thể sử dụng nữa</li>
+    ///   <li>Dùng thay thế cho xóa voucher khi voucher đã có người sử dụng</li>
+    /// </ul>
+    /// 
+    /// <para><strong>📤 Response:</strong></para>
+    /// <ul>
+    ///   <li><strong>200 OK:</strong> Voucher đã được kết thúc thành công</li>
+    ///   <li><strong>401 Unauthorized:</strong> Token không hợp lệ hoặc hết hạn</li>
+    ///   <li><strong>403 Forbidden:</strong> Không có permission voucher.manage</li>
+    ///   <li><strong>404 Not Found:</strong> Voucher không tồn tại</li>
+    /// </ul>
+    /// </remarks>
+    /// <param name="id">ID của voucher cần kết thúc</param>
+    /// <returns>StatusResponse - thành công hoặc thất bại</returns>
+    [HttpPost("vouchers/{id}/expire")]
+    [HasPermission(PermissionConstants.VoucherManage)]
+    [ProducesResponseType(typeof(StatusResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<StatusResponse>> SetVoucherExpired(string id)
+    {
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? string.Empty;
+        var result = await _voucherService.SetExpiredAsync(id);
+        _backgroundJobClient.Enqueue<IJobService>(x => x.CreateSystemLogAsync(userId, $"Đã kết thúc (set Expired) Voucher ID: {id}"));
+        return Ok(result);
+    }
+
     #endregion
 
     #region Order Management

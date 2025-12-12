@@ -163,10 +163,10 @@ public class SystemUserService : ISystemUserService
             user.Avatar = request.Avatar;
         }
 
-        if (!string.IsNullOrWhiteSpace(request.Password))
-        {
-            user.Password = request.Password;
-        }
+        // if (!string.IsNullOrWhiteSpace(request.Password))
+        // {
+        //     user.Password = request.Password;
+        // }
 
         user.UpdatedAt = DateTime.UtcNow;
         user.UpdatedBy = updatedBy;
@@ -236,6 +236,67 @@ public class SystemUserService : ISystemUserService
 
         // Invalidate cache
         _permissionService.InvalidateCache(systemRole.Id);
+    }
+
+    public async Task<SystemUserResponse> CreateSystemUserAsync(CreateSystemUserRequest request, string createdBy)
+    {
+        // Check if username already exists
+        if (await _userRepository.ExistsByUsernameAsync(request.Username))
+        {
+            throw new BadRequestException("Username đã tồn tại");
+        }
+
+        // Check if email already exists
+        if (await _userRepository.ExistsByEmailAsync(request.Email))
+        {
+            throw new BadRequestException("Email đã tồn tại");
+        }
+
+        // Get roles by IDs
+        var roles = new List<Models.Entities.Role>();
+        foreach (var roleId in request.RoleIds)
+        {
+            var role = await _roleRepository.GetByIdAsync(roleId);
+            if (role == null)
+            {
+                throw new BadRequestException($"Role với ID '{roleId}' không tồn tại");
+            }
+
+            // Validate role name (cannot be User or Shop)
+            if (role.Name == "User" || role.Name == "Shop")
+            {
+                throw new BadRequestException($"Role '{role.Name}' không được sử dụng cho System User");
+            }
+
+            roles.Add(role);
+        }
+
+        // Create new user
+        var newUser = new Models.Entities.User
+        {
+            Id = Guid.NewGuid().ToString(),
+            Username = request.Username,
+            Email = request.Email,
+            Name = request.Name,
+            Phone = request.Phone,
+            Avatar = request.Avatar,
+            Password = request.Password,
+            Status = Models.Enums.UserStatus.Active,
+            HasShop = Models.Enums.HasShop.No,
+            Roles = roles,
+            CreatedAt = DateTime.UtcNow,
+            CreatedBy = createdBy,
+            UpdatedAt = DateTime.UtcNow,
+            UpdatedBy = createdBy
+        };
+
+        var user = await _userRepository.CreateAsync(newUser);
+
+        // Invalidate permission cache
+        _permissionService.InvalidateUserCache(user.Id);
+
+        // Return created user
+        return await GetSystemUserByIdAsync(user.Id);
     }
 
     public async Task<StatusResponse> ChangePasswordAsync(string userId, ChangePasswordRequest request, string updatedBy)

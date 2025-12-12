@@ -5,6 +5,7 @@ using PeShop.Constants;
 using PeShop.Dtos.Shared;
 using System.Security.Claims;
 using PeShop.Services.Interfaces;
+using Hangfire;
 
 namespace PeShop.Controllers.Admin;
 
@@ -27,10 +28,12 @@ namespace PeShop.Controllers.Admin;
 public class AdminRoleController : ControllerBase
 {
     private readonly IRoleService _roleService;
+    private readonly IBackgroundJobClient _backgroundJobClient;
 
-    public AdminRoleController(IRoleService roleService)
+    public AdminRoleController(IRoleService roleService, IBackgroundJobClient backgroundJobClient)
     {
         _roleService = roleService;
+        _backgroundJobClient = backgroundJobClient;
     }
 
     /// <summary>
@@ -105,6 +108,7 @@ public class AdminRoleController : ControllerBase
     {
         var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         var role = await _roleService.CreateRoleAsync(request.Name, request.DisplayName,userId!);
+        _backgroundJobClient.Enqueue<IJobService>(x => x.CreateSystemLogAsync(userId!, $"Đã tạo Role mới: {request.Name} ({request.DisplayName})"));
         return CreatedAtAction(nameof(GetRoleById), new { id = role.Id }, role);
     }
 
@@ -123,6 +127,7 @@ public class AdminRoleController : ControllerBase
     {
         var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         var role = await _roleService.UpdateRoleAsync(id, request.Name,request.DisplayName,userId!);
+        _backgroundJobClient.Enqueue<IJobService>(x => x.CreateSystemLogAsync(userId!, $"Đã cập nhật Role ID: {id} - Tên: {request.Name}"));
         return Ok(role);
     }
 
@@ -139,8 +144,9 @@ public class AdminRoleController : ControllerBase
     [HasPermission(PermissionConstants.RoleDelete)]
     public async Task<IActionResult> DeleteRole(string id)
     {                                       
-        
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         await _roleService.DeleteRoleAsync(id);
+        _backgroundJobClient.Enqueue<IJobService>(x => x.CreateSystemLogAsync(userId!, $"Đã xóa Role ID: {id}"));
         return NoContent();
     }
 
@@ -181,6 +187,7 @@ public class AdminRoleController : ControllerBase
     {
         var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         await _roleService.AssignPermissionToRoleAsync(roleId, permissionId, userId!);
+        _backgroundJobClient.Enqueue<IJobService>(x => x.CreateSystemLogAsync(userId!, $"Đã gán Permission ID: {permissionId} cho Role ID: {roleId}"));
         return Ok(new { message = "Permission assigned successfully" });
     }
 
@@ -200,6 +207,7 @@ public class AdminRoleController : ControllerBase
     {
         var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         await _roleService.RemovePermissionFromRoleAsync(roleId, permissionId, userId!);
+        _backgroundJobClient.Enqueue<IJobService>(x => x.CreateSystemLogAsync(userId!, $"Đã gỡ Permission ID: {permissionId} khỏi Role ID: {roleId}"));
         return Ok(new { message = "Permission removed successfully" });
     }
 }
@@ -215,7 +223,6 @@ public class CreateRoleRequest
 /// Request cập nhật role
 public class UpdateRoleRequest
 {
-    /// <summary>Tên role mới</summary>
     public string DisplayName {get;set;} = null!;
     public string Name { get; set; } = null!;
 }

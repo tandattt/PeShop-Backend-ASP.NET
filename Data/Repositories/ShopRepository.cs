@@ -24,7 +24,7 @@ public class ShopRepository : IShopRepository
             OldDistrictId = x.OldDistrictId,
             OldProviceId = x.OldProviceId,
             OldWardId = x.OldWardId,
-        }).FirstOrDefaultAsync(x => x.Id == id) ?? new Shop();
+        }).AsNoTracking().FirstOrDefaultAsync(x => x.Id == id) ?? new Shop();
     }
 
     public async Task<List<Shop>> SearchShopsAsync(string keyword, int skip = 0, int take = 20)
@@ -41,6 +41,7 @@ public class ShopRepository : IShopRepository
             .OrderByDescending(s => s.FollowersCount)
             .Skip(skip)
             .Take(take)
+            .AsNoTracking()
             .ToListAsync();
     }
 
@@ -62,11 +63,12 @@ public class ShopRepository : IShopRepository
     {
         return await _context.Shops
             .Include(s => s.User)
+            .AsNoTracking()
             .FirstOrDefaultAsync(s => s.Id == shopId);
     }
     public async Task<Shop?> GetShopByUserIdAsync(string userId)
     {
-        return await _context.Shops.FirstOrDefaultAsync(s => s.UserId == userId);
+        return await _context.Shops.AsNoTracking().FirstOrDefaultAsync(s => s.UserId == userId);
     }
 
     public async Task<string?> GetShopIdByProductIdAsync(string productId)
@@ -74,6 +76,7 @@ public class ShopRepository : IShopRepository
         return await _context.Products
             .Where(x => x.Id == productId)
             .Select(x => x.ShopId)
+            .AsNoTracking()
             .FirstAsync();
     }
 }

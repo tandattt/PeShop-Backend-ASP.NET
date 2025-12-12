@@ -12,6 +12,6 @@ public class RankRepository : IRankRepository
     }
     public async Task<Rank?> GetRankByTotalSpentAsync(decimal totalSpent)
     {
-        return await _context.Ranks.FirstOrDefaultAsync(x => x.MinPrice <= totalSpent && x.MaxPrice >= totalSpent);
+        return await _context.Ranks.AsNoTracking().FirstOrDefaultAsync(x => x.MinPrice <= totalSpent && x.MaxPrice >= totalSpent);
     }
 }

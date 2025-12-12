@@ -52,6 +52,7 @@ public class PayoutRepository : IPayoutRepository
     {
         return await _context.Payouts
             .Where(p => p.Status == status)
+            .AsNoTracking()
             .ToListAsync();
     }
 

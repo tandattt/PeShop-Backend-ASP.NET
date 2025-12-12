@@ -25,6 +25,8 @@ public class TemplateCategoryChildRepository : ITemplateCategoryChildRepository
     {
         return await _context.TemplateCategoryChildren
             .Where(tcc => tcc.Id == id && (tcc.IsDeleted == null || tcc.IsDeleted == false))
+            .Include(tcc => tcc.CategoryChild)
+            .AsNoTracking()
             .FirstOrDefaultAsync();
     }
 
@@ -32,6 +34,8 @@ public class TemplateCategoryChildRepository : ITemplateCategoryChildRepository
     {
         return await _context.TemplateCategoryChildren
             .Where(tcc => tcc.IsDeleted == null || tcc.IsDeleted == false)
+            .Include(tcc => tcc.CategoryChild)
+            .AsNoTracking()
             .ToListAsync();
     }
 
@@ -46,6 +50,7 @@ public class TemplateCategoryChildRepository : ITemplateCategoryChildRepository
             .OrderByDescending(tcc => tcc.CreatedAt)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
+            .AsNoTracking()
             .ToListAsync();
 
         return (data, totalCount);

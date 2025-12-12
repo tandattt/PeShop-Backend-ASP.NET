@@ -26,6 +26,7 @@ public class MessageRepository : IMessageRepository
             .Include(m => m.Shop)
             .Include(m => m.User)
             .OrderByDescending(m => m.CreatedAt)
+            .AsNoTracking()
             .ToListAsync();
     }
     public async Task<List<Message>> GetConversationsUserAsync(string shopId)
@@ -35,6 +36,7 @@ public class MessageRepository : IMessageRepository
             .Include(m => m.User)
             .Include(m => m.Shop)
             .OrderByDescending(m => m.CreatedAt)
+            .AsNoTracking()
             .ToListAsync();
     }
     public async Task<List<Message>> GetMessagesAsync(GetMessageRequest request)
@@ -44,6 +46,7 @@ public class MessageRepository : IMessageRepository
             .OrderByDescending(m => m.CreatedAt)
             .Skip((request.Page - 1) * request.PageSize)
             .Take(request.PageSize)
+            .AsNoTracking()
             .ToListAsync();
         return messages;
     }
@@ -55,7 +58,7 @@ public class MessageRepository : IMessageRepository
     }
     public async Task<bool> UpdateMessageSeenAsync(string userId, string shopId, SenderType senderType)
     {
-        var messages = await _context.Messages.Where(m => m.UserId == userId && m.ShopId == shopId && m.SenderType == senderType).ToListAsync();
+        var messages = await _context.Messages.Where(m => m.UserId == userId && m.ShopId == shopId && m.SenderType == senderType).ToListAsync(); // Cần tracking để update
         foreach (var m in messages)
         {
             m.Seen = true;

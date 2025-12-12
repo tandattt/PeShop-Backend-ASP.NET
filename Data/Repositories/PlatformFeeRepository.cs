@@ -31,6 +31,7 @@ public class PlatformFeeRepository : IPlatformFeeRepository
     {
         return await _context.PlatformFees
             .OrderByDescending(p => p.CreatedAt)
+            .AsNoTracking()
             .ToListAsync();
     }
 
@@ -49,6 +50,7 @@ public class PlatformFeeRepository : IPlatformFeeRepository
             .OrderByDescending(p => p.CreatedAt)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
+            .AsNoTracking()
             .ToListAsync();
 
         return (data, totalCount);
@@ -59,6 +61,7 @@ public class PlatformFeeRepository : IPlatformFeeRepository
         return await _context.PlatformFees
             .Where(p => p.CategoryId == categoryId)
             .OrderByDescending(p => p.CreatedAt)
+            .AsNoTracking()
             .ToListAsync();
     }
 
@@ -73,6 +76,7 @@ public class PlatformFeeRepository : IPlatformFeeRepository
             .OrderByDescending(p => p.CreatedAt)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
+            .AsNoTracking()
             .ToListAsync();
 
         return (data, totalCount);

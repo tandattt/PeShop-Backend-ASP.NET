@@ -45,6 +45,7 @@ public class AOrderRepository : IAOrderRepository
                 .ThenInclude(od => od.Product)
             .Skip(skip)
             .Take(request.PageSize)
+            .AsNoTracking()
             .ToListAsync();
     }
     

@@ -39,6 +39,7 @@ public class AProductRepository : IAProductRepository
             .Include(p => p.Shop)
             .Skip(skip)
             .Take(request.PageSize)
+            .AsNoTracking()
             .ToListAsync();
     }
     
@@ -123,6 +124,7 @@ public class AProductRepository : IAProductRepository
             .Include(p => p.Shop)
             .Skip(skip)
             .Take(request.PageSize)
+            .AsNoTracking()
             .ToListAsync();
     }
     
@@ -137,8 +139,8 @@ public class AProductRepository : IAProductRepository
         }
         else
         {
-            // Lấy cả Unspecified và Complaint
-            query = query.Where(p => p.Status == ProductStatus.Unspecified || p.Status == ProductStatus.Complaint);
+            // Lấy cả Unspecified và Complaint và Dending
+            query = query.Where(p => p.Status == ProductStatus.Unspecified || p.Status == ProductStatus.Complaint || p.Status == ProductStatus.Pending);
         }
         
         // Filter theo CategoryId

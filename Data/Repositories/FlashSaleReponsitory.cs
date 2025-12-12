@@ -21,6 +21,7 @@ public class FlashSaleRepository : IFlashSaleRepository
         .Where(f => f.FlashSale != null && f.FlashSale.Id == flashSaleId)
         .Skip((page - 1) * pageSize)
         .Take(pageSize)
+        .AsNoTracking()
         .ToListAsync();
     }
     public async Task<List<FlashSale>> GetFlashSalesTodayAsync(DateOnly dateTime)
@@ -29,6 +30,7 @@ public class FlashSaleRepository : IFlashSaleRepository
         var endDate = dateTime.ToDateTime(TimeOnly.MaxValue);
         return await _context.FlashSales
         .Where(f => f.StartTime <= startDate && f.EndTime >= endDate)
+        .AsNoTracking()
         .ToListAsync();
     }
     
@@ -53,6 +55,7 @@ public class FlashSaleRepository : IFlashSaleRepository
             .Include(fsp => fsp.Product)
             .Include(fsp => fsp.FlashSale)
             .Where(fsp => fsp.ProductId != null && validProductIds.Contains(fsp.ProductId))
+            .AsNoTracking()
             .ToListAsync();
 
         Console.WriteLine($"[DEBUG] Total flash sale products found: {allFlashSaleProducts.Count}");
@@ -73,6 +76,7 @@ public class FlashSaleRepository : IFlashSaleRepository
                         && fsp.FlashSale.EndTime >= currentTime)
             .Select(fsp => fsp.ProductId!)
             .Distinct()
+            .AsNoTracking()
             .ToListAsync();
 
         Console.WriteLine($"[DEBUG] Products with active flash sales: {productsWithFlashSales.Count}");
@@ -120,6 +124,7 @@ public class FlashSaleRepository : IFlashSaleRepository
                         && fsp.FlashSale.EndTime >= currentTime
                         && fsp.PercentDecrease != null)
             .Select(fsp => new { ProductId = fsp.ProductId!, PercentDecrease = fsp.PercentDecrease!.Value })
+            .AsNoTracking()
             .ToListAsync();
 
         // Tạo dictionary với productId và percent_decrease
@@ -148,6 +153,7 @@ public class FlashSaleRepository : IFlashSaleRepository
                         && fsp.FlashSale.Status == FlashSaleStatus.Active
                         && fsp.FlashSale.StartTime <= currentTime
                         && fsp.FlashSale.EndTime >= currentTime)
+            .AsNoTracking()
             .FirstOrDefaultAsync();
     }
 
@@ -162,6 +168,7 @@ public class FlashSaleRepository : IFlashSaleRepository
             .Include(fsp => fsp.Product)
             .Include(fsp => fsp.FlashSale)
             .Where(fsp => fsp.Id != null && flashSaleProductIds.Contains(fsp.Id))
+            .AsNoTracking()
             .ToListAsync();
 
         return flashSaleProducts.ToDictionary(fsp => fsp.Id, fsp => fsp);
@@ -186,6 +193,7 @@ public class FlashSaleRepository : IFlashSaleRepository
                         && fsp.FlashSale.Status == FlashSaleStatus.Active
                         && fsp.FlashSale.StartTime <= currentTime
                         && fsp.FlashSale.EndTime >= currentTime)
+            .AsNoTracking()
             .ToListAsync();
 
         return flashSaleProducts

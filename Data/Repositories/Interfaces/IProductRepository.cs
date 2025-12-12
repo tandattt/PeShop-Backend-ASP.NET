@@ -7,7 +7,7 @@ namespace PeShop.Data.Repositories.Interfaces;
 public interface IProductRepository
 {
     Task<int> GetCountProductAsync();
-    Task<List<Product>> GetListProductAsync(int skip, int take);
+    Task<List<Product>> GetListProductAsync(int page, int pageSize);
     Task<Product?> GetProductByIdAsync(string productId);
     Task<Product?> GetProductBySlugAsync(string slug);
     Task<ProductShippingDto?> GetProductForShippingByIdAsync(string productId);

@@ -16,12 +16,13 @@ public class PermissionRepository : IPermissionRepository
 
     public async Task<List<Permission>> GetAllAsync()
     {
-        return await _context.Permissions.ToListAsync();
+        return await _context.Permissions.AsNoTracking().ToListAsync();
     }
 
     public async Task<Permission?> GetByNameAsync(string name)
     {
         return await _context.Permissions
+            .AsNoTracking()
             .FirstOrDefaultAsync(p => p.Name == name);
     }
 
@@ -36,6 +37,7 @@ public class PermissionRepository : IPermissionRepository
             .Where(rp => rp.RoleId == roleId)
             .Include(rp => rp.Permission)
             .Select(rp => rp.Permission)
+            .AsNoTracking()
             .ToListAsync();
     }
 
@@ -46,6 +48,7 @@ public class PermissionRepository : IPermissionRepository
             .Include(rp => rp.Permission)
             .Select(rp => rp.Permission.Name)
             .Distinct()
+            .AsNoTracking()
             .ToListAsync();
     }
 
@@ -56,12 +59,14 @@ public class PermissionRepository : IPermissionRepository
             .Include(rp => rp.Permission)
             .Select(rp => rp.Permission)
             .Distinct()
+            .AsNoTracking()
             .ToListAsync();
     }
 
     public async Task<RolePermission?> GetRolePermissionAsync(string roleId, int permissionId)
     {
         return await _context.RolePermissions
+            .AsNoTracking()
             .FirstOrDefaultAsync(rp => rp.RoleId == roleId && rp.PermissionId == permissionId);
     }
 
@@ -70,6 +75,7 @@ public class PermissionRepository : IPermissionRepository
         return await _context.RolePermissions
             .Where(rp => rp.RoleId == roleId)
             .Include(rp => rp.Permission)
+            .AsNoTracking()
             .ToListAsync();
     }
 
@@ -95,6 +101,7 @@ public class PermissionRepository : IPermissionRepository
     {
         return await _context.Permissions
             .Where(p => p.Module == module)
+            .AsNoTracking()
             .ToListAsync();
     }
 
@@ -102,6 +109,7 @@ public class PermissionRepository : IPermissionRepository
     {
         var permissions = await _context.Permissions
             .Where(p => p.Module != null)
+            .AsNoTracking()
             .ToListAsync();
 
         return permissions

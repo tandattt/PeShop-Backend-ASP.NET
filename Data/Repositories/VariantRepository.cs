@@ -37,6 +37,7 @@ public class VariantRepository : IVariantRepository
     {
         return await _context.Variants
             .Where(v => v.Id == int.Parse(id) && v.Status == VariantStatus.Show)
+            .AsNoTracking()
             .FirstOrDefaultAsync();
     }
     public async Task<bool> UpdateVariantAsync(Variant variant)
@@ -69,6 +70,7 @@ public class VariantRepository : IVariantRepository
         var variants = await _context.Variants
             .Include(v => v.Product)
             .Where(v => variantIds.Contains(v.Id))
+            .AsNoTracking()
             .ToListAsync();
 
         return variants.ToDictionary(v => v.Id, v => v);

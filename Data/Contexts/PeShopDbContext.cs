@@ -81,6 +81,8 @@ public partial class PeShopDbContext : DbContext
 
     public virtual DbSet<VoucherSystem> VoucherSystems { get; set; }
 
+    public virtual DbSet<SystemLog> SystemLogs { get; set; }
+
     public virtual DbSet<Wallet> Wallets { get; set; }
 
     public virtual DbSet<Rank> Ranks { get; set; }
@@ -1941,6 +1943,26 @@ public partial class PeShopDbContext : DbContext
             entity.HasOne(d => d.Shop).WithMany()
                 .HasForeignKey(d => d.ShopId)
                 .HasConstraintName("FK_messages_shop");
+        });
+
+        // SystemLog configuration
+        modelBuilder.Entity<SystemLog>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PRIMARY");
+
+            entity.ToTable("system_log");
+
+            entity.Property(e => e.Id)
+                .ValueGeneratedOnAdd()
+                .HasColumnName("id");
+
+            entity.Property(e => e.Content)
+                .HasColumnType("text")
+                .HasColumnName("content");
+
+            entity.Property(e => e.CreateAt)
+                .HasMaxLength(6)
+                .HasColumnName("created_at");
         });
 
         // Enum Mappings

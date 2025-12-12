@@ -22,7 +22,7 @@ public class UserAddressRepository : IUserAddressRepository
 
     public async Task<UserAddress?> GetUserAddressByIdAsync(string id, string userId)
     {
-        return await _context.UserAddresses.FirstOrDefaultAsync(x => x.Id == id && x.UserId == userId);
+        return await _context.UserAddresses.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id && x.UserId == userId);
     }
 
     public async Task<UserAddress> UpdateUserAddressAsync(UserAddress userAddress)
@@ -46,11 +46,11 @@ public class UserAddressRepository : IUserAddressRepository
 
     public async Task<List<UserAddress>> GetListAddressAsync(string userId)
     {
-        return await _context.UserAddresses.Where(x => x.UserId == userId).ToListAsync();
+        return await _context.UserAddresses.Where(x => x.UserId == userId).AsNoTracking().ToListAsync();
     }
 
     public async Task<UserAddress?> GetAddressDefaultAsync(string userId)
     {
-        return await _context.UserAddresses.FirstOrDefaultAsync(x => x.UserId == userId && x.IsDefault == true);
+        return await _context.UserAddresses.AsNoTracking().FirstOrDefaultAsync(x => x.UserId == userId && x.IsDefault == true);
     }
 }
